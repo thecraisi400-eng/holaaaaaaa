@@ -19,7 +19,8 @@
         S: 'Kage · Poder absoluto del Valle del Fin'
     };
 
-    const RANGO_NIVEL_REQ = { D: 1, C: 11, B: 31, A: 61, S: 81 };
+    const ARBOL_DATA_VERSION = 2;
+
 
     const RANGO_BONO_COMPLETO = {
         D: '+50 ❤️  +3 🛡️',
@@ -78,43 +79,52 @@
     // ==========================================
     // ESTADO INTERNO
     // ==========================================
+    function crearActivacionesBase() {
+        return {
+            D: [false, false, false, false, false],
+            C: [false, false, false, false, false],
+            B: [false, false, false, false, false],
+            A: [false, false, false, false, false],
+            S: [false, false, false, false, false]
+        };
+    }
+
+    function crearRangosCompletadosBase() {
+        return { D: false, C: false, B: false, A: false, S: false };
+    }
+
     let puntosGastados = 0;
     let puntosBonoArbol = 0;
-    let activations = {
-        D: [false, false, false, false, false],
-        C: [false, false, false, false, false],
-        B: [false, false, false, false, false],
-        A: [false, false, false, false, false],
-        S: [false, false, false, false, false]
-    };
-    let rangosCompletados = { D: false, C: false, B: false, A: false, S: false };
+    let activations = crearActivacionesBase();
+    let rangosCompletados = crearRangosCompletadosBase();
     let viewingIdx = 0;
 
     // ==========================================
     // HELPERS
     // ==========================================
-    function getNivel() {
-        return (window.personaje && window.personaje.nivel) ? window.personaje.nivel : 1;
-    }
-
     function getPuntosTotal() {
-        return getNivel() * 3;
+        return puntosBonoArbol;
     }
 
     function getPuntosDisponibles() {
-        return Math.max(0, getPuntosTotal() + puntosBonoArbol - puntosGastados);
+        return Math.max(0, getPuntosTotal() - puntosGastados);
+    }
+
+    function getIndiceRango(rKey) {
+        return RANGOS.indexOf(rKey);
     }
 
     function isRangoDesbloqueado(rKey) {
-        return getNivel() >= RANGO_NIVEL_REQ[rKey];
+        const idx = getIndiceRango(rKey);
+        if (idx <= 0) return true;
+        return Boolean(rangosCompletados[RANGOS[idx - 1]]);
     }
 
     function getRangoActualIdx() {
-        let idx = 0;
         for (let i = 0; i < RANGOS.length; i++) {
-            if (isRangoDesbloqueado(RANGOS[i])) idx = i;
+            if (!rangosCompletados[RANGOS[i]]) return i;
         }
-        return idx;
+        return RANGOS.length - 1;
     }
 
     // ==========================================
@@ -501,7 +511,7 @@
                 <div class="arbol-constellation">
                     <div class="arbol-nodes-area" id="arbol-nodes"></div>
                     ${!desbloqueado
-                        ? `<div class="arbol-nivel-req">🔒<span>Requiere Nivel ${RANGO_NIVEL_REQ[rKey]}</span><span style="font-size:10px;color:#94a3b8">Tu nivel: ${getNivel()}</span></div>`
+                        ? `<div class="arbol-nivel-req">🔒<span>Debes completar el rango ${RANGOS[Math.max(0, getIndiceRango(rKey) - 1)]}</span><span style="font-size:10px;color:#94a3b8">El Árbol ahora progresa solo por Libro Bingo</span></div>`
                         : ''}
                 </div>
                 <div class="arbol-bonus">
@@ -673,6 +683,7 @@
 
     function obtenerDatos() {
         return {
+            version: ARBOL_DATA_VERSION,
             puntosGastados:   puntosGastados,
             puntosBonoArbol:  puntosBonoArbol,
             activations:      activations,
@@ -680,12 +691,48 @@
         };
     }
 
+    function normalizarActivaciones(raw) {
+        const base = crearActivacionesBase();
+        if (!raw || typeof raw !== 'object') return base;
+        RANGOS.forEach((r) => {
+            const lista = Array.isArray(raw[r]) ? raw[r] : [];
+            base[r] = Array.from({ length: 5 }, (_, idx) => Boolean(lista[idx]));
+        });
+        return base;
+    }
+
+    function normalizarRangosCompletados(raw) {
+        const base = crearRangosCompletadosBase();
+        if (!raw || typeof raw !== 'object') return base;
+        RANGOS.forEach((r) => {
+            base[r] = Boolean(raw[r]);
+        });
+        return base;
+    }
+
+    function reiniciarProgresoArbol() {
+        puntosGastados = 0;
+        puntosBonoArbol = 0;
+        activations = crearActivacionesBase();
+        rangosCompletados = crearRangosCompletadosBase();
+    }
+
     function cargarDatos(data) {
-        if (!data) return;
-        puntosGastados    = data.puntosGastados    || 0;
-        puntosBonoArbol   = data.puntosBonoArbol   || 0;
-        if (data.activations)       activations       = data.activations;
-        if (data.rangosCompletados) rangosCompletados = data.rangosCompletados;
+        if (!data || data.version !== ARBOL_DATA_VERSION) {
+            reiniciarProgresoArbol();
+            aplicarBonosAlPersonaje();
+            return;
+        }
+
+        puntosGastados = Math.max(0, Number(data.puntosGastados) || 0);
+        puntosBonoArbol = Math.max(0, Number(data.puntosBonoArbol) || 0);
+        activations = normalizarActivaciones(data.activations);
+        rangosCompletados = normalizarRangosCompletados(data.rangosCompletados);
+
+        if (puntosGastados > puntosBonoArbol) {
+            puntosGastados = puntosBonoArbol;
+        }
+
         aplicarBonosAlPersonaje();
     }
 
@@ -712,16 +759,22 @@
     console.log('logic-arbol.js cargado correctamente');
 
     // [BINGO→ARBOL] Recibe puntos desde logic-bingo.js
-    window.arbolRecibirPunto = function(cantidad) {
-        puntosBonoArbol += (cantidad || 1);
+    window.arbolRecibirPunto = function(cantidad, origen) {
+        if (origen !== 'bingo') return false;
+
+        const puntos = Math.max(0, parseInt(cantidad, 10) || 0);
+        if (puntos <= 0) return false;
+
+        puntosBonoArbol += puntos;
         guardarArbol();
         if (typeof window.mostrarNotificacion === 'function') {
-            window.mostrarNotificacion('🌳 +' + (cantidad || 1) + ' punto de Árbol');
+            window.mostrarNotificacion('🌳 +' + puntos + ' punto de Árbol');
         }
         var container = document.getElementById('arbol-overlay-container');
         if (container && container.style.display !== 'none') {
             render();
         }
+        return true;
     };
 
 })();

@@ -114,6 +114,7 @@ function generarEnemigos(rango) {
                 maxHp: hp,
                 oro: cfg.oro + rnd(0, 100),
                 xp: cfg.xp,
+                fuente: 'libro_bingo',
                 derrotado: false,
                 gano: null
             };
@@ -267,12 +268,21 @@ function renderEnemigos() {
                 addLog(`💀 ¡${enemigo.nombre} derrotado! +${enemigo.xp} XP y +${enemigo.oro} Oro.`);
                 if (typeof window.ganarExperiencia === 'function') window.ganarExperiencia(enemigo.xp);
                 if (typeof window.ganarOro === 'function') window.ganarOro(enemigo.oro);
+
+                const enemigoDefinido = estado.enemigos[idx];
+                const recompensaArbolPermitida = Boolean(
+                    estado.misionActiva &&
+                    estado.rangoSeleccionado &&
+                    enemigoDefinido &&
+                    enemigoDefinido.fuente === 'libro_bingo' &&
+                    enemigoDefinido.nombre === enemigo.nombre
+                );
+
                 // [BINGO→ARBOL] Probabilidad de punto árbol según rango
                 const _arbolProb = {'Rango D':0.10,'Rango C':0.20,'Rango B':0.30,'Rango A':0.40,'Rango S':0.50};
-                const _prob = _arbolProb[estado.rangoActual] || 0;
+                const _prob = recompensaArbolPermitida ? (_arbolProb[estado.rangoActual] || 0) : 0;
                 if (_prob > 0 && Math.random() < _prob) {
-                    if (typeof window.arbolRecibirPunto === 'function') {
-                        window.arbolRecibirPunto(1);
+                    if (typeof window.arbolRecibirPunto === 'function' && window.arbolRecibirPunto(1, 'bingo')) {
                         addLog('🌳 ¡+1 punto de Árbol obtenido!');
                     }
                 }

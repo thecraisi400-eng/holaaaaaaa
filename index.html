@@ -104,17 +104,17 @@
         if (overlay) overlay.style.display = 'none';
     }
 
-    function closeAllPanels() {
-    var panels = [
-        'hero-equipment-container',
-        'missions-overlay-container',
-        'ajustes-overlay-container',
-        'arbol-overlay-container'
-    ];
-    panels.forEach(function(id) {
-        var el = document.getElementById(id);
-        if (el) el.style.display = 'none';
-    });
+function closeAllPanels() {
+    if (typeof closeHeroEquipment === 'function') closeHeroEquipment();
+    if (typeof closeMisiones === 'function') closeMisiones();
+    if (typeof closeArbol === 'function') closeArbol();
+
+    var ajustes = document.getElementById('ajustes-overlay-container');
+    if (ajustes) ajustes.style.display = 'none';
+
+    var missionContent = document.querySelector('.mission-content');
+    if (missionContent) missionContent.style.display = 'flex';
+
     if (typeof cancelarCombate === 'function') cancelarCombate();
     if (typeof detenerBatallaMisiones === 'function') detenerBatallaMisiones();
     if (typeof detenerBatallaBingo === 'function') detenerBatallaBingo();

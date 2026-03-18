@@ -49,7 +49,7 @@ function updateBars() {
 window.updateBars = updateBars;
 
 setInterval(() => {
-    if (!isRegenerating || misionesVisible || window.combateActivo) return;
+    if (!isRegenerating || isPanelVisible('missions-overlay-container', 'flex') || window.combateActivo) return;
     
     // Regeneración solo si existe el personaje
     if (window.personaje) {
@@ -88,6 +88,31 @@ function triggerEffect(e) {
     }, 600);
 }
 
+function isPanelVisible(id, visibleDisplay = null) {
+    const panel = document.getElementById(id);
+    if (!panel) return false;
+
+    if (visibleDisplay) {
+        return panel.style.display === visibleDisplay;
+    }
+
+    return panel.style.display !== 'none' && panel.style.display !== '';
+}
+
+function showMissionContent() {
+    const missionContent = document.querySelector('.mission-content');
+    if (missionContent) {
+        missionContent.style.display = 'flex';
+    }
+}
+
+function hideMissionContent() {
+    const missionContent = document.querySelector('.mission-content');
+    if (missionContent) {
+        missionContent.style.display = 'none';
+    }
+}
+
 // NUEVA FUNCIÓN: Alternar visibilidad del sistema de equipamiento
 function toggleHeroEquipment(e) {
     // Prevenir que el evento se propague
@@ -109,15 +134,12 @@ function toggleHeroEquipment(e) {
         return;
     }
     
-    // Alternar visibilidad
-    equipVisible = !equipVisible;
+    const estaVisible = isPanelVisible('hero-equipment-container', 'block');
+    equipVisible = !estaVisible;
     
-    if (equipVisible) {
+    if (!estaVisible) {
         // Ocultar el contenido normal y mostrar el equipamiento
-        const missionContent = centerArea.querySelector('.mission-content');
-        if (missionContent) {
-            missionContent.style.display = 'none';
-        }
+        hideMissionContent();
         container.style.display = 'block';
         
         // Actualizar el oro desde window.personaje si existe
@@ -131,28 +153,29 @@ function toggleHeroEquipment(e) {
         }
     } else {
         // Mostrar el contenido normal y ocultar el equipamiento
-        const missionContent = centerArea.querySelector('.mission-content');
-        if (missionContent) {
-            missionContent.style.display = 'flex';
-        }
+        showMissionContent();
         container.style.display = 'none';
     }
     
-    console.log('Sistema de equipamiento:', equipVisible ? 'visible' : 'oculto');
+    equipVisible = !estaVisible;
+    console.log('Sistema de equipamiento:', !estaVisible ? 'visible' : 'oculto');
 }
 
 // Función para cerrar el equipamiento (puede ser llamada desde otros scripts)
 function closeHeroEquipment() {
-    if (equipVisible) {
-        toggleHeroEquipment(null);
-    }
+    const container = document.getElementById('hero-equipment-container');
+    if (!container) return;
+
+    container.style.display = 'none';
+    equipVisible = false;
+    showMissionContent();
 }
 
 function toggleMisiones(e) {
     if (e) { e.preventDefault(); e.stopPropagation(); }
 
-    if (equipVisible) closeHeroEquipment();
-    if (arbolVisible) closeArbol();
+    if (isPanelVisible('hero-equipment-container', 'block')) closeHeroEquipment();
+    if (isPanelVisible('arbol-overlay-container')) closeArbol();
 
     const ajustesPanel = document.getElementById('ajustes-overlay-container');
     if (ajustesPanel && ajustesPanel.style.display === 'flex') {
@@ -160,56 +183,74 @@ function toggleMisiones(e) {
     }
 
     const overlay = document.getElementById('missions-overlay-container');
-    const missionContent = document.querySelector('.mission-content');
     if (!overlay) return;
 
-    misionesVisible = !misionesVisible;
+    const estaVisible = isPanelVisible('missions-overlay-container', 'flex');
+    misionesVisible = !estaVisible;
 
-    if (misionesVisible) {
-        if (missionContent) missionContent.style.display = 'none';
+    if (!estaVisible) {
+        hideMissionContent();
         overlay.style.display = 'flex';
         if (window.misionesSystem && typeof window.misionesSystem.init === 'function') {
             window.misionesSystem.init();
         }
     } else {
-        if (missionContent) missionContent.style.display = 'flex';
+        showMissionContent();
         overlay.style.display = 'none';
     }
 }
 
 function closeMisiones() {
-    if (misionesVisible) toggleMisiones(null);
+    const overlay = document.getElementById('missions-overlay-container');
+    if (!overlay) return;
+
+    overlay.style.display = 'none';
+    misionesVisible = false;
+    showMissionContent();
+
+    if (window.misionesSystem && window.misionesSystem.stopBattle) {
+        window.misionesSystem.stopBattle();
+    }
 }
 
 function toggleArbol(e) {
     if (e) { e.preventDefault(); e.stopPropagation(); }
-    if (equipVisible) closeHeroEquipment();
-    if (misionesVisible) closeMisiones();
+    if (isPanelVisible('hero-equipment-container', 'block')) closeHeroEquipment();
+    if (isPanelVisible('missions-overlay-container', 'flex')) closeMisiones();
+
     const ajustesPanel = document.getElementById('ajustes-overlay-container');
     if (ajustesPanel && ajustesPanel.style.display === 'flex') ajustesPanel.style.display = 'none';
+
     const overlay = document.getElementById('arbol-overlay-container');
-    const missionContent = document.querySelector('.mission-content');
     if (!overlay) {
         if (window.arbolSystem && typeof window.arbolSystem.init === 'function') window.arbolSystem.init();
         const overlayCreado = document.getElementById('arbol-overlay-container');
         if (!overlayCreado) return;
         arbolVisible = true;
-        if (missionContent) missionContent.style.display = 'none';
+        hideMissionContent();
         overlayCreado.style.display = 'block';
         return;
     }
-    arbolVisible = !arbolVisible;
-    if (arbolVisible) {
-        if (missionContent) missionContent.style.display = 'none';
+
+    const estaVisible = isPanelVisible('arbol-overlay-container');
+    arbolVisible = !estaVisible;
+
+    if (!estaVisible) {
+        hideMissionContent();
         overlay.style.display = 'block';
         if (window.arbolSystem && typeof window.arbolSystem.init === 'function') window.arbolSystem.init();
     } else {
-        if (missionContent) missionContent.style.display = 'flex';
+        showMissionContent();
         overlay.style.display = 'none';
     }
 }
 function closeArbol() {
-    if (arbolVisible) toggleArbol(null);
+    const overlay = document.getElementById('arbol-overlay-container');
+    if (!overlay) return;
+
+    overlay.style.display = 'none';
+    arbolVisible = false;
+    showMissionContent();
 }
 window.toggleArbol = toggleArbol;
 window.closeArbol = closeArbol;
@@ -253,7 +294,7 @@ window.onload = () => {
 if (typeof cancelarCombate === 'function') {
                 cancelarCombate();
             }
-            if (equipVisible) {
+            if (isPanelVisible('hero-equipment-container', 'block')) {
                 closeHeroEquipment();
             }
         });

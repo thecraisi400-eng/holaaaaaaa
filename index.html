@@ -1,0 +1,178 @@
+<!--index.html-->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Modelo 1 - UI Vertical Naruto (Azul)</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="game-container">
+    <div class="news-ticker"><p>🔥 EVENTO ACTIVO: LA INVASIÓN DE LOS 100,000 ZETSUS COMIENZA EN 2 HORAS 🔥</p></div>
+
+    <div class="hero-section">
+        <div class="hero-portrait" title="Retrato del Personaje">🌀</div>
+        <div class="hero-stats">
+            <div class="hero-header">
+                <span>Uchiha Sasuke <span class="offline-dot" title="Guardado Offline Activo"></span></span>
+                <span>Nvl. <span id="hero-level">1</span></span>
+                <span class="rank" id="rango-valor">Genin</span>
+            </div>
+            
+            <div class="bar-container" title="Salud Actual">
+                <div id="hp-fill" class="bar-fill">HP</div>
+                <!-- Elemento oculto para la barra de XP (lo necesitamos) -->
+                <span id="hp-text" class="bar-text">100% (5000/5000)</span>
+            </div>
+            
+            <div class="bar-container" title="Chakra Actual">
+                <div id="mp-fill" class="bar-fill">CP</div>
+                <span id="mp-text" class="bar-text">100% (2000/2000)</span>
+            </div>
+            <div class="bar-container" title="Experiencia Actual">
+    <div id="xp-fill" class="bar-fill" style="background: linear-gradient(90deg, #fbfd76, #fbfd76); width: 0%;">EXP</div>
+    <span id="xp-text" class="bar-text">0 / 100 XP</span>
+</div>
+
+            <div class="sub-stats">
+                <span>Atq: <strong id="ataque-valor">15</strong></span>
+                <span>Def: <strong id="defensa-valor">10</strong></span>
+                <span class="gold-indicator">💰 <span id="oro-valor">100</span></span>
+                <span>XP: <strong id="xp-porcentaje">0%</strong></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="center-area">
+        <div class="mission-content">
+            <h2 class="mission-title">Valle del Fin</h2>
+            <p class="mission-desc">Estás explorando los alrededores. No hay enemigos a la vista, pero sientes una presencia de chakra masiva acercándose...</p>
+            <br>
+            <p style="color: var(--accent-hover); font-weight: bold; font-size: 0.8rem;">[ Modo Automático Activado ]</p>
+        </div>
+        <!-- CONTENEDOR OCULTO PARA SISTEMA DE EQUIPAMIENTO DEL HÉROE -->
+<div id="hero-equipment-container" style="display: none; width: 100%; height: 100%; position: relative; background: white; border-radius: 10px; overflow: hidden; z-index: 100;">
+    <!-- Aquí se cargará dinámicamente el sistema de equipamiento -->
+</div>
+<div id="missions-overlay-container" style="display: none; width: 100%; height: 100%; position: absolute; top: 0; left: 0; background: white; border-radius: 10px; overflow: hidden; z-index: 101;">
+</div>
+<div id="ajustes-overlay-container" style="display: none; width: 100%; height: 100%; position: absolute; top: 0; left: 0; background: rgba(10,15,30,0.97); border-radius: 10px; overflow: hidden; z-index: 102; flex-direction: column; align-items: center; justify-content: center;">
+    <h2 style="color: #7ec8e3; font-family: 'Segoe UI', sans-serif; margin-bottom: 24px; letter-spacing: 2px;">⚙️ AJUSTES</h2>
+    <button onclick="confirmarReinicio()" style="background: linear-gradient(135deg, #8b0000, #cc0000); color: white; border: 2px solid #ff4444; padding: 14px 36px; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; letter-spacing: 2px; margin-bottom: 16px;">🔄 REINICIAR PARTIDA</button>
+    <button onclick="cerrarAjustes()" style="background: transparent; color: #7ec8e3; border: 1px solid #7ec8e3; padding: 10px 28px; border-radius: 8px; font-size: 0.85rem; cursor: pointer; letter-spacing: 1px;">✖ CERRAR</button>
+</div>
+
+<div id="arbol-overlay-container" style="display: none; width: 100%; height: 100%; position: absolute; top: 0; left: 0; border-radius: 10px; overflow: hidden; z-index: 103;"></div>
+
+    </div>
+
+    <div class="bottom-menu">
+        <button class="menu-btn" onclick="toggleHeroEquipment(event)"><span class="emoji">👤</span> Héroe</button>
+        <button class="menu-btn" onclick="toggleMisiones(event)"><span class="emoji">📜</span> Misiones</button>
+        <button class="menu-btn" onclick="proximamente()"><span class="emoji">⛩️</span> Clanes</button>
+        <button class="menu-btn" onclick="triggerEffect(event)"><span class="emoji">⭐</span> Eventos</button>
+        <button class="menu-btn" onclick="triggerEffect(event)"><span class="emoji">🔥</span> Jutsus</button>
+        <button class="menu-btn" onclick="triggerEffect(event)"><span class="emoji">⚔️</span> Batallas</button>
+        <button class="menu-btn" onclick="triggerEffect(event)"><span class="emoji">🐸</span> Invocación</button>
+        <button class="menu-btn" onclick="toggleArbol(event)"><span class="emoji">🌳</span> Árbol</button>
+        <button class="menu-btn" onclick="toggleAjustes(event)"><span class="emoji">⚙️</span> Ajustes</button>
+    </div>
+</div>
+
+<!-- Primero: Sistema de niveles (crea el personaje) -->
+<script src="logic-niveles.js"></script>
+
+<!-- Segundo: Sistema de guardado (depende del personaje) -->
+<script src="logic-arbol.js"></script>
+<script src="sys-guardado.js"></script>
+
+<!-- Tercero: Motor vital (depende del personaje y guardado) -->
+<script src="script.js"></script>
+
+<!-- Resto de scripts -->
+<script src="logic-combate.js"></script>
+<script src="data-misiones.js"></script>
+<script src="logic-bingo.js"></script>
+<!-- etc... -->
+ <!-- Sistema de Equipamiento del Héroe -->
+<script src="logic-equipamiento.js"></script>
+<script>
+    function proximamente() {
+        const overlay = document.getElementById('missions-overlay-container');
+        if (overlay) overlay.style.display = 'none';
+    }
+
+    function closeAllPanels() {
+    var panels = [
+        'hero-equipment-container',
+        'missions-overlay-container',
+        'ajustes-overlay-container',
+        'arbol-overlay-container'
+    ];
+    panels.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
+    if (typeof cancelarCombate === 'function') cancelarCombate();
+    if (typeof detenerBatallaMisiones === 'function') detenerBatallaMisiones();
+    if (typeof detenerBatallaBingo === 'function') detenerBatallaBingo();
+}
+
+function toggleAjustes(event) {
+    if (event) event.stopPropagation();
+    var panel = document.getElementById('ajustes-overlay-container');
+    if (!panel) return;
+    var visible = panel.style.display === 'flex';
+    closeAllPanels();
+    if (!visible) panel.style.display = 'flex';
+}
+
+function cerrarAjustes() {
+    const panel = document.getElementById('ajustes-overlay-container');
+    if (panel) panel.style.display = 'none';
+}
+
+function confirmarReinicio() {
+    const confirmado = confirm('⚠️ ¿Estás seguro?\n\nEsto borrará TODO tu progreso:\nnivel, oro, XP, equipamiento y misiones.\n\nEsta acción no se puede deshacer.');
+    if (confirmado) {
+        if (typeof resetearPartida === 'function') {
+            resetearPartida();
+        } else {
+            alert('❌ Error: función de reinicio no encontrada.');
+        }
+    }
+}
+
+document.querySelectorAll('.menu-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        var ajustes = document.getElementById('ajustes-overlay-container');
+        if (ajustes && ajustes.style.display === 'flex') {
+            ajustes.style.display = 'none';
+        }
+    }, true);
+});
+
+// WAKE LOCK - Mantener pantalla encendida
+async function activarWakeLock() {
+    try {
+        if ('wakeLock' in navigator) {
+            window._wakeLock = await navigator.wakeLock.request('screen');
+            window._wakeLock.addEventListener('release', () => {});
+        }
+    } catch (err) {}
+}
+
+document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'visible') {
+        await activarWakeLock();
+    }
+});
+
+activarWakeLock();
+
+</script>
+
+</body>
+</html>

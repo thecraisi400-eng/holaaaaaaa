@@ -100,7 +100,7 @@
 
             const text = document.createElement('span');
             text.className = 'pre-scroll-text';
-            text.innerHTML = `${clase.nombre}<span class="pre-scroll-subtext">${clase.buff} ${clase.debuff}</span>`;
+            text.innerHTML = `${clase.nombre}: ${clase.titulo}<span class="pre-scroll-subtext">${clase.descripcion}</span><span class="pre-scroll-traits">${clase.buff} ${clase.debuff}</span>`;
             option.appendChild(text);
 
             option.addEventListener('click', () => {
@@ -114,7 +114,8 @@
 
     function actualizarEstadoContinuar() {
         const existeGuardado = typeof window.existePartidaGuardada === 'function' && window.existePartidaGuardada();
-        continueBtn.style.opacity = existeGuardado ? '1' : '0.6';
+        continueBtn.classList.toggle('pre-continue-ready', existeGuardado);
+        continueBtn.classList.toggle('pre-disabled', !existeGuardado);
         continueHelp.textContent = existeGuardado
             ? 'Se detectó una partida guardada lista para continuar.'
             : 'No hay una partida guardada todavía. Empieza una nueva.';

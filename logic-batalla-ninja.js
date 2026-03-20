@@ -62,13 +62,15 @@
         npcBattleInterval: null,
         rankingLogs: [],
         personalLogs: [],
+        personalUnreadCount: 0,
         battleEnemy: null,
         battleInterval: null,
         resultTimer: null,
         battleActive: false,
         resultMessage: '',
         scrollPositions: {},
-        lastSnapshot: null
+        lastSnapshot: null,
+        lastNpcBattleAt: Date.now()
     };
 
     function queueSave() {
@@ -248,6 +250,21 @@
                 color: white;
                 padding: 0 6px;
                 border-radius: 20px;
+            }
+            .bn-icon-btn .bn-notification-badge {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 18px;
+                height: 18px;
+                margin-left: 6px;
+                padding: 0 5px;
+                border-radius: 999px;
+                background: #111827;
+                color: #ffffff;
+                font-size: 11px;
+                font-weight: 800;
+                line-height: 1;
             }
             .bn-icon-btn.bn-personal-victory {
                 background: linear-gradient(135deg, #166534, #22c55e);
@@ -610,17 +627,20 @@
         if (defender.isPlayer) {
             const personalEntry = attackerWon
                 ? {
-                    text: `${attacker.name} #${oldRankAtt} te derrotó y defendió el puesto #${oldRankDef}.`,
+                    text: `${attacker.name} #${oldRankAtt} te derrotó y tomó el puesto #${oldRankDef}.`,
                     colorClass: 'bn-defeat-text',
-                    outcome: 'defeat'
+                    outcome: 'defeat',
+                    read: false
                 }
                 : {
                     text: `${attacker.name} #${oldRankAtt} te atacó, pero lo derrotaste y mantuviste el puesto #${oldRankDef}.`,
                     colorClass: 'bn-victory-text',
-                    outcome: 'victory'
+                    outcome: 'victory',
+                    read: false
                 };
             state.personalLogs.unshift(personalEntry);
             if (state.personalLogs.length > MAX_PERSONAL_LOGS) state.personalLogs.pop();
+            state.personalUnreadCount = Math.min(99, state.personalUnreadCount + 1);
         }
         queueSave();
     }
@@ -637,6 +657,46 @@
             return getPlayerSnapshot();
         }
         return state.ninjas.find((ninja) => ninja.rank === rank) || null;
+    }
+
+
+    function setEntityRank(entity, newRank) {
+        if (!entity) return;
+        if (entity.isPlayer || entity.id === 'player') {
+            state.playerRank = newRank;
+            return;
+        }
+        const realEntity = state.ninjas.find((ninja) => ninja.id === entity.id);
+        if (realEntity) realEntity.rank = newRank;
+        entity.rank = newRank;
+    }
+
+    function normalizeRanks() {
+        const seen = new Set();
+        const participants = state.ninjas.concat(getPlayerSnapshot()).sort((a, b) => a.rank - b.rank);
+        participants.forEach((entity, index) => {
+            const intendedRank = index + 1;
+            setEntityRank(entity, intendedRank);
+            seen.add(intendedRank);
+        });
+    }
+
+    function applyRankingResult(attacker, defender, attackerWon) {
+        const oldRankAtt = attacker.rank;
+        const oldRankDef = defender.rank;
+        if (attackerWon) {
+            setEntityRank(attacker, oldRankDef);
+            setEntityRank(defender, oldRankAtt);
+            attacker.rank = oldRankDef;
+            defender.rank = oldRankAtt;
+        } else {
+            attacker.rank = oldRankAtt;
+            defender.rank = oldRankDef;
+        }
+        normalizeRanks();
+        attacker.rank = attacker.isPlayer ? state.playerRank : (state.ninjas.find((ninja) => ninja.id === attacker.id)?.rank ?? attacker.rank);
+        defender.rank = defender.isPlayer ? state.playerRank : (state.ninjas.find((ninja) => ninja.id === defender.id)?.rank ?? defender.rank);
+        return { oldRankAtt, oldRankDef };
     }
 
     function getChallengable() {
@@ -667,17 +727,8 @@
         }
 
         const attackerWon = defenderHp <= 0;
-        const oldRankAtt = attacker.rank;
-        const oldRankDef = defender.rank;
-
-        if (attackerWon) {
-            attacker.rank = oldRankDef;
-            defender.rank = oldRankAtt;
-            if (attacker.isPlayer) state.playerRank = attacker.rank;
-            if (defender.isPlayer) state.playerRank = defender.rank;
-        }
-
-        registerCombat(attacker, defender, attackerWon, oldRankAtt, oldRankDef);
+        const result = applyRankingResult(attacker, defender, attackerWon);
+        registerCombat(attacker, defender, attackerWon, result.oldRankAtt, result.oldRankDef);
         return attackerWon;
     }
 
@@ -765,11 +816,23 @@
     }
 
     function getPersonalLogButtonClass() {
-        const latest = state.personalLogs[0];
+        if (!state.personalUnreadCount) return '';
+        const latest = state.personalLogs.find((log) => !log.read) || state.personalLogs[0];
         if (!latest) return '';
         if (latest.outcome === 'victory') return ' bn-personal-victory';
         if (latest.outcome === 'defeat') return ' bn-personal-defeat';
         return '';
+    }
+
+    function getPersonalLogBadge() {
+        if (!state.personalUnreadCount) return '';
+        return `<span class="bn-notification-badge">${state.personalUnreadCount}</span>`;
+    }
+
+    function markPersonalLogsAsRead() {
+        if (!state.personalUnreadCount && !state.personalLogs.some((log) => log && log.read === false)) return;
+        state.personalUnreadCount = 0;
+        state.personalLogs = state.personalLogs.map((log) => ({ ...log, read: true }));
     }
 
     function getRankReward(rank) {
@@ -795,6 +858,7 @@
         state.playerRank = PLAYER_DEFAULT_RANK;
         state.rankingLogs = [];
         state.personalLogs = [];
+        state.personalUnreadCount = 0;
         state.battleEnemy = null;
         state.battleLogs = [];
         state.resultMessage = '';
@@ -910,7 +974,7 @@
                             <button type="button" class="bn-icon-btn" onclick="window.batallaNinjaSystem.goBack()">◀</button>
                             <button type="button" class="bn-icon-btn" onclick="window.batallaNinjaSystem.toggleRanking()">🏆 <span>${PARTICIPANT_COUNT}</span></button>
                             <div id="bnTimerDisplay" class="bn-timer">23:59:59</div>
-                            <button type="button" class="bn-icon-btn${getPersonalLogButtonClass()}" onclick="window.batallaNinjaSystem.togglePersonalLogs()">💬</button>
+                            <button type="button" class="bn-icon-btn${getPersonalLogButtonClass()}" onclick="window.batallaNinjaSystem.togglePersonalLogs()">💬${getPersonalLogBadge()}</button>
                             <button type="button" class="bn-icon-btn" onclick="window.batallaNinjaSystem.close()">✕</button>
                         </div>
                         <div id="bnViewContainer" class="bn-view">${content}</div>
@@ -948,14 +1012,14 @@
         }, 1000);
     }
 
-    function runNpcBattleTick() {
-        if (state.currentView === 'battle' || state.currentView === 'result') return;
+    function runNpcBattleTick(options = {}) {
+        if (!options.force && (state.currentView === 'battle' || state.currentView === 'result')) return false;
         const eligibleAttackers = state.ninjas.filter((ninja) => ninja.rank > 3);
-        if (!eligibleAttackers.length) return;
+        if (!eligibleAttackers.length) return false;
         const attackerSource = eligibleAttackers[Math.floor(Math.random() * eligibleAttackers.length)];
         const candidateRanks = [attackerSource.rank - 1, attackerSource.rank - 2, attackerSource.rank - 3].filter((rank) => rank >= 1);
         const candidates = candidateRanks.map((rank) => getEntityByRank(rank)).filter(Boolean);
-        if (!candidates.length) return;
+        if (!candidates.length) return false;
 
         const defenderSource = candidates[Math.floor(Math.random() * candidates.length)];
         const attacker = {
@@ -968,19 +1032,25 @@
             ? { ...getPlayerSnapshot(), isPlayer: true, rank: state.playerRank, stats: { ...getPlayerSnapshot().stats } }
             : { ...defenderSource, isPlayer: false, stats: { ...defenderSource.stats }, rank: defenderSource.rank };
 
-        const attackerWon = simulateRankingFight(attacker, defender);
-        attackerSource.rank = attacker.rank;
-        if (!defender.isPlayer) {
-            const realDefender = state.ninjas.find((ninja) => ninja.id === defender.id);
-            if (realDefender) realDefender.rank = defender.rank;
-        }
-        if (!attackerWon) {
-            attackerSource.rank = attacker.rank;
-        }
+        simulateRankingFight(attacker, defender);
+        state.lastNpcBattleAt = Date.now();
         if (document.getElementById(CONTAINER_ID) && document.getElementById(CONTAINER_ID).classList.contains('active') && ['main', 'ranking', 'personal'].includes(state.currentView)) {
             render();
         }
         queueSave();
+        return true;
+    }
+
+    function processOfflineNpcBattles(referenceTime) {
+        const now = Number(referenceTime) || Date.now();
+        const lastTime = Number(state.lastNpcBattleAt) || now;
+        const elapsed = Math.max(0, now - lastTime);
+        const pendingTicks = Math.min(250, Math.floor(elapsed / NPC_BATTLE_DELAY));
+        if (!pendingTicks) return;
+        for (let i = 0; i < pendingTicks; i += 1) {
+            runNpcBattleTick({ force: true });
+        }
+        state.lastNpcBattleAt = lastTime + (pendingTicks * NPC_BATTLE_DELAY);
     }
 
     function startNpcBattles() {
@@ -1050,18 +1120,17 @@
     function finalizePlayerBattle(playerWon) {
         if (!state.battleEnemy) return;
         const enemy = state.battleEnemy;
-        const realEnemy = state.ninjas.find((ninja) => ninja.id === enemy.id);
-        const oldPlayerRank = state.playerRank;
-        const oldEnemyRank = enemy.rank;
+        const realEnemy = state.ninjas.find((ninja) => ninja.id === enemy.id) || enemy;
+        const playerEntry = getPlayerSnapshot();
+        const enemyEntry = {
+            ...realEnemy,
+            isPlayer: false,
+            rank: realEnemy.rank,
+            stats: { ...realEnemy.stats }
+        };
+        const result = applyRankingResult(playerEntry, enemyEntry, playerWon);
 
-        if (playerWon) {
-            state.playerRank = oldEnemyRank;
-            enemy.rank = oldPlayerRank;
-            if (realEnemy) realEnemy.rank = oldPlayerRank;
-            realEnemy.rank = oldEnemyRank;
-        }
-
-        registerCombat(getPlayerSnapshot(), realEnemy || enemy, playerWon, oldPlayerRank, oldEnemyRank);
+        registerCombat({ ...playerEntry, rank: state.playerRank }, { ...enemyEntry, rank: realEnemy.rank }, playerWon, result.oldRankAtt, result.oldRankDef);
         state.resultMessage = playerWon ? '🏆 GANASTE' : '💔 PERDISTE';
         state.currentView = 'result';
         render();
@@ -1188,7 +1257,9 @@
 
     function togglePersonalLogs() {
         if (state.currentView === 'battle' || state.currentView === 'result') return;
-        state.currentView = state.currentView === 'personal' ? 'main' : 'personal';
+        const opening = state.currentView !== 'personal';
+        state.currentView = opening ? 'personal' : 'main';
+        if (opening) markPersonalLogsAsRead();
         render();
         queueSave();
     }
@@ -1209,6 +1280,8 @@
             countdownEnd: state.countdownEnd,
             rankingLogs: state.rankingLogs.slice(0, MAX_RANKING_LOGS),
             personalLogs: state.personalLogs.slice(0, MAX_PERSONAL_LOGS),
+            personalUnreadCount: state.personalUnreadCount,
+            lastNpcBattleAt: state.lastNpcBattleAt,
             scrollPositions: { ...state.scrollPositions }
         };
     }
@@ -1231,11 +1304,17 @@
         state.currentView = ['ranking', 'personal', 'main', 'scroll'].includes(savedState.currentView) ? savedState.currentView : 'scroll';
         state.countdownEnd = Number(savedState.countdownEnd) || (Date.now() + CYCLE_DURATION);
         state.rankingLogs = Array.isArray(savedState.rankingLogs) ? savedState.rankingLogs.slice(0, MAX_RANKING_LOGS) : [];
-        state.personalLogs = Array.isArray(savedState.personalLogs) ? savedState.personalLogs.slice(0, MAX_PERSONAL_LOGS) : [];
+        state.personalLogs = Array.isArray(savedState.personalLogs)
+            ? savedState.personalLogs.slice(0, MAX_PERSONAL_LOGS).map((log) => ({ ...log, read: log.read !== false }))
+            : [];
+        state.personalUnreadCount = Math.max(0, Math.min(99, Number(savedState.personalUnreadCount) || 0));
+        state.lastNpcBattleAt = Number(savedState.lastNpcBattleAt) || Date.now();
         state.scrollPositions = savedState.scrollPositions && typeof savedState.scrollPositions === 'object'
             ? { ...savedState.scrollPositions }
             : {};
+        processOfflineNpcBattles(Date.now());
         processExpiredCycles();
+        normalizeRanks();
         if (document.getElementById(CONTAINER_ID) && document.getElementById(CONTAINER_ID).classList.contains('active')) {
             render();
         }
@@ -1274,6 +1353,7 @@
         ensureContainer();
         bindButtons();
         startTimerLoop();
+        processOfflineNpcBattles(Date.now());
         startNpcBattles();
         processExpiredCycles();
         state.initialized = true;

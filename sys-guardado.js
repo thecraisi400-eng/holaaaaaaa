@@ -7,6 +7,36 @@ const SAVE_KEY = 'uchiha_sasuke_save';
 let _reiniciando = false;
 const SAVE_VERSION = '1.0';
 
+
+function prepararNuevaPartidaCompleta() {
+    _reiniciando = false;
+    window._reiniciando = false;
+
+    if (typeof detenerAutoSave === 'function') {
+        detenerAutoSave();
+    }
+
+    try {
+        localStorage.removeItem(SAVE_KEY);
+    } catch (error) {
+        console.warn('No se pudo limpiar el guardado principal antes de crear una nueva partida:', error);
+    }
+
+    window.bingoDatos = null;
+
+    if (typeof window.resetearBingo === 'function') {
+        window.resetearBingo();
+    }
+
+    if (window.arbolSystem && typeof window.arbolSystem.reiniciar === 'function') {
+        window.arbolSystem.reiniciar();
+    }
+
+    if (window.batallaNinjaSystem && typeof window.batallaNinjaSystem.resetProgress === 'function') {
+        window.batallaNinjaSystem.resetProgress();
+    }
+}
+
 // ============================================
 // GUARDAR PARTIDA
 // ============================================
@@ -293,6 +323,7 @@ window.existePartidaGuardada = existePartidaGuardada;
 window.iniciarAutoSave = iniciarAutoSave;
 window.detenerAutoSave = detenerAutoSave;
 window.inicializarJuegoDesdeGuardado = inicializarJuegoDesdeGuardado;
+window.prepararNuevaPartidaCompleta = prepararNuevaPartidaCompleta;
 
 // ============================================
 // INICIALIZACIÓN AUTOMÁTICA

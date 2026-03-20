@@ -448,7 +448,13 @@ function actualizarBarrasVitales() {
  * Inicializa el personaje con los valores de nivel 1
  */
 function inicializarPersonaje() {
-    establecerPerfilInicial();
+    establecerPerfilInicial({
+        nombre: personaje.nombre,
+        claseId: personaje.clase?.id,
+        nivel: personaje.nivel,
+        xp: personaje.xp,
+        oro: personaje.oro
+    });
     
     // Calcular todas las estadísticas para nivel 1
     actualizarEstadisticasPorNivel();
@@ -465,11 +471,50 @@ function obtenerClasePorId(id) {
 }
 
 function establecerPerfilInicial(config = {}) {
-    personaje.nombre = (config.nombre || personaje.nombre || "Uchiha Sasuke").trim().slice(0, 25) || "Uchiha Sasuke";
-    personaje.clase = { ...obtenerClasePorId(config.claseId || personaje.clase?.id || CLASE_BASE.id) };
-    personaje.nivel = config.nivel || 1;
-    personaje.xp = config.xp || 0;
+    personaje.nombre = (config.nombre || "Uchiha Sasuke").trim().slice(0, 25) || "Uchiha Sasuke";
+    personaje.clase = { ...obtenerClasePorId(config.claseId || CLASE_BASE.id) };
+    personaje.nivel = Math.max(1, Number(config.nivel) || 1);
+    personaje.xp = Math.max(0, Number(config.xp) || 0);
     personaje.oro = config.oro ?? CONFIG_NIVELES.BASE.ORO;
+    personaje.rango = calcularRango(personaje.nivel);
+
+    personaje.hp = CONFIG_NIVELES.BASE.HP;
+    personaje.hpMax = CONFIG_NIVELES.BASE.HP;
+    personaje.mp = CONFIG_NIVELES.BASE.MP;
+    personaje.mpMax = CONFIG_NIVELES.BASE.MP;
+    personaje.ataque = CONFIG_NIVELES.BASE.ATAQUE;
+    personaje.defensa = CONFIG_NIVELES.BASE.DEFENSA;
+    personaje.velocidad = CONFIG_NIVELES.BASE.VELOCIDAD;
+    personaje.critico = CONFIG_NIVELES.BASE.CRITICO;
+    personaje.evasion = CONFIG_NIVELES.BASE.EVASION;
+    personaje.resistencia = CONFIG_NIVELES.BASE.RESISTENCIA;
+    personaje.xpRequerida = calcularXPRequerida(personaje.nivel + 1);
+
+    personaje.equipNiveles = {
+        cabeza: 1,
+        pecho: 1,
+        manos: 1,
+        piernas: 1,
+        pies: 1,
+        accesorios: 1
+    };
+    personaje.equipBonos = {
+        ATK: 0,
+        DEF: 0,
+        SPD: 0,
+        CRT: 0,
+        EVA: 0,
+        RES: 0
+    };
+    personaje.arbolBonos = {
+        hp: 0,
+        ataque: 0,
+        defensa: 0,
+        velocidad: 0,
+        critico: 0,
+        evasion: 0
+    };
+    delete personaje._baseStats;
 }
 
 // ============================================

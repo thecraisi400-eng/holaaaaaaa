@@ -299,19 +299,13 @@
                 font-weight: 700;
                 text-align: center;
             }
-            .bn-player-stats {
-                display: grid;
-                grid-template-columns: repeat(3, minmax(0, 1fr));
-                gap: 6px;
-                margin-bottom: 8px;
-            }
             .bn-stat-chip {
                 background: rgba(255,250,235,0.95);
                 border: 1px solid #b58b5a;
                 border-radius: 14px;
-                padding: 6px;
+                padding: 10px;
                 text-align: center;
-                font-size: 10px;
+                font-size: 11px;
                 color: #4b2d11;
                 box-shadow: 0 2px 0 #7b5834;
             }
@@ -756,14 +750,6 @@
                     <span>⚔️ Nv.${snapshot.level}</span>
                     <span>${escapeHtml(snapshot.rankTitle)}</span>
                 </div>
-                <div class="bn-player-stats">
-                    <div class="bn-stat-chip">❤️ HP<br><strong>${Math.floor(snapshot.currentHp)}/${Math.floor(snapshot.stats.hp)}</strong></div>
-                    <div class="bn-stat-chip">🔷 Chakra<br><strong>${Math.floor(snapshot.currentMp)}/${Math.floor(snapshot.stats.mp)}</strong></div>
-                    <div class="bn-stat-chip">⚡ SPD / 🎯 CRT<br><strong>${snapshot.stats.spd} / ${snapshot.stats.crt.toFixed(2)}%</strong></div>
-                    <div class="bn-stat-chip">⚔️ Ataque<br><strong>${snapshot.stats.atk.toFixed(2)}</strong></div>
-                    <div class="bn-stat-chip">🛡️ Defensa<br><strong>${snapshot.stats.def.toFixed(2)}</strong></div>
-                    <div class="bn-stat-chip">💨 EVA / 💖 RES<br><strong>${snapshot.stats.eva.toFixed(2)}% / ${snapshot.stats.res.toFixed(2)}</strong></div>
-                </div>
                 ${challengers.map((enemy) => `
                     <div class="bn-enemy-card" onclick="window.batallaNinjaSystem.startBattle(${enemy.rank})">
                         <div class="bn-enemy-emoji">🥷</div>
@@ -773,7 +759,7 @@
                         </div>
                         <div class="bn-enemy-stats">Lv.${enemy.level}</div>
                     </div>
-                `).join('') || '<div class="bn-stat-chip" style="padding:10px;">No hay rivales disponibles por encima de tu puesto actual.</div>'}
+                `).join('') || '<div class="bn-stat-chip">No hay rivales disponibles por encima de tu puesto actual.</div>'}
                 <div id="bnRankingLogPanel" class="bn-log-panel">${renderLogLines(state.rankingLogs, '⚡ Esperando combates del ranking ninja...')}</div>
             </div>
         `;
@@ -1286,6 +1272,27 @@
         };
     }
 
+
+    function resetProgress() {
+        stopBattle({ silent: true, preserveView: true });
+        initNinjas();
+        state.playerRank = PLAYER_DEFAULT_RANK;
+        state.currentView = 'scroll';
+        state.countdownEnd = Date.now() + CYCLE_DURATION;
+        state.rankingLogs = [];
+        state.personalLogs = [];
+        state.personalUnreadCount = 0;
+        state.battleEnemy = null;
+        state.battleLogs = [];
+        state.resultMessage = '';
+        state.scrollPositions = {};
+        state.lastSnapshot = null;
+        state.lastNpcBattleAt = Date.now();
+        if (document.getElementById(CONTAINER_ID) && document.getElementById(CONTAINER_ID).classList.contains('active')) {
+            render();
+        }
+    }
+
     function loadPersistentState(savedState) {
         if (!savedState || typeof savedState !== 'object') return;
         initNinjas();
@@ -1371,7 +1378,8 @@
         togglePersonalLogs,
         render,
         getPersistentState,
-        loadPersistentState
+        loadPersistentState,
+        resetProgress
     };
 
     window.toggleBatallaNinja = function (event) {

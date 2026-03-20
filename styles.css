@@ -53,7 +53,7 @@ body, html { height: 100vh; width: 100vw; overflow: hidden; background-color: va
 }
 
 .pre-game-container {
-    width: min(355px, 100%);
+    width: min(352px, 100%);
     min-height: 500px;
     background: linear-gradient(180deg, #ffffff 0%, #eef7f3 100%);
     box-sizing: border-box;
@@ -74,11 +74,25 @@ body, html { height: 100vh; width: 100vw; overflow: hidden; background-color: va
     gap: 10px;
 }
 
+#initial-screen {
+    align-items: center;
+    justify-content: center;
+}
+
+#name-screen {
+    justify-content: center;
+}
+
+#class-screen {
+    overflow: hidden;
+}
+
 .pre-help-text {
     color: #355070;
     text-align: center;
     font-size: 0.85rem;
     min-height: 20px;
+    max-width: 276px;
 }
 
 .pre-class-options {
@@ -86,15 +100,19 @@ body, html { height: 100vh; width: 100vw; overflow: hidden; background-color: va
     flex-direction: column;
     gap: 8px;
     width: 100%;
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 2px;
 }
 
 .pre-scroll-item {
-    width: 100%;
+    width: min(276px, 100%);
+    align-self: center;
     min-height: 68px;
-    background: linear-gradient(135deg, #d4a373 0%, #faedcd 50%, #d4a373 100%);
-    border: 3px solid #603808;
-    border-radius: 4px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.35), inset 0 0 10px rgba(0,0,0,0.18);
+    background: linear-gradient(135deg, #ffffff 0%, #f6f6f6 50%, #ffffff 100%);
+    border: 3px solid #000000;
+    border-radius: 1px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.35), inset 0 0 10px rgba(0,0,0,0.08);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -112,9 +130,9 @@ body, html { height: 100vh; width: 100vw; overflow: hidden; background-color: va
     position: absolute;
     width: 8px;
     height: 100%;
-    background: #8b5e34;
-    border-right: 1px solid #4a2c0a;
-    border-left: 1px solid #4a2c0a;
+    background: #ffffff;
+    border-right: 1px solid #000000;
+    border-left: 1px solid #000000;
     top: 0;
 }
 
@@ -122,7 +140,7 @@ body, html { height: 100vh; width: 100vw; overflow: hidden; background-color: va
 .pre-scroll-item::after { right: 0; }
 
 .pre-scroll-text {
-    color: #4a2c0a;
+    color: #111111;
     font-weight: 700;
     font-size: 18px;
     letter-spacing: 1px;
@@ -133,6 +151,12 @@ body, html { height: 100vh; width: 100vw; overflow: hidden; background-color: va
     padding: 0 12px;
 }
 
+.pre-scroll-item.multiline {
+    min-height: 102px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+}
+
 .pre-scroll-item.multiline .pre-scroll-text {
     font-size: 14px;
     white-space: normal;
@@ -141,8 +165,23 @@ body, html { height: 100vh; width: 100vw; overflow: hidden; background-color: va
 
 .pre-scroll-subtext {
     display: block;
-    font-size: 0.85rem;
-    margin-top: 4px;
+    font-size: 0.82rem;
+    margin-top: 5px;
+}
+
+.pre-scroll-traits {
+    display: block;
+    font-size: 0.78rem;
+    margin-top: 6px;
+    font-weight: 700;
+}
+
+.pre-scroll-item.pre-continue-ready {
+    background: linear-gradient(135deg, #d9ffd8 0%, #bff2b7 50%, #d9ffd8 100%);
+}
+
+.pre-scroll-item.pre-disabled {
+    opacity: 1;
 }
 
 .pre-brillo {

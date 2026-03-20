@@ -753,7 +753,15 @@
         init:         init,
         render:       render,
         obtenerDatos: obtenerDatos,
-        cargarDatos:  cargarDatos
+        cargarDatos:  cargarDatos,
+        reiniciar: function () {
+            reiniciarProgresoArbol();
+            aplicarBonosAlPersonaje();
+            viewingIdx = getRangoActualIdx();
+            if (document.getElementById('arbol-overlay-container')) {
+                render();
+            }
+        }
     };
 
     console.log('logic-arbol.js cargado correctamente');

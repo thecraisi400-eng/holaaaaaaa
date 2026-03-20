@@ -43,6 +43,10 @@
     }
 
     function iniciarPartidaNueva() {
+        if (typeof window.prepararNuevaPartidaCompleta === 'function') {
+            window.prepararNuevaPartidaCompleta();
+        }
+
         if (typeof window.establecerPerfilInicial === 'function') {
             window.establecerPerfilInicial({
                 nombre: perfilPendiente.nombre,

@@ -1,5 +1,5 @@
 (function () {
-    const skills = [
+    const DEFAULT_SKILLS = [
         { id: 0, nombre: 'Filo Ígneo', desc: 'Ignora defensa física, otorga evasión y quema.', lv: 1, stats: { perf: 5.0, evas: 2.0, comb: 1.0, prob: 3, mp: 20 }, incr: { perf: 1.0, evas: 0.5, comb: 0.1, prob: 2, mp: 3 } },
         { id: 1, nombre: 'Baluarte Tóxico', desc: 'Potencia críticos, bloquea daño y envenena.', lv: 1, stats: { perf: 10.0, evas: 3.0, comb: 5.0, prob: 3, mp: 20 }, incr: { perf: 2.0, evas: 1.0, comb: 1.0, prob: 2, mp: 3 } },
         { id: 2, nombre: 'Ojo del Segador', desc: 'Precisión, regeneración y desangramiento.', lv: 1, stats: { perf: 4.0, evas: 0.5, comb: 1.0, prob: 3, mp: 20 }, incr: { perf: 1.0, evas: 0.1, comb: 0.2, prob: 2, mp: 3 } },
@@ -14,11 +14,85 @@
         playerGold: 1200,
         selectedSkillId: null,
         equippedSkills: [null, null, null],
-        initialized: false
+        skills: cloneSkills(DEFAULT_SKILLS),
+        initialized: false,
+        combatSession: null
     };
+
+    function cloneSkills(baseSkills) {
+        return baseSkills.map((skill) => ({
+            ...skill,
+            stats: { ...skill.stats },
+            incr: { ...skill.incr }
+        }));
+    }
+
+    function createSaveData() {
+        return {
+            skills: state.skills.map((skill) => ({
+                id: skill.id,
+                lv: skill.lv,
+                stats: { ...skill.stats }
+            })),
+            equippedSkills: state.equippedSkills.slice()
+        };
+    }
+
+    function getDefaultSaveData() {
+        return {
+            skills: DEFAULT_SKILLS.map((skill) => ({
+                id: skill.id,
+                lv: skill.lv,
+                stats: { ...skill.stats }
+            })),
+            equippedSkills: [null, null, null]
+        };
+    }
+
+    function persistState(options = {}) {
+        if (window.personaje) {
+            window.personaje.jutsusData = createSaveData();
+        }
+        if (!options.skipSave && typeof window.guardarPartida === 'function') {
+            window.guardarPartida({ silent: true });
+        }
+    }
+
+    function loadStateFromCharacter() {
+        const savedData = window.personaje?.jutsusData;
+        const source = savedData && Array.isArray(savedData.skills) ? savedData : getDefaultSaveData();
+        const skillMap = new Map(source.skills.map((skill) => [skill.id, skill]));
+
+        state.skills = cloneSkills(DEFAULT_SKILLS).map((baseSkill) => {
+            const savedSkill = skillMap.get(baseSkill.id);
+            if (!savedSkill) return baseSkill;
+            return {
+                ...baseSkill,
+                lv: Math.max(1, Number(savedSkill.lv) || baseSkill.lv),
+                stats: {
+                    ...baseSkill.stats,
+                    ...(savedSkill.stats || {})
+                }
+            };
+        });
+
+        state.equippedSkills = Array.isArray(source.equippedSkills)
+            ? source.equippedSkills.slice(0, 3).concat(Array(Math.max(0, 3 - source.equippedSkills.length)).fill(null))
+            : [null, null, null];
+    }
 
     function getContainer() {
         return document.getElementById('jutsus-overlay-container');
+    }
+
+    function getSkillById(id) {
+        return state.skills.find((skill) => skill.id === id) || null;
+    }
+
+    function getEquippedSkillObjects() {
+        return state.equippedSkills
+            .map((id) => getSkillById(id))
+            .filter(Boolean);
     }
 
     function buildMarkup() {
@@ -68,7 +142,7 @@
         if (!list) return;
 
         list.innerHTML = '';
-        skills.forEach((s) => {
+        state.skills.forEach((s) => {
             const div = document.createElement('div');
             div.className = `jutsus-skill-card ${state.selectedSkillId === s.id ? 'selected' : ''}`;
             div.addEventListener('click', () => selectSkill(s.id));
@@ -87,7 +161,7 @@
     function selectSkill(id) {
         state.selectedSkillId = id;
         renderList();
-        const s = skills.find((skill) => skill.id === id);
+        const s = getSkillById(id);
         if (!s) return;
 
         document.getElementById('jutsus-panel-empty').style.display = 'none';
@@ -132,7 +206,7 @@
 
     function upgradeSkill() {
         if (state.selectedSkillId === null) return;
-        const skill = skills.find((s) => s.id === state.selectedSkillId);
+        const skill = getSkillById(state.selectedSkillId);
         const button = document.getElementById('jutsus-btn-upgrade');
         if (!skill || !button || button.classList.contains('jutsus-btn-disabled')) return;
 
@@ -144,6 +218,7 @@
             skill.stats.comb += skill.incr.comb;
             skill.stats.mp += skill.incr.mp;
             skill.stats.prob += skill.incr.prob;
+            persistState();
             selectSkill(state.selectedSkillId);
             updateSlotsUI();
         }
@@ -164,6 +239,7 @@
             }
         }
 
+        persistState();
         selectSkill(state.selectedSkillId);
         updateSlotsUI();
     }
@@ -173,7 +249,7 @@
             const slot = document.getElementById(`jutsu-slot-${index}`);
             if (!slot) return;
             if (id !== null) {
-                const skill = skills.find((s) => s.id === id);
+                const skill = getSkillById(id);
                 slot.innerHTML = `<span class="jutsus-slot-label">${skill.nombre.split(' ')[0]}</span>`;
                 slot.classList.add('active');
             } else {
@@ -187,7 +263,7 @@
         const content = document.getElementById('jutsus-glossary-content');
         if (!content) return;
 
-        content.innerHTML = skills.map((skill) => `
+        content.innerHTML = state.skills.map((skill) => `
             <div class="jutsus-glossary-item">
                 <b>${skill.nombre}</b>
                 <p>${skill.desc}</p>
@@ -201,14 +277,122 @@
         modal.style.display = modal.style.display === 'block' ? 'none' : 'block';
     }
 
+    function startCombatSession() {
+        state.combatSession = {
+            startedAt: Date.now(),
+            activations: []
+        };
+    }
+
+    function endCombatSession() {
+        state.combatSession = null;
+    }
+
+    function resolveTurnEffects(options = {}) {
+        const onLog = typeof options.onLog === 'function' ? options.onLog : null;
+        const phase = options.phase || 'turno';
+        const result = {
+            damageMultiplier: 1,
+            evasionBonus: 0,
+            mitigationBonus: 0,
+            critBonus: 0,
+            activations: []
+        };
+
+        if (!window.personaje) return result;
+        if (!state.combatSession) startCombatSession();
+
+        getEquippedSkillObjects().forEach((skill) => {
+            const probabilidad = Number(skill.stats.prob) || 0;
+            const mpCost = Math.max(0, Number(skill.stats.mp) || 0);
+            const tieneMp = (window.personaje.mp || 0) >= mpCost;
+
+            if (!tieneMp) {
+                if (onLog) onLog(`🔸 ${skill.nombre} no se activó en ${phase}: MP insuficiente.`);
+                return;
+            }
+
+            if (Math.random() * 100 >= probabilidad) {
+                if (onLog) onLog(`🔹 ${skill.nombre} no se activó en ${phase} (${probabilidad.toFixed(1)}%).`);
+                return;
+            }
+
+            window.personaje.mp = Math.max(0, (window.personaje.mp || 0) - mpCost);
+            result.damageMultiplier += (Number(skill.stats.perf) || 0) / 100;
+            result.evasionBonus += Number(skill.stats.evas) || 0;
+            result.mitigationBonus += Number(skill.stats.comb) || 0;
+            result.critBonus += (Number(skill.stats.comb) || 0) / 2;
+
+            const activationData = {
+                id: skill.id,
+                nombre: skill.nombre,
+                phase,
+                mpCost,
+                probabilidad
+            };
+
+            result.activations.push(activationData);
+            state.combatSession.activations.push({ ...activationData, timestamp: Date.now() });
+
+            if (onLog) {
+                onLog(`✨ ${skill.nombre} se activó en ${phase}. -${mpCost} MP | +${skill.stats.perf.toFixed(1)}% daño | +${skill.stats.evas.toFixed(1)}% evasión | +${skill.stats.comb.toFixed(1)}% combate.`);
+            }
+        });
+
+        if (result.activations.length && typeof window.updateBars === 'function') {
+            window.updateBars();
+        }
+
+        return result;
+    }
+
     function init() {
-        if (state.initialized) return;
-        buildMarkup();
+        if (!state.initialized) {
+            buildMarkup();
+            state.initialized = true;
+        }
+
+        loadStateFromCharacter();
+        state.playerGold = window.personaje?.oro ?? state.playerGold;
         renderList();
         renderGlossary();
         updateSlotsUI();
-        state.initialized = true;
+
+        if (state.selectedSkillId !== null) {
+            selectSkill(state.selectedSkillId);
+        }
+
+        persistState({ skipSave: true });
     }
 
-    window.jutsusSystem = { init, selectSkill, upgradeSkill, handleEquip };
+    loadStateFromCharacter();
+    persistState({ skipSave: true });
+
+    window.jutsusSystem = {
+        init,
+        selectSkill,
+        upgradeSkill,
+        handleEquip,
+        startCombatSession,
+        endCombatSession,
+        resolveTurnEffects,
+        getEquippedSkills: () => getEquippedSkillObjects().map((skill) => ({
+            id: skill.id,
+            nombre: skill.nombre,
+            lv: skill.lv,
+            stats: { ...skill.stats }
+        })),
+        getSaveData: createSaveData,
+        loadFromData(data) {
+            if (window.personaje) {
+                window.personaje.jutsusData = data;
+            }
+            loadStateFromCharacter();
+            if (state.initialized) {
+                renderList();
+                renderGlossary();
+                updateSlotsUI();
+            }
+        }
+    };
 })();

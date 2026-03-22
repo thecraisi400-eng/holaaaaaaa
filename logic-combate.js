@@ -77,7 +77,7 @@ let enemigoHpTextoElement = null;
  * Calcula el daño que hace el jugador
  * Usa: ATK del personaje + probabilidad de crítico
  */
-function calcularDanoJugador() {
+function calcularDanoJugador(turnEffects = {}) {
     if (!window.personaje) return 10; // Valor por defecto
     
     // Obtener ataque base del personaje
@@ -85,10 +85,10 @@ function calcularDanoJugador() {
     
     // Pequeña variación aleatoria (±10%)
     let variacion = 0.9 + (Math.random() * 0.2);
-    let dano = Math.floor(ataque * variacion);
+    let dano = Math.floor(ataque * variacion * (turnEffects.damageMultiplier || 1));
     
     // Verificar crítico
-    let probCritico = (window.personaje.critico || 5) / 100;
+    let probCritico = ((window.personaje.critico || 5) + (turnEffects.critBonus || 0)) / 100;
     let esCritico = Math.random() < probCritico;
     
     if (esCritico) {
@@ -105,10 +105,10 @@ function calcularDanoJugador() {
  * Verifica si el jugador evade el ataque
  * Usa: EVA del personaje
  */
-function verificarEvasion() {
+function verificarEvasion(turnEffects = {}) {
     if (!window.personaje) return false;
     
-    let probEvasion = (window.personaje.evasion || 2) / 100;
+    let probEvasion = ((window.personaje.evasion || 2) + (turnEffects.evasionBonus || 0)) / 100;
     return Math.random() < probEvasion;
 }
 
@@ -116,14 +116,14 @@ function verificarEvasion() {
  * Calcula el daño que recibe el jugador
  * Usa: DEF del personaje para mitigar
  */
-function calcularDanoRecibido(danoBase, atacante) {
+function calcularDanoRecibido(danoBase, atacante, turnEffects = {}) {
     if (!window.personaje) return danoBase;
     
     let defensa = window.personaje.defensa || 10;
     
     // Fórmula: daño recibido = daño base - (defensa / 2)
     // Mínimo 20% del daño base
-    let mitigacion = Math.floor(defensa / 2);
+    let mitigacion = Math.floor(defensa / 2) + Math.floor((Number(turnEffects.mitigationBonus) || 0) / 2);
     let danoFinal = Math.max(
         Math.floor(danoBase * 0.2), // Mínimo 20%
         danoBase - mitigacion
@@ -159,6 +159,10 @@ function iniciarCombate(enemigo) {
     combateActivo = true;
     turnoJugador = false;
     enemigoSpawneando = true;
+
+    if (window.jutsusSystem && typeof window.jutsusSystem.startCombatSession === 'function') {
+        window.jutsusSystem.startCombatSession();
+    }
 
     const btnAtacar = document.getElementById('btn-atacar');
     if (btnAtacar) {
@@ -228,8 +232,12 @@ function atacar() {
         return false;
     }
     
+    const turnEffects = window.jutsusSystem && typeof window.jutsusSystem.resolveTurnEffects === 'function'
+        ? window.jutsusSystem.resolveTurnEffects({ phase: 'turno del jugador', onLog: agregarLog })
+        : {};
+
     // Calcular daño del jugador
-    const resultado = calcularDanoJugador();
+    const resultado = calcularDanoJugador(turnEffects);
     
     // Aplicar daño al enemigo
     const enemigoMuerto = enemigoActual.recibirDano(resultado.dano);
@@ -270,8 +278,12 @@ function turnoEnemigo() {
         return;
     }
     
+    const turnEffects = window.jutsusSystem && typeof window.jutsusSystem.resolveTurnEffects === 'function'
+        ? window.jutsusSystem.resolveTurnEffects({ phase: 'turno enemigo', onLog: agregarLog })
+        : {};
+
     // Verificar evasión
-    if (verificarEvasion()) {
+    if (verificarEvasion(turnEffects)) {
         agregarLog(CONFIG_COMBATE.MENSAJES.EVASION(enemigoActual.nombre));
         turnoJugador = true;
         return;
@@ -279,7 +291,7 @@ function turnoEnemigo() {
     
     // Calcular daño enemigo (con variación)
     let danoBase = Math.floor(enemigoActual.ataque * (0.8 + Math.random() * 0.4));
-    let danoReal = calcularDanoRecibido(danoBase, enemigoActual);
+    let danoReal = calcularDanoRecibido(danoBase, enemigoActual, turnEffects);
     
     // Aplicar daño al jugador
     window.personaje.hp = Math.max(0, window.personaje.hp - danoReal);
@@ -328,6 +340,10 @@ function finalizarCombate(victoria) {
     combateActivo = false;
     enemigoActual = null;
     turnoJugador = true;
+
+    if (window.jutsusSystem && typeof window.jutsusSystem.endCombatSession === 'function') {
+        window.jutsusSystem.endCombatSession();
+    }
     
     // Limpiar UI de enemigo
     limpiarUIEnemigo();
@@ -430,6 +446,9 @@ function huir() {
         combateActivo = false;
         enemigoActual = null;
         turnoJugador = true;
+        if (window.jutsusSystem && typeof window.jutsusSystem.endCombatSession === 'function') {
+            window.jutsusSystem.endCombatSession();
+        }
         limpiarUIEnemigo();
     } else {
         agregarLog("¡No pudiste huir!");
@@ -482,6 +501,9 @@ function cancelarCombate() {
     combateActivo = false;
     enemigoActual = null;
     turnoJugador = true;
+    if (window.jutsusSystem && typeof window.jutsusSystem.endCombatSession === 'function') {
+        window.jutsusSystem.endCombatSession();
+    }
     limpiarUIEnemigo();
 }
 window.cancelarCombate = cancelarCombate;

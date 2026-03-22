@@ -590,6 +590,174 @@ body, html { height: 100vh; width: 100vw; overflow: hidden; background-color: va
 /* ==========================================
    SISTEMA DE MISIONES
    ========================================== */
+
+#jutsus-overlay-container {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 102 !important;
+    border-radius: 15px !important;
+    overflow: hidden !important;
+    background: rgba(10, 25, 47, 0.97) !important;
+}
+
+.jutsus-shell {
+    --jutsu-burnt-orange: #cc5500;
+    --jutsu-deep-blue: #0a192f;
+    --jutsu-charcoal: #1a1a1a;
+    --jutsu-parchment: #f4e4bc;
+    --jutsu-gray-disabled: #4a4a4a;
+    --jutsu-text-light: #f0f0f0;
+    width: 100%;
+    height: 100%;
+    background: rgba(10, 25, 47, 0.95);
+    color: var(--jutsu-text-light);
+    display: flex;
+    flex-direction: column;
+    border: 2px solid var(--jutsu-burnt-orange);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.jutsus-header-slots {
+    height: 85px;
+    background: var(--jutsu-charcoal);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 10px;
+    border-bottom: 2px solid var(--jutsu-burnt-orange);
+}
+
+.jutsus-slot {
+    width: 60px;
+    height: 60px;
+    border: 2px dashed var(--jutsu-burnt-orange);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    position: relative;
+    text-align: center;
+    padding: 4px;
+}
+
+.jutsus-slot.active {
+    border-style: solid;
+    background: rgba(204, 85, 0, 0.2);
+}
+
+.jutsus-info-btn {
+    width: 30px;
+    height: 30px;
+    background: var(--jutsu-burnt-orange);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 18px;
+}
+
+.jutsus-library-section {
+    flex: 1;
+    padding: 10px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.jutsus-library-title {
+    color: var(--jutsu-burnt-orange);
+    font-size: 14px;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+    text-align: center;
+}
+
+.jutsus-scroll-container {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.jutsus-scroll-container::-webkit-scrollbar { width: 4px; }
+.jutsus-scroll-container::-webkit-scrollbar-thumb { background: var(--jutsu-burnt-orange); border-radius: 10px; }
+
+.jutsus-skill-card {
+    background: var(--jutsu-parchment);
+    margin-bottom: 8px;
+    padding: 8px 12px;
+    border-radius: 4px;
+    border-left: 5px solid var(--jutsu-deep-blue);
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.jutsus-skill-card:hover { transform: translateX(3px); background: white; }
+.jutsus-skill-card.selected { border-left-color: var(--jutsu-burnt-orange); background: #fffcf5; box-shadow: 0 0 5px var(--jutsu-burnt-orange); }
+.jutsus-skill-card h4 { color: #1a1a1a; font-size: 13px; margin-bottom: 4px; }
+.jutsus-skill-stats-quick { display: flex; gap: 10px; font-size: 11px; color: #444; }
+
+.jutsus-upgrade-panel {
+    height: 180px;
+    background: var(--jutsu-charcoal);
+    border-top: 2px solid var(--jutsu-burnt-orange);
+    padding: 10px;
+    color: var(--jutsu-text-light);
+}
+
+.jutsus-comparison-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+    font-size: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 8px;
+    border-radius: 4px;
+}
+
+.jutsus-comp-col span { display: block; margin-bottom: 2px; }
+.jutsus-next-lvl { color: #4caf50; font-weight: bold; }
+.jutsus-actions { display: flex; gap: 10px; margin-top: 10px; }
+.jutsus-btn {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 12px;
+    cursor: pointer;
+}
+.jutsus-btn-upgrade { background: #d4af37; color: #1a1a1a; }
+.jutsus-btn-equip { background: var(--jutsu-burnt-orange); color: white; }
+.jutsus-btn-disabled { background: var(--jutsu-gray-disabled) !important; color: #888 !important; cursor: not-allowed; }
+
+#jutsus-glossary-modal {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: none;
+    padding: 20px;
+    z-index: 5;
+    overflow-y: auto;
+}
+
+.jutsus-glossary-item { color: var(--jutsu-parchment); margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 5px; }
+.jutsus-glossary-item b { color: var(--jutsu-burnt-orange); font-size: 14px; }
+.jutsus-glossary-item p { font-size: 11px; line-height: 1.4; margin-top: 3px; }
+.jutsus-empty-panel { text-align: center; padding-top: 40px; color: #666; }
+.jutsus-slot-label { font-size: 10px; color: white; text-align: center; }
+
 #missions-overlay-container {
     position: absolute !important;
     top: 0 !important;

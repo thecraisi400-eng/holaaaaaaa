@@ -596,7 +596,7 @@
         if (typeof window.closeArbol === 'function') window.closeArbol();
         if (typeof window.cerrarAjustes === 'function') window.cerrarAjustes();
 
-        ['hero-equipment-container', 'missions-overlay-container', 'arbol-overlay-container'].forEach((id) => {
+        ['hero-equipment-container', 'missions-overlay-container', 'jutsus-overlay-container', 'arbol-overlay-container'].forEach((id) => {
             const panel = document.getElementById(id);
             if (panel) panel.style.display = 'none';
         });

@@ -299,6 +299,11 @@
         state.selectedId = selectedId;
     }
 
+    function clearSelection() {
+        saveSelection(null);
+        renderAll();
+    }
+
     function getGold() {
         return Math.max(0, Number(window.personaje?.oro || 0));
     }
@@ -384,7 +389,10 @@
         panel.innerHTML = `
             <div class="jutsu-topbar" style="margin-bottom:6px;">
                 <span style="font-size:11px;font-weight:800;color:#c0550a;">${skill.icon} ${skill.name} — Nv.${level}</span>
-                <span class="jutsu-gold">🪙 ${getGold()}</span>
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <span class="jutsu-gold">🪙 ${getGold()}</span>
+                    <button class="jutsu-close" id="jutsu-detail-close-btn" type="button">↩ Volver</button>
+                </div>
             </div>
             <div class="jutsu-compare-grid">
                 <div class="jutsu-compare-box">
@@ -405,8 +413,10 @@
             </div>
         `;
 
+        const detailCloseBtn = document.getElementById('jutsu-detail-close-btn');
         const upgradeBtn = document.getElementById('jutsu-upgrade-btn');
         const equipBtn = document.getElementById('jutsu-equip-btn');
+        if (detailCloseBtn) detailCloseBtn.addEventListener('click', clearSelection);
         if (upgradeBtn) upgradeBtn.addEventListener('click', () => upgradeSkill(skill.id));
         if (equipBtn) equipBtn.addEventListener('click', () => {
             if (equipped) {
@@ -460,7 +470,7 @@
             window.personaje.oro = Math.max(0, getGold() - cost);
         }
         data.skillLevels[id] = level + 1;
-        renderAll();
+        clearSelection();
         if (typeof window.actualizarPanelVisible === 'function') window.actualizarPanelVisible();
         if (typeof window.guardarPartida === 'function') window.guardarPartida({ silent: true });
         showToast(`⬆️ ${skill.name} subió a nivel ${data.skillLevels[id]}.`);
@@ -478,7 +488,7 @@
             return;
         }
         data.slots[freeIndex] = id;
-        renderAll();
+        clearSelection();
         if (typeof window.guardarPartida === 'function') window.guardarPartida({ silent: true });
         showToast(`✅ ${getSkillById(id)?.name || 'Jutsu'} equipado.`);
     }

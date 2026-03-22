@@ -1138,6 +1138,9 @@
             clearInterval(state.battleInterval);
             state.battleInterval = null;
         }
+        if (window.jutsusSystem && typeof window.jutsusSystem.endCombatSession === 'function') {
+            window.jutsusSystem.endCombatSession();
+        }
         if (state.resultTimer) {
             clearTimeout(state.resultTimer);
             state.resultTimer = null;
@@ -1159,13 +1162,19 @@
         if (state.battleInterval) clearInterval(state.battleInterval);
         state.battleActive = true;
         window.combateActivo = true;
+        if (window.jutsusSystem && typeof window.jutsusSystem.startCombatSession === 'function') {
+            window.jutsusSystem.startCombatSession();
+        }
         state.battleInterval = window.setInterval(() => {
             if (!state.battleActive || !state.battleEnemy) return;
+            const turnEffects = window.jutsusSystem && typeof window.jutsusSystem.resolveTurnEffects === 'function'
+                ? window.jutsusSystem.resolveTurnEffects({ phase: 'turno arena ninja', onLog: pushBattleLog })
+                : {};
             const player = getPlayerSnapshot();
             const enemy = state.battleEnemy;
             if (player.currentHp <= 0 || enemy.currentHp <= 0) return;
 
-            const playerDamage = computeMissionStyleDamage(player, enemy, true);
+            const playerDamage = Math.max(1, Math.floor(computeMissionStyleDamage(player, enemy, true) * (turnEffects.damageMultiplier || 1)));
             enemy.currentHp = Math.max(0, enemy.currentHp - playerDamage);
             pushBattleLog(`🥷 Atacas a ${enemy.name} y causas ${playerDamage} de daño.`);
             updateBattleBars();
@@ -1178,7 +1187,16 @@
                 return;
             }
 
-            const enemyDamage = computeMissionStyleDamage(enemy, player, false);
+            const evasionChance = ((window.personaje?.evasion || 0) + (turnEffects.evasionBonus || 0)) / 100;
+            if (Math.random() < evasionChance) {
+                pushBattleLog(`💨 ${enemy.name} falló por la evasión de tus Jutsus.`);
+                updateBattleBars();
+                if (typeof window.updateBars === 'function') window.updateBars();
+                queueSave();
+                return;
+            }
+
+            const enemyDamage = Math.max(1, Math.floor(computeMissionStyleDamage(enemy, player, false) * Math.max(0.2, 1 - ((turnEffects.mitigationBonus || 0) / 100))));
             if (window.personaje) {
                 window.personaje.hp = Math.max(0, (window.personaje.hp || 0) - enemyDamage);
             }

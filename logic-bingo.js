@@ -252,12 +252,18 @@ function renderEnemigos() {
 
         mostrarPantalla('bingo-screen-batalla');
         window.combateActivo = true;
+        if (window.jutsusSystem && typeof window.jutsusSystem.startCombatSession === 'function') {
+            window.jutsusSystem.startCombatSession();
+        }
 
         intervaloBatalla = setInterval(() => {
+            const turnEffects = window.jutsusSystem && typeof window.jutsusSystem.resolveTurnEffects === 'function'
+                ? window.jutsusSystem.resolveTurnEffects({ phase: 'turno bingo', onLog: addLog })
+                : {};
             const player = getPlayer();
             if (player.hp <= 0 || enemigo.hp <= 0) return;
 
-            const dmgJugador = Math.max(1, Math.floor(player.atk - enemigo.def / 3 + Math.random() * 8));
+            const dmgJugador = Math.max(1, Math.floor((player.atk - enemigo.def / 3 + Math.random() * 8) * (turnEffects.damageMultiplier || 1)));
             enemigo.hp = Math.max(0, enemigo.hp - dmgJugador);
             addLog(`🥷 Atacas y causas ${dmgJugador} daño.`);
 
@@ -296,6 +302,9 @@ function renderEnemigos() {
                 clearInterval(intervaloBatalla);
                 intervaloBatalla = null;
                 window.combateActivo = false;
+                if (window.jutsusSystem && typeof window.jutsusSystem.endCombatSession === 'function') {
+                    window.jutsusSystem.endCombatSession();
+                }
 setTimeout(() => {
     if (todosDerrotados()) {
         estado.misionActiva = false;
@@ -311,7 +320,14 @@ setTimeout(() => {
                 return;
             }
 
-            const dmgEnemigo = Math.max(1, Math.floor(enemigo.atk - player.def / 3 + Math.random() * 6));
+            if (Math.random() < (((window.personaje?.evasion || 0) + (turnEffects.evasionBonus || 0)) / 100)) {
+                addLog('💨 Esquivaste el ataque gracias a tus Jutsus.');
+                if (typeof updateBars === 'function') updateBars();
+                return;
+            }
+
+            const mitigacionJutsu = (turnEffects.mitigationBonus || 0) / 100;
+            const dmgEnemigo = Math.max(1, Math.floor((enemigo.atk - player.def / 3 + Math.random() * 6) * Math.max(0.2, 1 - mitigacionJutsu)));
             if (window.personaje) window.personaje.hp = Math.max(0, window.personaje.hp - dmgEnemigo);
             addLog(`👹 ${enemigo.nombre} ataca y causa ${dmgEnemigo} daño.`);
 
@@ -327,6 +343,9 @@ setTimeout(() => {
                 clearInterval(intervaloBatalla);
                 intervaloBatalla = null;
                 window.combateActivo = false;
+                if (window.jutsusSystem && typeof window.jutsusSystem.endCombatSession === 'function') {
+                    window.jutsusSystem.endCombatSession();
+                }
                 setTimeout(() => {
                     renderEnemigos();
                     mostrarPantalla('bingo-screen-enemigos');
@@ -338,6 +357,9 @@ setTimeout(() => {
     function detenerBatallaBingo() {
         if (intervaloBatalla) { clearInterval(intervaloBatalla); intervaloBatalla = null; }
         window.combateActivo = false;
+        if (window.jutsusSystem && typeof window.jutsusSystem.endCombatSession === 'function') {
+            window.jutsusSystem.endCombatSession();
+        }
     }
 
 function buildHTML() {

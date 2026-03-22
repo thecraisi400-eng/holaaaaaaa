@@ -514,6 +514,10 @@ function establecerPerfilInicial(config = {}) {
         critico: 0,
         evasion: 0
     };
+    personaje.jutsusData = {
+        skills: Array.from({ length: 8 }, (_, id) => ({ id, lv: 1 })),
+        equippedSkills: [null, null, null]
+    };
     delete personaje._baseStats;
 }
 

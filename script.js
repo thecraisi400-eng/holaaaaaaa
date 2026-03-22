@@ -3,6 +3,7 @@
 // Variables para el sistema de equipamiento
 let equipVisible = false;
 let misionesVisible = false;
+let jutsusVisible = false;
 let arbolVisible = false;
 let maxHp = 100; // Se actualizará desde personaje.hpMax
 let currentHp = 100; // Se actualizará desde personaje.hp
@@ -106,6 +107,10 @@ function showMissionContent() {
     }
 }
 
+function isJutsusPanelOpen() {
+    return isPanelVisible('jutsus-overlay-container', 'block');
+}
+
 function hideMissionContent() {
     const missionContent = document.querySelector('.mission-content');
     if (missionContent) {
@@ -138,6 +143,7 @@ function toggleHeroEquipment(e) {
     equipVisible = !estaVisible;
     
     if (!estaVisible) {
+        if (isJutsusPanelOpen()) closeJutsus();
         // Ocultar el contenido normal y mostrar el equipamiento
         hideMissionContent();
         container.style.display = 'block';
@@ -175,6 +181,7 @@ function toggleMisiones(e) {
     if (e) { e.preventDefault(); e.stopPropagation(); }
 
     if (isPanelVisible('hero-equipment-container', 'block')) closeHeroEquipment();
+    if (isJutsusPanelOpen()) closeJutsus();
     if (isPanelVisible('arbol-overlay-container')) closeArbol();
 
     const ajustesPanel = document.getElementById('ajustes-overlay-container');
@@ -213,10 +220,50 @@ function closeMisiones() {
     }
 }
 
+function toggleJutsus(e) {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+
+    if (isPanelVisible('hero-equipment-container', 'block')) closeHeroEquipment();
+    if (isPanelVisible('missions-overlay-container', 'flex')) closeMisiones();
+    if (isPanelVisible('arbol-overlay-container')) closeArbol();
+
+    const ajustesPanel = document.getElementById('ajustes-overlay-container');
+    if (ajustesPanel && ajustesPanel.style.display === 'flex') ajustesPanel.style.display = 'none';
+
+    const overlay = document.getElementById('jutsus-overlay-container');
+    if (!overlay) return;
+
+    const estaVisible = isJutsusPanelOpen();
+    jutsusVisible = !estaVisible;
+
+    if (!estaVisible) {
+        hideMissionContent();
+        overlay.style.display = 'block';
+        if (window.jutsusSystem && typeof window.jutsusSystem.init === 'function') {
+            window.jutsusSystem.init();
+        }
+    } else {
+        showMissionContent();
+        overlay.style.display = 'none';
+    }
+}
+
+function closeJutsus() {
+    const overlay = document.getElementById('jutsus-overlay-container');
+    if (!overlay) return;
+
+    overlay.style.display = 'none';
+    jutsusVisible = false;
+    showMissionContent();
+}
+window.toggleJutsus = toggleJutsus;
+window.closeJutsus = closeJutsus;
+
 function toggleArbol(e) {
     if (e) { e.preventDefault(); e.stopPropagation(); }
     if (isPanelVisible('hero-equipment-container', 'block')) closeHeroEquipment();
     if (isPanelVisible('missions-overlay-container', 'flex')) closeMisiones();
+    if (isJutsusPanelOpen()) closeJutsus();
 
     const ajustesPanel = document.getElementById('ajustes-overlay-container');
     if (ajustesPanel && ajustesPanel.style.display === 'flex') ajustesPanel.style.display = 'none';
@@ -291,11 +338,14 @@ window.onload = () => {
         
         // Para los demás botones, cerrar el equipamiento si está abierto
         btn.addEventListener('click', function() {
-if (typeof cancelarCombate === 'function') {
+            if (typeof cancelarCombate === 'function') {
                 cancelarCombate();
             }
             if (isPanelVisible('hero-equipment-container', 'block')) {
                 closeHeroEquipment();
+            }
+            if (!btn.innerHTML.includes('🔥') && isJutsusPanelOpen()) {
+                closeJutsus();
             }
         });
     });

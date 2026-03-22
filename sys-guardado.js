@@ -91,7 +91,10 @@ function guardarPartida(options = {}) {
         arbolData: window.arbolSystem ? window.arbolSystem.obtenerDatos() : null,
         batallaNinja: window.batallaNinjaSystem && typeof window.batallaNinjaSystem.getPersistentState === 'function'
             ? window.batallaNinjaSystem.getPersistentState()
-            : null
+            : null,
+        jutsus: window.jutsusSystem && typeof window.jutsusSystem.getPersistentData === 'function'
+            ? window.jutsusSystem.getPersistentData()
+            : (window.personaje.jutsus || null)
     };
 
     try {
@@ -221,6 +224,10 @@ function cargarPartida(options = {}) {
         // Mostrar notificación si existe
         if (datos.batallaNinja && window.batallaNinjaSystem && typeof window.batallaNinjaSystem.loadPersistentState === 'function') {
             window.batallaNinjaSystem.loadPersistentState(datos.batallaNinja);
+        }
+
+        if (datos.jutsus && window.jutsusSystem && typeof window.jutsusSystem.restoreFromSave === 'function') {
+            window.jutsusSystem.restoreFromSave(datos.jutsus);
         }
 
         if (!silent && typeof mostrarNotificacion === 'function') {

@@ -52,6 +52,7 @@
     let currentMissionList = [];
     let currentRank = 'D';
     let currentScreen = 'ranks';
+    let missionJutsuBattle = null;
 
     function getPlayerStats() {
         const p = window.personaje;
@@ -193,12 +194,21 @@
 
         battleActive = true;
         window.combateActivo = true;
+        missionJutsuBattle = window.jutsusSystem && typeof window.jutsusSystem.createBattleState === 'function'
+            ? window.jutsusSystem.createBattleState('misiones')
+            : null;
         battleInterval = setInterval(() => {
             if (!battleActive || enemyTransition) return;
             const player = getPlayerStats();
 
             if (player.hp > 0 && currentEnemy.hp > 0) {
+                if (window.jutsusSystem && typeof window.jutsusSystem.prepareTurn === 'function') {
+                    window.jutsusSystem.prepareTurn(missionJutsuBattle, 'player', currentEnemy, addLog);
+                }
                 let dmg = Math.max(1, Math.floor(player.atk - currentEnemy.def / 3 + Math.random() * 8));
+                if (window.jutsusSystem && typeof window.jutsusSystem.applyPlayerDamage === 'function') {
+                    dmg = window.jutsusSystem.applyPlayerDamage(dmg, currentEnemy, missionJutsuBattle, addLog);
+                }
                 currentEnemy.hp -= dmg;
                 if (currentEnemy.hp < 0) currentEnemy.hp = 0;
                 addLog(`🥷 Atacas y causas ${dmg} daño.`);
@@ -222,7 +232,23 @@ setTimeout(() => {
             }
 
             if (player.hp > 0 && currentEnemy.hp > 0) {
+                if (window.jutsusSystem && typeof window.jutsusSystem.prepareTurn === 'function') {
+                    window.jutsusSystem.prepareTurn(missionJutsuBattle, 'enemy', currentEnemy, addLog);
+                }
+                const controlTurno = window.jutsusSystem && typeof window.jutsusSystem.beforeEnemyAttack === 'function'
+                    ? window.jutsusSystem.beforeEnemyAttack(missionJutsuBattle, currentEnemy, addLog)
+                    : { skip: false };
+                if (controlTurno.skip) {
+                    updateBattleBars();
+                    return;
+                }
                 let edmg = Math.max(1, Math.floor(currentEnemy.atk - player.def / 3 + Math.random() * 6));
+                if (window.jutsusSystem && typeof window.jutsusSystem.modifyEnemyDamage === 'function') {
+                    edmg = window.jutsusSystem.modifyEnemyDamage(edmg, missionJutsuBattle);
+                }
+                if (window.jutsusSystem && typeof window.jutsusSystem.applyIncomingDamage === 'function') {
+                    edmg = window.jutsusSystem.applyIncomingDamage(edmg, missionJutsuBattle, currentEnemy, addLog);
+                }
                 if (window.personaje) window.personaje.hp = Math.max(0, window.personaje.hp - edmg);
                 addLog(`👹 ${currentEnemy.name} ataca y causa ${edmg} daño.`);
                 updateBattleBars();
@@ -299,6 +325,10 @@ if (enemyHpEl) {
         if (battleInterval) { clearInterval(battleInterval); battleInterval = null; }
         battleActive = false;
         window.combateActivo = false;
+        if (window.jutsusSystem && typeof window.jutsusSystem.endBattle === 'function') {
+            window.jutsusSystem.endBattle(missionJutsuBattle);
+        }
+        missionJutsuBattle = null;
         showScreen('home');
     }
 

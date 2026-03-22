@@ -9,7 +9,7 @@ const CONFIG_COMBATE = {
     // Multiplicadores de daño
     DANO_BASE: 1.0,        // Multiplicador base
     DANO_CRITICO: 1.5,      // Daño crítico (x1.5)
-    
+
     // Mensajes de combate
     MENSAJES: {
         GOLPE: (dano) => `¡Golpe! ${dano} de daño`,
@@ -35,18 +35,18 @@ class Enemigo {
         this.recompensaXP = recompensaXP;
         this.recompensaOro = recompensaOro;
     }
-    
+
     // Recibir daño
     recibirDano(dano) {
         this.hp = Math.max(0, this.hp - dano);
         return this.hp <= 0;
     }
-    
+
     // ¿Está vivo?
     estaVivo() {
         return this.hp > 0;
     }
-    
+
     // Resetear HP
     resetear() {
         this.hp = this.hpMax;
@@ -62,6 +62,7 @@ let turnoJugador = true;
 let timeoutTurnoEnemigo = null;
 let enemigoSpawneando = false;
 let timeoutSpawnProteccion = null;
+let combateJutsusState = null;
 
 // Elementos del DOM (los crearemos si no existen)
 let logCombateElement = null;
@@ -79,22 +80,22 @@ let enemigoHpTextoElement = null;
  */
 function calcularDanoJugador() {
     if (!window.personaje) return 10; // Valor por defecto
-    
+
     // Obtener ataque base del personaje
     let ataque = window.personaje.ataque || 15;
-    
+
     // Pequeña variación aleatoria (±10%)
     let variacion = 0.9 + (Math.random() * 0.2);
     let dano = Math.floor(ataque * variacion);
-    
+
     // Verificar crítico
     let probCritico = (window.personaje.critico || 5) / 100;
     let esCritico = Math.random() < probCritico;
-    
+
     if (esCritico) {
         dano = Math.floor(dano * CONFIG_COMBATE.DANO_CRITICO);
     }
-    
+
     return {
         dano: Math.max(1, dano), // Mínimo 1 de daño
         critico: esCritico
@@ -107,7 +108,7 @@ function calcularDanoJugador() {
  */
 function verificarEvasion() {
     if (!window.personaje) return false;
-    
+
     let probEvasion = (window.personaje.evasion || 2) / 100;
     return Math.random() < probEvasion;
 }
@@ -118,9 +119,9 @@ function verificarEvasion() {
  */
 function calcularDanoRecibido(danoBase, atacante) {
     if (!window.personaje) return danoBase;
-    
+
     let defensa = window.personaje.defensa || 10;
-    
+
     // Fórmula: daño recibido = daño base - (defensa / 2)
     // Mínimo 20% del daño base
     let mitigacion = Math.floor(defensa / 2);
@@ -128,7 +129,7 @@ function calcularDanoRecibido(danoBase, atacante) {
         Math.floor(danoBase * 0.2), // Mínimo 20%
         danoBase - mitigacion
     );
-    
+
     return danoFinal;
 }
 
@@ -157,6 +158,9 @@ function iniciarCombate(enemigo) {
 
     enemigoActual = enemigo;
     combateActivo = true;
+    combateJutsusState = window.jutsusSystem && typeof window.jutsusSystem.createBattleState === 'function'
+        ? window.jutsusSystem.createBattleState('combate-principal')
+        : null;
     turnoJugador = false;
     enemigoSpawneando = true;
 
@@ -227,32 +231,46 @@ function atacar() {
         finalizarCombate(true);
         return false;
     }
-    
+
+    if (window.jutsusSystem && typeof window.jutsusSystem.prepareTurn === 'function') {
+        window.jutsusSystem.prepareTurn(combateJutsusState, 'player', enemigoActual, agregarLog);
+    }
+
     // Calcular daño del jugador
     const resultado = calcularDanoJugador();
-    
+    if (window.jutsusSystem && typeof window.jutsusSystem.modifyPlayerCritChance === 'function') {
+        const critChance = window.jutsusSystem.modifyPlayerCritChance(window.personaje?.critico || 5, combateJutsusState);
+        if (!resultado.critico && Math.random() < (critChance / 100)) {
+            resultado.critico = true;
+            resultado.dano = Math.floor(resultado.dano * CONFIG_COMBATE.DANO_CRITICO);
+        }
+    }
+    if (window.jutsusSystem && typeof window.jutsusSystem.applyPlayerDamage === 'function') {
+        resultado.dano = window.jutsusSystem.applyPlayerDamage(resultado.dano, enemigoActual, combateJutsusState, agregarLog);
+    }
+
     // Aplicar daño al enemigo
     const enemigoMuerto = enemigoActual.recibirDano(resultado.dano);
-    
+
     // Mostrar mensaje
     if (resultado.critico) {
         agregarLog(CONFIG_COMBATE.MENSAJES.CRITICO(resultado.dano));
     } else {
         agregarLog(CONFIG_COMBATE.MENSAJES.GOLPE(resultado.dano));
     }
-    
+
     // Actualizar UI del enemigo
     actualizarUIEnemigo();
-    
+
     // Verificar si el enemigo murió
-if (enemigoMuerto) {
-    agregarLog("💀 ¡Enemigo derrotado!");
-setTimeout(() => finalizarCombate(true), 2500);
-} else {
-    turnoJugador = false;
-    timeoutTurnoEnemigo = setTimeout(() => turnoEnemigo(), 1000);
-}
-    
+    if (enemigoMuerto) {
+        agregarLog("💀 ¡Enemigo derrotado!");
+        setTimeout(() => finalizarCombate(true), 2500);
+    } else {
+        turnoJugador = false;
+        timeoutTurnoEnemigo = setTimeout(() => turnoEnemigo(), 1000);
+    }
+
     return true;
 }
 
@@ -264,33 +282,55 @@ function turnoEnemigo() {
         finalizarCombate(true);
         return;
     }
-    
+
     if (!window.personaje || window.personaje.hp <= 0) {
         finalizarCombate(false);
         return;
     }
-    
+
+    if (window.jutsusSystem && typeof window.jutsusSystem.prepareTurn === 'function') {
+        window.jutsusSystem.prepareTurn(combateJutsusState, 'enemy', enemigoActual, agregarLog);
+    }
+
     // Verificar evasión
-    if (verificarEvasion()) {
+    const evasionBase = (window.personaje?.evasion || 2);
+    const evasionConJutsu = window.jutsusSystem && typeof window.jutsusSystem.modifyEvasion === 'function'
+        ? window.jutsusSystem.modifyEvasion(evasionBase, combateJutsusState)
+        : evasionBase;
+    if (Math.random() < (evasionConJutsu / 100)) {
         agregarLog(CONFIG_COMBATE.MENSAJES.EVASION(enemigoActual.nombre));
         turnoJugador = true;
         return;
     }
-    
+
+    const controlTurno = window.jutsusSystem && typeof window.jutsusSystem.beforeEnemyAttack === 'function'
+        ? window.jutsusSystem.beforeEnemyAttack(combateJutsusState, enemigoActual, agregarLog)
+        : { skip: false };
+    if (controlTurno.skip) {
+        turnoJugador = true;
+        return;
+    }
+
     // Calcular daño enemigo (con variación)
     let danoBase = Math.floor(enemigoActual.ataque * (0.8 + Math.random() * 0.4));
+    if (window.jutsusSystem && typeof window.jutsusSystem.modifyEnemyDamage === 'function') {
+        danoBase = window.jutsusSystem.modifyEnemyDamage(danoBase, combateJutsusState);
+    }
     let danoReal = calcularDanoRecibido(danoBase, enemigoActual);
-    
+    if (window.jutsusSystem && typeof window.jutsusSystem.applyIncomingDamage === 'function') {
+        danoReal = window.jutsusSystem.applyIncomingDamage(danoReal, combateJutsusState, enemigoActual, agregarLog);
+    }
+
     // Aplicar daño al jugador
     window.personaje.hp = Math.max(0, window.personaje.hp - danoReal);
-    
+
     agregarLog(`${enemigoActual.nombre} ataca: ${danoReal} de daño`);
-    
+
     // Actualizar UI
     if (typeof updateBars === 'function') {
         updateBars();
     }
-    
+
     // Verificar si el jugador murió
     if (window.personaje.hp <= 0) {
         finalizarCombate(false);
@@ -304,17 +344,17 @@ function turnoEnemigo() {
  */
 function finalizarCombate(victoria) {
     if (!combateActivo) return;
-    
+
     if (victoria && enemigoActual) {
         // Dar recompensas
         if (typeof ganarExperiencia === 'function') {
             ganarExperiencia(enemigoActual.recompensaXP);
         }
-        
+
         if (typeof ganarOro === 'function') {
             ganarOro(enemigoActual.recompensaOro);
         }
-        
+
         agregarLog(CONFIG_COMBATE.MENSAJES.VICTORIA(
             enemigoActual.recompensaXP,
             enemigoActual.recompensaOro
@@ -323,12 +363,16 @@ function finalizarCombate(victoria) {
         agregarLog(CONFIG_COMBATE.MENSAJES.DERROTA);
         // Aquí podrías agregar lógica de derrota (perder oro, revivir, etc.)
     }
-    
+
     // Limpiar combate
     combateActivo = false;
     enemigoActual = null;
     turnoJugador = true;
-    
+    if (window.jutsusSystem && typeof window.jutsusSystem.endBattle === 'function') {
+        window.jutsusSystem.endBattle(combateJutsusState);
+    }
+    combateJutsusState = null;
+
     // Limpiar UI de enemigo
     limpiarUIEnemigo();
 }
@@ -359,7 +403,7 @@ function inicializarUICombate() {
         `;
         document.body.insertAdjacentHTML('beforeend', combateHTML);
     }
-    
+
     // Obtener referencias
     logCombateElement = document.getElementById('log-combate');
     enemigoNombreElement = document.getElementById('enemigo-nombre');
@@ -372,14 +416,14 @@ function inicializarUICombate() {
  */
 function actualizarUIEnemigo() {
     if (!enemigoActual) return;
-    
+
     const container = document.getElementById('combate-container');
     if (container) container.style.display = 'block';
-    
+
     if (enemigoNombreElement) {
         enemigoNombreElement.textContent = `${enemigoActual.nombre} (Nv. ${enemigoActual.nivel})`;
     }
-    
+
     if (enemigoHpBarElement && enemigoHpTextoElement) {
         const porcentaje = (enemigoActual.hp / enemigoActual.hpMax) * 100;
         enemigoHpBarElement.style.width = `${Math.max(porcentaje, 0)}%`;
@@ -393,7 +437,7 @@ function actualizarUIEnemigo() {
 function limpiarUIEnemigo() {
     const container = document.getElementById('combate-container');
     if (container) container.style.display = 'none';
-    
+
     if (logCombateElement) {
         logCombateElement.innerHTML = '';
     }
@@ -404,14 +448,14 @@ function limpiarUIEnemigo() {
  */
 function agregarLog(mensaje) {
     if (!logCombateElement) return;
-    
+
     const entrada = document.createElement('div');
     entrada.className = 'log-entrada';
     entrada.textContent = mensaje;
-    
+
     logCombateElement.appendChild(entrada);
     logCombateElement.scrollTop = logCombateElement.scrollHeight;
-    
+
     // Limitar el log a 50 mensajes
     while (logCombateElement.children.length > 50) {
         logCombateElement.removeChild(logCombateElement.firstChild);
@@ -423,7 +467,7 @@ function agregarLog(mensaje) {
  */
 function huir() {
     if (!combateActivo) return;
-    
+
     // 70% de probabilidad de huir
     if (Math.random() < 0.7) {
         agregarLog("¡Has huido del combate!");
@@ -453,7 +497,7 @@ const ENEMIGOS = {
 // ============================================
 document.addEventListener('DOMContentLoaded', () => {
     inicializarUICombate();
-    
+
     // Ejemplo de botones de combate (si existen)
     const btnZetsu = document.getElementById('btn-zetsu');
     if (btnZetsu) {
@@ -461,7 +505,7 @@ document.addEventListener('DOMContentLoaded', () => {
             iniciarCombate(ENEMIGOS.ZETSU);
         });
     }
-    
+
     const btnAkatsuki = document.getElementById('btn-akatsuki');
     if (btnAkatsuki) {
         btnAkatsuki.addEventListener('click', () => {

@@ -65,6 +65,7 @@
         personalUnreadCount: 0,
         battleEnemy: null,
         battleInterval: null,
+        jutsuBattleState: null,
         resultTimer: null,
         battleActive: false,
         resultMessage: '',
@@ -1144,6 +1145,10 @@
         }
         state.battleActive = false;
         window.combateActivo = false;
+        if (window.jutsusSystem && typeof window.jutsusSystem.endBattle === 'function') {
+            window.jutsusSystem.endBattle(state.jutsuBattleState);
+        }
+        state.jutsuBattleState = null;
         if (!options || !options.preserveView) {
             state.currentView = 'main';
             state.resultMessage = '';
@@ -1165,7 +1170,13 @@
             const enemy = state.battleEnemy;
             if (player.currentHp <= 0 || enemy.currentHp <= 0) return;
 
-            const playerDamage = computeMissionStyleDamage(player, enemy, true);
+            if (window.jutsusSystem && typeof window.jutsusSystem.prepareTurn === 'function') {
+                window.jutsusSystem.prepareTurn(state.jutsuBattleState, 'player', enemy, pushBattleLog);
+            }
+            let playerDamage = computeMissionStyleDamage(player, enemy, true);
+            if (window.jutsusSystem && typeof window.jutsusSystem.applyPlayerDamage === 'function') {
+                playerDamage = window.jutsusSystem.applyPlayerDamage(playerDamage, enemy, state.jutsuBattleState, pushBattleLog);
+            }
             enemy.currentHp = Math.max(0, enemy.currentHp - playerDamage);
             pushBattleLog(`🥷 Atacas a ${enemy.name} y causas ${playerDamage} de daño.`);
             updateBattleBars();
@@ -1178,7 +1189,25 @@
                 return;
             }
 
-            const enemyDamage = computeMissionStyleDamage(enemy, player, false);
+            if (window.jutsusSystem && typeof window.jutsusSystem.prepareTurn === 'function') {
+                window.jutsusSystem.prepareTurn(state.jutsuBattleState, 'enemy', enemy, pushBattleLog);
+            }
+            const controlTurno = window.jutsusSystem && typeof window.jutsusSystem.beforeEnemyAttack === 'function'
+                ? window.jutsusSystem.beforeEnemyAttack(state.jutsuBattleState, enemy, pushBattleLog)
+                : { skip: false };
+            if (controlTurno.skip) {
+                updateBattleBars();
+                if (typeof window.updateBars === 'function') window.updateBars();
+                queueSave();
+                return;
+            }
+            let enemyDamage = computeMissionStyleDamage(enemy, player, false);
+            if (window.jutsusSystem && typeof window.jutsusSystem.modifyEnemyDamage === 'function') {
+                enemyDamage = window.jutsusSystem.modifyEnemyDamage(enemyDamage, state.jutsuBattleState);
+            }
+            if (window.jutsusSystem && typeof window.jutsusSystem.applyIncomingDamage === 'function') {
+                enemyDamage = window.jutsusSystem.applyIncomingDamage(enemyDamage, state.jutsuBattleState, enemy, pushBattleLog);
+            }
             if (window.personaje) {
                 window.personaje.hp = Math.max(0, (window.personaje.hp || 0) - enemyDamage);
             }
@@ -1208,6 +1237,9 @@
         state.battleLogs = [];
         state.resultMessage = '';
         state.currentView = 'battle';
+        state.jutsuBattleState = window.jutsusSystem && typeof window.jutsusSystem.createBattleState === 'function'
+            ? window.jutsusSystem.createBattleState('batalla-ninja')
+            : null;
         render();
         pushBattleLog(`⚔️ ¡Comienza el combate contra ${enemy.name} #${enemy.rank}!`);
         startPlayerBattleLoop();

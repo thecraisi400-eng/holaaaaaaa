@@ -99,6 +99,7 @@
 </div>
 
 <div id="arbol-overlay-container" style="display: none; width: 100%; height: 100%; position: absolute; top: 0; left: 0; border-radius: 10px; overflow: hidden; z-index: 103;"></div>
+<div id="jutsus-overlay-container" style="display: none; width: 100%; height: 100%; position: absolute; top: 0; left: 0; border-radius: 10px; overflow: hidden; z-index: 105;"></div>
 
     </div>
 
@@ -107,7 +108,7 @@
         <button class="menu-btn" onclick="toggleMisiones(event)"><span class="emoji">📜</span> Misiones</button>
         <button class="menu-btn" onclick="proximamente()"><span class="emoji">⛩️</span> Clanes</button>
         <button class="menu-btn" onclick="triggerEffect(event)"><span class="emoji">⭐</span> Eventos</button>
-        <button class="menu-btn" onclick="triggerEffect(event)"><span class="emoji">🔥</span> Jutsus</button>
+        <button class="menu-btn" onclick="triggerEffect(event); toggleJutsus(event)"><span class="emoji">🔥</span> Jutsus</button>
         <button class="menu-btn" onclick="triggerEffect(event); toggleBatallaNinja(event)"><span class="emoji">⚔️</span> Batallas</button>
         <button class="menu-btn" onclick="triggerEffect(event)"><span class="emoji">🐸</span> Invocación</button>
         <button class="menu-btn" onclick="toggleArbol(event)"><span class="emoji">🌳</span> Árbol</button>
@@ -135,6 +136,7 @@
 <!-- etc... -->
  <!-- Sistema de Equipamiento del Héroe -->
 <script src="logic-equipamiento.js"></script>
+<script src="logic-jutsus.js"></script>
 <script src="logic-batalla-ninja.js"></script>
 <script>
     function proximamente() {
@@ -146,6 +148,7 @@ function closeAllPanels() {
     if (typeof closeHeroEquipment === 'function') closeHeroEquipment();
     if (typeof closeMisiones === 'function') closeMisiones();
     if (typeof closeArbol === 'function') closeArbol();
+    if (typeof closeJutsus === 'function') closeJutsus();
 
     var ajustes = document.getElementById('ajustes-overlay-container');
     if (ajustes) ajustes.style.display = 'none';

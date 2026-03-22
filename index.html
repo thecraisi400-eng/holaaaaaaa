@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interfaz Habilidades - Idle RPG</title>
+    <style>
+        /* Regla estricta de dimensionamiento */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Fondo general transparente */
+        body {
+            background-color: transparent;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* Cuadro color blanco 355x500 */
+        #main-container {
+            background-color: #ffffff;
+            width: 355px;
+            height: 500px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Contenedor interno que no supera los 350x495 */
+        #inner-wrapper {
+            width: 350px;
+            height: 495px;
+            position: relative;
+            background-color: #1a1a1a; /* Diseño de alto contraste interno */
+            color: #fff;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* === PANEL DE BATALLA === */
+        .battle-panel {
+            padding: 10px;
+            border-bottom: 2px solid #333;
+        }
+        
+        .slots-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .slot {
+            width: 100px;
+            height: 60px;
+            background-color: #2a2a2a;
+            border: 1px solid #555;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            text-align: center;
+            border-radius: 4px;
+        }
+
+        .slot-title {
+            color: #aaa;
+            font-size: 10px;
+            margin-bottom: 4px;
+        }
+
+        .btn-info {
+            width: 100%;
+            padding: 5px;
+            background-color: #3a3a3a;
+            color: #fff;
+            border: 1px solid #555;
+            cursor: pointer;
+            font-weight: bold;
+            border-radius: 4px;
+        }
+
+        /* === PANEL DE HABILIDADES === */
+        .btn-toggle-skills {
+            width: 100%;
+            padding: 10px;
+            background-color: #444;
+            color: #fff;
+            border: none;
+            border-bottom: 2px solid #222;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .skills-scroll-area {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 10px;
+            display: none; /* Oculto por defecto */
+            background-color: #111;
+        }
+
+        .skill-item {
+            background-color: #222;
+            border: 1px solid #444;
+            margin-bottom: 8px;
+            padding: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .skill-item:hover {
+            border-color: #888;
+        }
+
+        .skill-name {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .skill-emojis {
+            font-size: 12px;
+            color: #ccc;
+        }
+
+        /* === MODALES (INFO Y MEJORA) === */
+        .modal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #1a1a1a;
+            display: none;
+            flex-direction: column;
+            z-index: 10;
+        }
+
+        .modal-header {
+            padding: 10px;
+            background-color: #333;
+            text-align: center;
+            font-weight: bold;
+            border-bottom: 1px solid #555;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn-close {
+            background: red;
+            color: white;
+            border: none;
+            padding: 2px 8px;
+            cursor: pointer;
+            font-weight: bold;
+            border-radius: 2px;
+        }
+
+        .modal-content {
+            padding: 10px;
+            flex-grow: 1;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+
+        /* Tabla Glosario */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #444;
+            padding: 6px;
+            text-align: left;
+        }
+        th {
+            background-color: #333;
+        }
+
+        /* Panel Mejora */
+        .upgrade-stats {
+            background-color: #222;
+            padding: 10px;
+            border: 1px solid #444;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+        
+        .upgrade-actions {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px;
+            background-color: #222;
+            border-top: 1px solid #444;
+        }
+
+        .btn-action {
+            flex: 1;
+            padding: 10px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+            color: white;
+        }
+
+        .btn-upgrade { background-color: gray; cursor: not-allowed; } /* Por defecto gris por falta de oro */
+        .btn-equip { background-color: #28a745; }
+        .btn-unequip { background-color: #dc3545; }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #111; }
+        ::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+    <div id="main-container">
+        <div id="inner-wrapper">
+            
+            <div class="battle-panel">
+                <div class="slots-container">
+                    <div class="slot" id="slot-1">
+                        <div class="slot-title">[RANURA 1]</div>
+                        <div class="slot-content">Vacío</div>
+                    </div>
+                    <div class="slot" id="slot-2">
+                        <div class="slot-title">[RANURA 2]</div>
+                        <div class="slot-content">Vacío</div>
+                    </div>
+                    <div class="slot" id="slot-3">
+                        <div class="slot-title">[RANURA 3]</div>
+                        <div class="slot-content">Vacío</div>
+                    </div>
+                </div>
+                <button class="btn-info" onclick="toggleInfo()">[ ❔ INFO ]</button>
+            </div>
+
+            <button class="btn-toggle-skills" onclick="toggleSkills()">▼ HABILIDADES</button>
+
+            <div class="skills-scroll-area" id="skills-area">
+                </div>
+
+            <div class="modal" id="modal-info">
+                <div class="modal-header">
+                    <span>✨ GLOSARIO DE HABILIDADES</span>
+                    <button class="btn-close" onclick="toggleInfo()">X</button>
+                </div>
+                <div class="modal-content">
+                    <table id="info-table">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Descripción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="modal" id="modal-upgrade">
+                <div class="modal-header">
+                    <span>🛠️ MEJORA DE HABILIDAD</span>
+                    <button class="btn-close" onclick="closeUpgrade()">X</button>
+                </div>
+                <div class="modal-content" id="upgrade-content">
+                    </div>
+                <div class="upgrade-actions">
+                    <button class="btn-action btn-upgrade">🪙 MEJORAR (500 Oro)</button>
+                    <button class="btn-action" id="btn-equip-toggle" onclick="toggleEquip()">✅ EQUIPAR</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // --- BASE DE DATOS DEL SISTEMA ---
+        const dbSkills = {
+            "Filo Ígneo": {
+                icon: "🗡️", emojiStats: "Perf:⚕️ Evas:💨 Comb:🔥",
+                desc: "Ignora defensa física, otorga evasión y quema al enemigo.",
+                duration: "3.0 segundos",
+                levels: [
+                    { perf: "5.0%", evas: "2.0%", comb: "1.0%", prob: "3%", mp: 20 },
+                    { perf: "6.0%", evas: "2.5%", comb: "1.1%", prob: "5%", mp: 23 },
+                    { perf: "7.0%", evas: "3.0%", comb: "1.2%", prob: "8%", mp: 27 },
+                    { perf: "8.0%", evas: "3.5%", comb: "1.3%", prob: "10%", mp: 30 },
+                    { perf: "9.0%", evas: "4.0%", comb: "1.4%", prob: "13%", mp: 33 },
+                    { perf: "10.0%", evas: "4.5%", comb: "1.5%", prob: "15%", mp: 37 },
+                    { perf: "11.0%", evas: "5.0%", comb: "1.6%", prob: "18%", mp: 40 },
+                    { perf: "12.0%", evas: "5.5%", comb: "1.7%", prob: "20%", mp: 43 },
+                    { perf: "13.0%", evas: "6.0%", comb: "1.8%", prob: "23%", mp: 47 },
+                    { perf: "15.0%", evas: "8.0%", comb: "2.0%", prob: "25%", mp: 50 }
+                ]
+            },
+            "Baluarte Tóxico": {
+                icon: "🧪", emojiStats: "Crit:💥 Bloq:🛡️ Ven:☠️",
+                desc: "Potencia críticos, bloquea daño a la mitad y envenena.",
+                duration: "3 Turnos",
+                levels: [
+                    { crit: "+10%", bloq: "3.0%", ven: "5.0%", prob: "3%", mp: 20 },
+                    { crit: "+12%", bloq: "4.0%", ven: "6.0%", prob: "5%", mp: 23 },
+                    { crit: "+14%", bloq: "5.0%", ven: "7.0%", prob: "8%", mp: 27 },
+                    { crit: "+16%", bloq: "6.0%", ven: "8.0%", prob: "10%", mp: 30 },
+                    { crit: "+18%", bloq: "7.0%", ven: "9.0%", prob: "13%", mp: 33 },
+                    { crit: "+20%", bloq: "8.0%", ven: "10.0%", prob: "15%", mp: 37 },
+                    { crit: "+22%", bloq: "9.0%", ven: "11.0%", prob: "18%", mp: 40 },
+                    { crit: "+24%", bloq: "10.0%", ven: "12.0%", prob: "20%", mp: 43 },
+                    { crit: "+26%", bloq: "11.0%", ven: "13.0%", prob: "23%", mp: 47 },
+                    { crit: "+30%", bloq: "15.0%", ven: "15.0%", prob: "25%", mp: 50 }
+                ]
+            },
+            "Ojo del Segador": {
+                icon: "👁️", emojiStats: "Prec:🎯 Reg:❤️ Hem:🩸",
+                desc: "Asegura precisión, regenera vida y desangra al recibir daño.",
+                duration: "4.0s",
+                levels: [
+                    { prec: "4.0%", reg: "0.5%", hem: "1.0%", prob: "3%", mp: 20 },
+                    { prec: "5.0%", reg: "0.6%", hem: "1.2%", prob: "5%", mp: 23 },
+                    { prec: "6.0%", reg: "0.7%", hem: "1.4%", prob: "8%", mp: 27 },
+                    { prec: "7.0%", reg: "0.8%", hem: "1.6%", prob: "10%", mp: 30 },
+                    { prec: "8.0%", reg: "0.9%", hem: "1.8%", prob: "13%", mp: 33 },
+                    { prec: "9.0%", reg: "1.0%", hem: "2.0%", prob: "15%", mp: 37 },
+                    { prec: "10.0%", reg: "1.1%", hem: "2.2%", prob: "18%", mp: 40 },
+                    { prec: "11.0%", reg: "1.2%", hem: "2.4%", prob: "20%", mp: 43 },
+                    { prec: "12.0%", reg: "1.3%", hem: "2.6%", prob: "23%", mp: 47 },
+                    { prec: "15.0%", reg: "2.0%", hem: "3.5%", prob: "25%", mp: 50 }
+                ]
+            },
+            "Espejo Glacial": {
+                icon: "❄️", emojiStats: "Dren:🧛 Refl:🪞 Cong:❄️",
+                desc: "Roba vida al dañar, devuelve daño y congela al rival.",
+                duration: "2.2s",
+                levels: [
+                    { dren: "2.0%", refl: "3.0%", cong: "1.0s", prob: "3%", mp: 20 },
+                    { dren: "2.5%", refl: "4.0%", cong: "1.1s", prob: "5%", mp: 23 },
+                    { dren: "3.0%", refl: "5.0%", cong: "1.2s", prob: "8%", mp: 27 },
+                    { dren: "3.5%", refl: "6.0%", cong: "1.3s", prob: "10%", mp: 30 },
+                    { dren: "4.0%", refl: "7.0%", cong: "1.4s", prob: "11%", mp: 33 },
+                    { dren: "4.5%", refl: "8.0%", cong: "1.5s", prob: "15%", mp: 37 },
+                    { dren: "5.0%", refl: "9.0%", cong: "1.6s", prob: "18%", mp: 40 },
+                    { dren: "5.5%", refl: "10.0%", cong: "1.7s", prob: "20%", mp: 43 },
+                    { dren: "6.0%", refl: "11.0%", cong: "1.8s", prob: "23%", mp: 47 },
+                    { dren: "8.0%", refl: "15.0%", cong: "2.2s", prob: "25%", mp: 50 }
+                ]
+            },
+            "Martillo Sísmico": {
+                icon: "🔨", emojiStats: "Hem:🩸 Esc:🔰 Aturd:💫",
+                desc: "Causa hemorragia crítica, crea escudos y aturde.",
+                duration: "3.5s",
+                levels: [
+                    { hem: "3.0%", esc: "10.0%", aturd: "1.5s", prob: "3%", mp: 20 },
+                    { hem: "3.5%", esc: "12.0%", aturd: "1.7s", prob: "5%", mp: 23 },
+                    { hem: "4.0%", esc: "14.0%", aturd: "1.9s", prob: "8%", mp: 27 },
+                    { hem: "4.5%", esc: "16.0%", aturd: "2.1s", prob: "10%", mp: 30 },
+                    { hem: "5.0%", esc: "18.0%", aturd: "2.3s", prob: "13%", mp: 33 },
+                    { hem: "5.5%", esc: "20.0%", aturd: "2.5s", prob: "15%", mp: 37 },
+                    { hem: "6.0%", esc: "22.0%", aturd: "2.7s", prob: "18%", mp: 40 },
+                    { hem: "6.5%", esc: "24.0%", aturd: "3.0s", prob: "20%", mp: 43 },
+                    { hem: "7.0%", esc: "26.0%", aturd: "3.2s", prob: "23%", mp: 47 },
+                    { hem: "9.0%", esc: "35.0%", aturd: "3.5s", prob: "25%", mp: 50 }
+                ]
+            },
+            "Viento de Inercia": {
+                icon: "🌪️", emojiStats: "Multi:⚔️ Resil:🗿 Ral:⏳",
+                desc: "Ataca dos veces, resiste aturdimientos y ralentiza.",
+                duration: "4 Turnos",
+                levels: [
+                    { multi: "5.0%", resil: "6.0%", ral: "-10%", prob: "3%", mp: 20 },
+                    { multi: "6.0%", resil: "7.5%", ral: "-11%", prob: "5%", mp: 23 },
+                    { multi: "7.0%", resil: "9.0%", ral: "-12%", prob: "8%", mp: 27 },
+                    { multi: "8.0%", resil: "10.5%", ral: "-13%", prob: "10%", mp: 30 },
+                    { multi: "9.0%", resil: "12.0%", ral: "-14%", prob: "13%", mp: 33 },
+                    { multi: "10.0%", resil: "13.5%", ral: "-15%", prob: "15%", mp: 37 },
+                    { multi: "11.0%", resil: "15.0%", ral: "-16%", prob: "18%", mp: 40 },
+                    { multi: "12.0%", resil: "16.5%", ral: "-17%", prob: "20%", mp: 43 },
+                    { multi: "13.0%", resil: "18.0%", ral: "-18%", prob: "23%", mp: 47 },
+                    { multi: "16.0%", resil: "25.0%", ral: "-25%", prob: "25%", mp: 50 }
+                ]
+            },
+            "Marca del Verdugo": {
+                icon: "⚖️", emojiStats: "Acel:⚡ Inmun:✨ Cad:⛓️",
+                desc: "Ejecuta al enemigo herido, da inmunidad y bloquea curas.",
+                duration: "2.0s",
+                levels: [
+                    { acel: "+8.0%", inmun: "0.5s", cad: "-15%", prob: "3%", mp: 20 },
+                    { acel: "+9.0%", inmun: "0.6s", cad: "-18%", prob: "5%", mp: 23 },
+                    { acel: "+10.0%", inmun: "0.7s", cad: "-21%", prob: "8%", mp: 27 },
+                    { acel: "+11.0%", inmun: "0.8s", cad: "-24%", prob: "10%", mp: 30 },
+                    { acel: "+12.0%", inmun: "1.0s", cad: "-27%", prob: "13%", mp: 33 },
+                    { acel: "+13.0%", inmun: "1.2s", cad: "-30%", prob: "15%", mp: 37 },
+                    { acel: "+14.0%", inmun: "1.4s", cad: "-33%", prob: "18%", mp: 40 },
+                    { acel: "+15.0%", inmun: "1.6s", cad: "-36%", prob: "20%", mp: 43 },
+                    { acel: "+16.0%", inmun: "1.8s", cad: "-39%", prob: "23%", mp: 47 },
+                    { acel: "+20.0%", inmun: "2.0s", cad: "-50%", prob: "25%", mp: 50 }
+                ]
+            },
+            "Sentencia Elemental": {
+                icon: "🔮", emojiStats: "Pen:🗡️ EsqC:🌫️ Mald:👁️‍🗨️",
+                desc: "Anula resistencias, asegura críticos tras esquiva y explota.",
+                duration: "4 Turnos",
+                levels: [
+                    { pen: "4.0%", esqc: "+3.0%", mald: "15%", prob: "3%", mp: 20 },
+                    { pen: "5.0%", esqc: "+4.0%", mald: "18%", prob: "5%", mp: 23 },
+                    { pen: "6.0%", esqc: "+5.0%", mald: "21%", prob: "8%", mp: 27 },
+                    { pen: "7.0%", esqc: "+6.0%", mald: "24%", prob: "10%", mp: 30 },
+                    { pen: "8.0%", esqc: "+7.0%", mald: "27%", prob: "13%", mp: 33 },
+                    { pen: "9.0%", esqc: "+8.0%", mald: "30%", prob: "15%", mp: 37 },
+                    { pen: "10.0%", esqc: "+9.0%", mald: "33%", prob: "18%", mp: 40 },
+                    { pen: "11.0%", esqc: "+10.0%", mald: "36%", prob: "20%", mp: 43 },
+                    { pen: "12.0%", esqc: "+11.0%", mald: "39%", prob: "23%", mp: 47 },
+                    { pen: "15.0%", esqc: "+15.0%", mald: "50%", prob: "25%", mp: 50 }
+                ]
+            }
+        };
+
+        // Estado del jugador
+        const playerState = {
+            equipped: [null, null, null], // 3 ranuras
+            skillsLevel: {
+                "Filo Ígneo": 1, "Baluarte Tóxico": 1, "Ojo del Segador": 1,
+                "Espejo Glacial": 1, "Martillo Sísmico": 1, "Viento de Inercia": 1,
+                "Marca del Verdugo": 1, "Sentencia Elemental": 1
+            },
+            gold: 0 // Forzamos oro 0 para que el botón esté gris
+        };
+
+        let currentSelectedSkill = null;
+
+        // Inicializar interfaz
+        function init() {
+            renderInfoTable();
+            renderSkillsList();
+            updateSlots();
+        }
+
+        // Toggle info modal
+        function toggleInfo() {
+            const modal = document.getElementById('modal-info');
+            modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+        }
+
+        // Toggle skills list
+        function toggleSkills() {
+            const area = document.getElementById('skills-area');
+            area.style.display = area.style.display === 'block' ? 'none' : 'block';
+        }
+
+        // Renderizar tabla de glosario
+        function renderInfoTable() {
+            const tbody = document.querySelector('#info-table tbody');
+            tbody.innerHTML = '';
+            for (const [name, data] of Object.entries(dbSkills)) {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>🔹 ${name}</td>
+                        <td>${data.desc}</td>
+                    </tr>
+                `;
+            }
+        }
+
+        // Renderizar lista de habilidades
+        function renderSkillsList() {
+            const area = document.getElementById('skills-area');
+            area.innerHTML = '';
+            for (const [name, data] of Object.entries(dbSkills)) {
+                area.innerHTML += `
+                    <div class="skill-item" onclick="openUpgrade('${name}')">
+                        <div class="skill-name">${data.icon} ${name}</div>
+                        <div class="skill-emojis">${data.emojiStats}</div>
+                    </div>
+                `;
+            }
+        }
+
+        // Abrir panel de mejora
+        function openUpgrade(skillName) {
+            currentSelectedSkill = skillName;
+            const data = dbSkills[skillName];
+            const level = playerState.skillsLevel[skillName];
+            const currentStats = data.levels[level - 1];
+            const nextStats = data.levels[level] || currentStats; // Evitar error si max level
+
+            const content = document.getElementById('upgrade-content');
+            
+            // Construir texto de estadísticas dinámicamente basado en la BD
+            let statsAhoraHTML = '';
+            let statsDespuesHTML = '';
+            
+            for(let key in currentStats) {
+                if(key !== 'prob' && key !== 'mp') {
+                    statsAhoraHTML += `🟢 ${key.charAt(0).toUpperCase() + key.slice(1)}: ${currentStats[key]}  `;
+                    statsDespuesHTML += `⬆️ ${key.charAt(0).toUpperCase() + key.slice(1)}: ${nextStats[key]}  `;
+                }
+            }
+            statsAhoraHTML += `<br>📈 Prob: ${currentStats.prob} 🔵 MP: ${currentStats.mp}`;
+            statsDespuesHTML += `<br>📈 Prob: ${nextStats.prob} 🔵 MP: ${nextStats.mp}`;
+
+            content.innerHTML = `
+                <div style="font-size: 14px; font-weight: bold; margin-bottom: 5px;">${data.icon} ${skillName.toUpperCase()} (Nivel ${level})</div>
+                <div style="color: #aaa; margin-bottom: 15px;">Duración: ${data.duration}</div>
+                
+                <div class="upgrade-stats">
+                    <div style="color: #4CAF50; margin-bottom: 5px;">📊 ESTADÍSTICAS ACTUALES (AHORA):</div>
+                    ${statsAhoraHTML}
+                </div>
+                
+                <div class="upgrade-stats" style="border-color: #007bff;">
+                    <div style="color: #007bff; margin-bottom: 5px;">⬇️ AL MEJORAR A NIVEL ${level < 10 ? level + 1 : 'MAX'} OBTENDRÁS (DESPUÉS):</div>
+                    ${level < 10 ? statsDespuesHTML : 'NIVEL MÁXIMO ALCANZADO'}
+                </div>
+            `;
+
+            // Configurar botones
+            const btnEquipToggle = document.getElementById('btn-equip-toggle');
+            if (playerState.equipped.includes(skillName)) {
+                btnEquipToggle.innerText = '❌ QUITAR';
+                btnEquipToggle.className = 'btn-action btn-unequip';
+            } else {
+                btnEquipToggle.innerText = '✅ EQUIPAR';
+                btnEquipToggle.className = 'btn-action btn-equip';
+            }
+
+            document.getElementById('modal-upgrade').style.display = 'flex';
+        }
+
+        function closeUpgrade() {
+            document.getElementById('modal-upgrade').style.display = 'none';
+        }
+
+        // Logica Equipar/Quitar
+        function toggleEquip() {
+            if (!currentSelectedSkill) return;
+
+            const index = playerState.equipped.indexOf(currentSelectedSkill);
+            
+            if (index !== -1) {
+                // Quitar
+                playerState.equipped[index] = null;
+            } else {
+                // Equipar en primera ranura libre
+                const freeIndex = playerState.equipped.indexOf(null);
+                if (freeIndex !== -1) {
+                    playerState.equipped[freeIndex] = currentSelectedSkill;
+                } else {
+                    alert("Ranuras llenas. Quita una habilidad primero.");
+                    return;
+                }
+            }
+            
+            updateSlots();
+            openUpgrade(currentSelectedSkill); // Actualizar botones del modal
+        }
+
+        // Actualizar UI de ranuras
+        function updateSlots() {
+            for (let i = 0; i < 3; i++) {
+                const slotContent = document.querySelector(`#slot-${i + 1} .slot-content`);
+                const skillName = playerState.equipped[i];
+                if (skillName) {
+                    slotContent.innerHTML = `${dbSkills[skillName].icon}<br>${skillName}`;
+                } else {
+                    slotContent.innerHTML = `Vacío`;
+                }
+            }
+        }
+
+        // Arrancar
+        window.onload = init;
+    </script>
+</body>
+</html>

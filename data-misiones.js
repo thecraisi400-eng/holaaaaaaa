@@ -193,15 +193,32 @@
 
         battleActive = true;
         window.combateActivo = true;
+        if (window.jutsuSystem && typeof window.jutsuSystem.beginCombat === 'function') {
+            window.jutsuSystem.beginCombat({ source: 'misiones' });
+        }
         battleInterval = setInterval(() => {
             if (!battleActive || enemyTransition) return;
             const player = getPlayerStats();
 
             if (player.hp > 0 && currentEnemy.hp > 0) {
                 let dmg = Math.max(1, Math.floor(player.atk - currentEnemy.def / 3 + Math.random() * 8));
+                let executeThresholdPct = 0;
+                if (window.jutsuSystem && typeof window.jutsuSystem.preparePlayerTurn === 'function') {
+                    const jutsuTurn = window.jutsuSystem.preparePlayerTurn({ source: 'misiones', enemy: currentEnemy, baseDamage: dmg, enemyDefense: currentEnemy.def, addLog });
+                    dmg = jutsuTurn.damage;
+                    executeThresholdPct = jutsuTurn.executeThresholdPct || 0;
+                    if (jutsuTurn.extraHitDamage) {
+                        dmg += jutsuTurn.extraHitDamage;
+                        addLog(`🌪️ Un JUTSU añadió ${jutsuTurn.extraHitDamage} de daño extra.`);
+                    }
+                }
                 currentEnemy.hp -= dmg;
                 if (currentEnemy.hp < 0) currentEnemy.hp = 0;
                 addLog(`🥷 Atacas y causas ${dmg} daño.`);
+                if (window.jutsuSystem && typeof window.jutsuSystem.afterPlayerAttack === 'function') {
+                    const postAttack = window.jutsuSystem.afterPlayerAttack({ enemy: currentEnemy, damageDealt: dmg, executeThresholdPct, addLog });
+                    if (postAttack.executed) currentEnemy.hp = 0;
+                }
                 updateBattleBars();
                 if (typeof updateBars === 'function') updateBars();
 
@@ -223,9 +240,24 @@ setTimeout(() => {
 
             if (player.hp > 0 && currentEnemy.hp > 0) {
                 let edmg = Math.max(1, Math.floor(currentEnemy.atk - player.def / 3 + Math.random() * 6));
-                if (window.personaje) window.personaje.hp = Math.max(0, window.personaje.hp - edmg);
-                addLog(`👹 ${currentEnemy.name} ataca y causa ${edmg} daño.`);
-                updateBattleBars();
+                let enemyTurn = { damage: edmg, skipped: false, reflectedDamage: 0 };
+                if (window.jutsuSystem && typeof window.jutsuSystem.beforeEnemyAttack === 'function') {
+                    enemyTurn = window.jutsuSystem.beforeEnemyAttack({ source: 'misiones', enemy: currentEnemy, baseDamage: edmg, addLog });
+                }
+                if (enemyTurn.skipped) {
+                    if (window.jutsuSystem && typeof window.jutsuSystem.afterEnemyAttack === 'function') {
+                        window.jutsuSystem.afterEnemyAttack({ enemy: currentEnemy, damageTaken: 0, reflectedDamage: enemyTurn.reflectedDamage || 0, addLog });
+                    }
+                    updateBattleBars();
+                } else {
+                    edmg = enemyTurn.damage;
+                    if (window.personaje) window.personaje.hp = Math.max(0, window.personaje.hp - edmg);
+                    addLog(`👹 ${currentEnemy.name} ataca y causa ${edmg} daño.`);
+                    if (window.jutsuSystem && typeof window.jutsuSystem.afterEnemyAttack === 'function') {
+                        window.jutsuSystem.afterEnemyAttack({ enemy: currentEnemy, damageTaken: edmg, reflectedDamage: enemyTurn.reflectedDamage || 0, addLog });
+                    }
+                    updateBattleBars();
+                }
 
                 if (getPlayerStats().hp <= 0) {
                     addLog(`😵 Has sido derrotado...`);
@@ -299,6 +331,9 @@ if (enemyHpEl) {
         if (battleInterval) { clearInterval(battleInterval); battleInterval = null; }
         battleActive = false;
         window.combateActivo = false;
+        if (window.jutsuSystem && typeof window.jutsuSystem.endCombat === 'function') {
+            window.jutsuSystem.endCombat({ silent: true });
+        }
         showScreen('home');
     }
 

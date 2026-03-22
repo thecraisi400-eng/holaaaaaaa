@@ -91,7 +91,8 @@ function guardarPartida(options = {}) {
         arbolData: window.arbolSystem ? window.arbolSystem.obtenerDatos() : null,
         batallaNinja: window.batallaNinjaSystem && typeof window.batallaNinjaSystem.getPersistentState === 'function'
             ? window.batallaNinjaSystem.getPersistentState()
-            : null
+            : null,
+        jutsus: window.personaje.jutsus || null
     };
 
     try {
@@ -198,6 +199,12 @@ function cargarPartida(options = {}) {
             }
         }
         
+        if (datos.jutsus) {
+            window.personaje.jutsus = datos.jutsus;
+        } else if (!window.personaje.jutsus) {
+            window.personaje.jutsus = null;
+        }
+
         // ACTUALIZAR PANEL VISIBLE
         if (typeof actualizarPanelVisible === 'function') {
             actualizarPanelVisible();

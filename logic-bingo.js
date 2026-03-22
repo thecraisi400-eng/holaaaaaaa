@@ -252,14 +252,31 @@ function renderEnemigos() {
 
         mostrarPantalla('bingo-screen-batalla');
         window.combateActivo = true;
+        if (window.jutsuSystem && typeof window.jutsuSystem.beginCombat === 'function') {
+            window.jutsuSystem.beginCombat({ source: 'bingo' });
+        }
 
         intervaloBatalla = setInterval(() => {
             const player = getPlayer();
             if (player.hp <= 0 || enemigo.hp <= 0) return;
 
-            const dmgJugador = Math.max(1, Math.floor(player.atk - enemigo.def / 3 + Math.random() * 8));
+            let dmgJugador = Math.max(1, Math.floor(player.atk - enemigo.def / 3 + Math.random() * 8));
+            let executeThresholdPct = 0;
+            if (window.jutsuSystem && typeof window.jutsuSystem.preparePlayerTurn === 'function') {
+                const jutsuTurn = window.jutsuSystem.preparePlayerTurn({ source: 'bingo', enemy: enemigo, baseDamage: dmgJugador, enemyDefense: enemigo.def, addLog });
+                dmgJugador = jutsuTurn.damage;
+                executeThresholdPct = jutsuTurn.executeThresholdPct || 0;
+                if (jutsuTurn.extraHitDamage) {
+                    dmgJugador += jutsuTurn.extraHitDamage;
+                    addLog(`🌪️ Un JUTSU añadió ${jutsuTurn.extraHitDamage} de daño extra.`);
+                }
+            }
             enemigo.hp = Math.max(0, enemigo.hp - dmgJugador);
             addLog(`🥷 Atacas y causas ${dmgJugador} daño.`);
+            if (window.jutsuSystem && typeof window.jutsuSystem.afterPlayerAttack === 'function') {
+                const postAttack = window.jutsuSystem.afterPlayerAttack({ enemy: enemigo, damageDealt: dmgJugador, executeThresholdPct, addLog });
+                if (postAttack.executed) enemigo.hp = 0;
+            }
 
             if (charHp) charHp.style.width = Math.max(0, (player.hp / player.maxHp) * 100) + '%';
             if (charMp) charMp.style.width = Math.max(0, (player.mp / player.maxMp) * 100) + '%';
@@ -311,9 +328,23 @@ setTimeout(() => {
                 return;
             }
 
-            const dmgEnemigo = Math.max(1, Math.floor(enemigo.atk - player.def / 3 + Math.random() * 6));
-            if (window.personaje) window.personaje.hp = Math.max(0, window.personaje.hp - dmgEnemigo);
-            addLog(`👹 ${enemigo.nombre} ataca y causa ${dmgEnemigo} daño.`);
+            let dmgEnemigo = Math.max(1, Math.floor(enemigo.atk - player.def / 3 + Math.random() * 6));
+            let enemyTurn = { damage: dmgEnemigo, skipped: false, reflectedDamage: 0 };
+            if (window.jutsuSystem && typeof window.jutsuSystem.beforeEnemyAttack === 'function') {
+                enemyTurn = window.jutsuSystem.beforeEnemyAttack({ source: 'bingo', enemy: enemigo, baseDamage: dmgEnemigo, addLog });
+            }
+            if (enemyTurn.skipped) {
+                if (window.jutsuSystem && typeof window.jutsuSystem.afterEnemyAttack === 'function') {
+                    window.jutsuSystem.afterEnemyAttack({ enemy: enemigo, damageTaken: 0, reflectedDamage: enemyTurn.reflectedDamage || 0, addLog });
+                }
+            } else {
+                dmgEnemigo = enemyTurn.damage;
+                if (window.personaje) window.personaje.hp = Math.max(0, window.personaje.hp - dmgEnemigo);
+                addLog(`👹 ${enemigo.nombre} ataca y causa ${dmgEnemigo} daño.`);
+                if (window.jutsuSystem && typeof window.jutsuSystem.afterEnemyAttack === 'function') {
+                    window.jutsuSystem.afterEnemyAttack({ enemy: enemigo, damageTaken: dmgEnemigo, reflectedDamage: enemyTurn.reflectedDamage || 0, addLog });
+                }
+            }
 
             const playerPost = getPlayer();
             if (charHp) charHp.style.width = Math.max(0, (playerPost.hp / playerPost.maxHp) * 100) + '%';
@@ -338,6 +369,9 @@ setTimeout(() => {
     function detenerBatallaBingo() {
         if (intervaloBatalla) { clearInterval(intervaloBatalla); intervaloBatalla = null; }
         window.combateActivo = false;
+        if (window.jutsuSystem && typeof window.jutsuSystem.endCombat === 'function') {
+            window.jutsuSystem.endCombat({ silent: true });
+        }
     }
 
 function buildHTML() {

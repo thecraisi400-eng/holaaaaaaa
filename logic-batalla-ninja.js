@@ -713,11 +713,49 @@
         let defenderHp = defender.isPlayer ? getPlayerSnapshot().currentHp : defender.stats.hp;
         let rounds = 0;
 
+        if (window.jutsuSystem && typeof window.jutsuSystem.beginCombat === 'function') {
+            window.jutsuSystem.beginCombat({ source: 'batalla_ninja' });
+        }
+
         while (attackerHp > 0 && defenderHp > 0 && rounds < 50) {
-            defenderHp -= computeMissionStyleDamage(attacker, defender, true);
+            let dmgAtaque = computeMissionStyleDamage(attacker, defender, true);
+            if (attacker.isPlayer && window.jutsuSystem && typeof window.jutsuSystem.preparePlayerTurn === 'function') {
+                const fakeEnemy = { hp: defenderHp, maxHp: defender.stats.hp, def: defender.stats.def };
+                const playerTurn = window.jutsuSystem.preparePlayerTurn({ source: 'batalla_ninja', enemy: fakeEnemy, baseDamage: dmgAtaque, enemyDefense: defender.stats.def });
+                dmgAtaque = playerTurn.damage + (playerTurn.extraHitDamage || 0);
+                defenderHp = fakeEnemy.hp;
+                defenderHp -= dmgAtaque;
+                if (window.jutsuSystem && typeof window.jutsuSystem.afterPlayerAttack === 'function') {
+                    const postAttack = window.jutsuSystem.afterPlayerAttack({ enemy: fakeEnemy, damageDealt: dmgAtaque, executeThresholdPct: playerTurn.executeThresholdPct || 0 });
+                    defenderHp = fakeEnemy.hp;
+                    if (postAttack.executed) defenderHp = 0;
+                }
+            } else {
+                defenderHp -= dmgAtaque;
+            }
             if (defenderHp <= 0) break;
-            attackerHp -= computeMissionStyleDamage(defender, attacker, false);
+
+            let dmgRespuesta = computeMissionStyleDamage(defender, attacker, false);
+            if (attacker.isPlayer && window.jutsuSystem && typeof window.jutsuSystem.beforeEnemyAttack === 'function') {
+                const fakeEnemy = { hp: defenderHp, maxHp: defender.stats.hp, def: defender.stats.def };
+                const enemyTurn = window.jutsuSystem.beforeEnemyAttack({ source: 'batalla_ninja', enemy: fakeEnemy, baseDamage: dmgRespuesta });
+                defenderHp = fakeEnemy.hp;
+                if (!enemyTurn.skipped) {
+                    dmgRespuesta = enemyTurn.damage;
+                    attackerHp -= dmgRespuesta;
+                    if (window.jutsuSystem && typeof window.jutsuSystem.afterEnemyAttack === 'function') {
+                        window.jutsuSystem.afterEnemyAttack({ enemy: fakeEnemy, damageTaken: dmgRespuesta, reflectedDamage: enemyTurn.reflectedDamage || 0 });
+                        defenderHp = fakeEnemy.hp;
+                    }
+                }
+            } else {
+                attackerHp -= dmgRespuesta;
+            }
             rounds += 1;
+        }
+
+        if (window.jutsuSystem && typeof window.jutsuSystem.endCombat === 'function') {
+            window.jutsuSystem.endCombat({ silent: true });
         }
 
         const attackerWon = defenderHp <= 0;

@@ -160,6 +160,10 @@ function iniciarCombate(enemigo) {
     turnoJugador = false;
     enemigoSpawneando = true;
 
+    if (window.jutsuSystem && typeof window.jutsuSystem.beginCombat === 'function') {
+        window.jutsuSystem.beginCombat({ source: 'combate_principal' });
+    }
+
     const btnAtacar = document.getElementById('btn-atacar');
     if (btnAtacar) {
         btnAtacar.disabled = true;
@@ -230,9 +234,43 @@ function atacar() {
     
     // Calcular daño del jugador
     const resultado = calcularDanoJugador();
+    let danoFinal = resultado.dano;
+    let executeThresholdPct = 0;
+
+    if (window.jutsuSystem && typeof window.jutsuSystem.preparePlayerTurn === 'function') {
+        const jutsuTurn = window.jutsuSystem.preparePlayerTurn({
+            source: 'combate_principal',
+            enemy: enemigoActual,
+            baseDamage: danoFinal,
+            baseCritChance: (window.personaje?.critico || 5),
+            enemyDefense: enemigoActual.defensa,
+            addLog: agregarLog
+        });
+        danoFinal = jutsuTurn.damage;
+        executeThresholdPct = jutsuTurn.executeThresholdPct || 0;
+        if (jutsuTurn.guaranteedCrit) {
+            resultado.critico = true;
+        } else if (!resultado.critico && Math.random() * 100 < (jutsuTurn.critChance || 0)) {
+            resultado.critico = true;
+        }
+        if (resultado.critico) {
+            danoFinal = Math.floor(danoFinal * CONFIG_COMBATE.DANO_CRITICO);
+        }
+        resultado.dano = danoFinal;
+    }
     
     // Aplicar daño al enemigo
-    const enemigoMuerto = enemigoActual.recibirDano(resultado.dano);
+    let enemigoMuerto = enemigoActual.recibirDano(resultado.dano);
+
+    if (!enemigoMuerto && window.jutsuSystem && typeof window.jutsuSystem.afterPlayerAttack === 'function') {
+        const postAttack = window.jutsuSystem.afterPlayerAttack({
+            enemy: enemigoActual,
+            damageDealt: resultado.dano,
+            executeThresholdPct,
+            addLog: agregarLog
+        });
+        if (postAttack.executed) enemigoMuerto = true;
+    }
     
     // Mostrar mensaje
     if (resultado.critico) {
@@ -270,7 +308,7 @@ function turnoEnemigo() {
         return;
     }
     
-    // Verificar evasión
+    // Verificar evasión base
     if (verificarEvasion()) {
         agregarLog(CONFIG_COMBATE.MENSAJES.EVASION(enemigoActual.nombre));
         turnoJugador = true;
@@ -280,11 +318,44 @@ function turnoEnemigo() {
     // Calcular daño enemigo (con variación)
     let danoBase = Math.floor(enemigoActual.ataque * (0.8 + Math.random() * 0.4));
     let danoReal = calcularDanoRecibido(danoBase, enemigoActual);
+    let jutsuRespuesta = { damage: danoReal, skipped: false, reflectedDamage: 0 };
+
+    if (window.jutsuSystem && typeof window.jutsuSystem.beforeEnemyAttack === 'function') {
+        jutsuRespuesta = window.jutsuSystem.beforeEnemyAttack({
+            source: 'combate_principal',
+            enemy: enemigoActual,
+            baseDamage: danoReal,
+            addLog: agregarLog
+        });
+        if (jutsuRespuesta.skipped) {
+            if (jutsuRespuesta.reflectedDamage && window.jutsuSystem.afterEnemyAttack) {
+                window.jutsuSystem.afterEnemyAttack({ enemy: enemigoActual, damageTaken: 0, reflectedDamage: jutsuRespuesta.reflectedDamage, addLog: agregarLog });
+                actualizarUIEnemigo();
+            }
+            if (!enemigoActual.estaVivo()) {
+                finalizarCombate(true);
+            } else {
+                turnoJugador = true;
+            }
+            return;
+        }
+        danoReal = jutsuRespuesta.damage;
+    }
     
     // Aplicar daño al jugador
     window.personaje.hp = Math.max(0, window.personaje.hp - danoReal);
     
     agregarLog(`${enemigoActual.nombre} ataca: ${danoReal} de daño`);
+
+    if (window.jutsuSystem && typeof window.jutsuSystem.afterEnemyAttack === 'function') {
+        window.jutsuSystem.afterEnemyAttack({
+            enemy: enemigoActual,
+            damageTaken: danoReal,
+            reflectedDamage: jutsuRespuesta.reflectedDamage || 0,
+            addLog: agregarLog
+        });
+        actualizarUIEnemigo();
+    }
     
     // Actualizar UI
     if (typeof updateBars === 'function') {
@@ -324,6 +395,10 @@ function finalizarCombate(victoria) {
         // Aquí podrías agregar lógica de derrota (perder oro, revivir, etc.)
     }
     
+    if (window.jutsuSystem && typeof window.jutsuSystem.endCombat === 'function') {
+        window.jutsuSystem.endCombat({ addLog: agregarLog, silent: true });
+    }
+
     // Limpiar combate
     combateActivo = false;
     enemigoActual = null;

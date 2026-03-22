@@ -138,6 +138,7 @@ function toggleHeroEquipment(e) {
     equipVisible = !estaVisible;
     
     if (!estaVisible) {
+        if (typeof window.closeJutsus === 'function') window.closeJutsus();
         // Ocultar el contenido normal y mostrar el equipamiento
         hideMissionContent();
         container.style.display = 'block';
@@ -175,6 +176,7 @@ function toggleMisiones(e) {
     if (e) { e.preventDefault(); e.stopPropagation(); }
 
     if (isPanelVisible('hero-equipment-container', 'block')) closeHeroEquipment();
+    if (typeof window.closeJutsus === 'function') window.closeJutsus();
     if (isPanelVisible('arbol-overlay-container')) closeArbol();
 
     const ajustesPanel = document.getElementById('ajustes-overlay-container');
@@ -217,6 +219,7 @@ function toggleArbol(e) {
     if (e) { e.preventDefault(); e.stopPropagation(); }
     if (isPanelVisible('hero-equipment-container', 'block')) closeHeroEquipment();
     if (isPanelVisible('missions-overlay-container', 'flex')) closeMisiones();
+    if (typeof window.closeJutsus === 'function') window.closeJutsus();
 
     const ajustesPanel = document.getElementById('ajustes-overlay-container');
     if (ajustesPanel && ajustesPanel.style.display === 'flex') ajustesPanel.style.display = 'none';
@@ -284,8 +287,8 @@ window.onload = () => {
     // Añadir event listeners a todos los botones excepto el de héroe
     const buttons = document.querySelectorAll('.menu-btn');
     buttons.forEach(btn => {
-        if (btn.innerHTML.includes('👤')) {
-            // Este es el botón héroe, ya tiene su propio onclick
+        if (btn.innerHTML.includes('👤') || btn.textContent.toUpperCase().includes('JUTSUS')) {
+            // Estos botones tienen su propio comportamiento
             return;
         }
         
@@ -296,6 +299,9 @@ if (typeof cancelarCombate === 'function') {
             }
             if (isPanelVisible('hero-equipment-container', 'block')) {
                 closeHeroEquipment();
+            }
+            if (typeof window.closeJutsus === 'function') {
+                window.closeJutsus();
             }
         });
     });

@@ -27,7 +27,7 @@ function updateBars() {
         maxMp = window.personaje.mpMax;
         currentMp = window.personaje.mp;
     }
-    
+
     const hpPercent = Math.max(0, Math.min(100, (currentHp / maxHp) * 100));
     const mpPercent = Math.max(0, Math.min(100, (currentMp / maxMp) * 100));
 
@@ -50,7 +50,7 @@ window.updateBars = updateBars;
 
 setInterval(() => {
     if (!isRegenerating || isPanelVisible('missions-overlay-container', 'flex') || window.combateActivo) return;
-    
+
     // Regeneración solo si existe el personaje
     if (window.personaje) {
         if (window.personaje.hp < window.personaje.hpMax) {
@@ -60,7 +60,7 @@ setInterval(() => {
             window.personaje.mp = Math.min(window.personaje.mpMax, window.personaje.mp + Math.ceil(window.personaje.mpMax * 0.015));
         }
     }
-    
+
     updateBars();
 }, 1000);
 
@@ -79,9 +79,9 @@ function triggerEffect(e) {
     if (existingRipple) { existingRipple.remove(); }
 
     btn.appendChild(circle);
-    
+
     // EFECTO RIPPLE - NO TOCAR
-    
+
     // Remover el ripple después de la animación
     setTimeout(() => {
         circle.remove();
@@ -120,33 +120,35 @@ function toggleHeroEquipment(e) {
         e.preventDefault();
         e.stopPropagation();
     }
-    
+
     const container = document.getElementById('hero-equipment-container');
     const centerArea = document.querySelector('.center-area');
-    
+
     if (!container) {
         console.error('No se encontró el contenedor de equipamiento');
         return;
     }
-    
+
     if (!centerArea) {
         console.error('No se encontró el área central');
         return;
     }
-    
+
     const estaVisible = isPanelVisible('hero-equipment-container', 'block');
     equipVisible = !estaVisible;
-    
+
+    if (typeof window.closeJutsus === 'function') window.closeJutsus();
+
     if (!estaVisible) {
         // Ocultar el contenido normal y mostrar el equipamiento
         hideMissionContent();
         container.style.display = 'block';
-        
+
         // Actualizar el oro desde window.personaje si existe
         if (window.equipSystem && typeof window.equipSystem.syncWithGame === 'function') {
             window.equipSystem.syncWithGame();
         }
-        
+
         // Forzar actualización de la UI del equipamiento
         if (window.equipSystem && typeof window.equipSystem.updateUI === 'function') {
             window.equipSystem.updateUI();
@@ -156,7 +158,7 @@ function toggleHeroEquipment(e) {
         showMissionContent();
         container.style.display = 'none';
     }
-    
+
     equipVisible = !estaVisible;
     console.log('Sistema de equipamiento:', !estaVisible ? 'visible' : 'oculto');
 }
@@ -176,6 +178,7 @@ function toggleMisiones(e) {
 
     if (isPanelVisible('hero-equipment-container', 'block')) closeHeroEquipment();
     if (isPanelVisible('arbol-overlay-container')) closeArbol();
+    if (typeof window.closeJutsus === 'function') window.closeJutsus();
 
     const ajustesPanel = document.getElementById('ajustes-overlay-container');
     if (ajustesPanel && ajustesPanel.style.display === 'flex') {
@@ -217,6 +220,7 @@ function toggleArbol(e) {
     if (e) { e.preventDefault(); e.stopPropagation(); }
     if (isPanelVisible('hero-equipment-container', 'block')) closeHeroEquipment();
     if (isPanelVisible('missions-overlay-container', 'flex')) closeMisiones();
+    if (typeof window.closeJutsus === 'function') window.closeJutsus();
 
     const ajustesPanel = document.getElementById('ajustes-overlay-container');
     if (ajustesPanel && ajustesPanel.style.display === 'flex') ajustesPanel.style.display = 'none';
@@ -264,23 +268,23 @@ window.onload = () => {
         currentMp = window.personaje.mp;
     }
     updateBars();
-    
+
     // Inicializar el contenedor de equipamiento como oculto
     const container = document.getElementById('hero-equipment-container');
     const centerArea = document.querySelector('.center-area');
-    
+
     if (container && centerArea) {
         container.style.display = 'none';
-        
+
         // Asegurar que el contenedor tenga la misma altura que el área central
         container.style.height = centerArea.offsetHeight + 'px';
-        
+
         // Si hay sistema de equipamiento global, inicializarlo
         if (window.equipSystem && typeof window.equipSystem.init === 'function') {
             window.equipSystem.init();
         }
     }
-    
+
     // Añadir event listeners a todos los botones excepto el de héroe
     const buttons = document.querySelectorAll('.menu-btn');
     buttons.forEach(btn => {
@@ -288,7 +292,7 @@ window.onload = () => {
             // Este es el botón héroe, ya tiene su propio onclick
             return;
         }
-        
+
         // Para los demás botones, cerrar el equipamiento si está abierto
         btn.addEventListener('click', function() {
 if (typeof cancelarCombate === 'function') {

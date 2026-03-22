@@ -47,6 +47,7 @@ let estado = {
     let intervaloReloj = null;
     let intervaloBatalla = null;
     let bingoOverlay = null;
+    let bingoJutsuBattle = null;
 
 function cargarEstado() {
     try {
@@ -252,12 +253,21 @@ function renderEnemigos() {
 
         mostrarPantalla('bingo-screen-batalla');
         window.combateActivo = true;
+        bingoJutsuBattle = window.jutsusSystem && typeof window.jutsusSystem.createBattleState === 'function'
+            ? window.jutsusSystem.createBattleState('bingo')
+            : null;
 
         intervaloBatalla = setInterval(() => {
             const player = getPlayer();
             if (player.hp <= 0 || enemigo.hp <= 0) return;
 
-            const dmgJugador = Math.max(1, Math.floor(player.atk - enemigo.def / 3 + Math.random() * 8));
+            if (window.jutsusSystem && typeof window.jutsusSystem.prepareTurn === 'function') {
+                window.jutsusSystem.prepareTurn(bingoJutsuBattle, 'player', enemigo, addLog);
+            }
+            let dmgJugador = Math.max(1, Math.floor(player.atk - enemigo.def / 3 + Math.random() * 8));
+            if (window.jutsusSystem && typeof window.jutsusSystem.applyPlayerDamage === 'function') {
+                dmgJugador = window.jutsusSystem.applyPlayerDamage(dmgJugador, enemigo, bingoJutsuBattle, addLog);
+            }
             enemigo.hp = Math.max(0, enemigo.hp - dmgJugador);
             addLog(`🥷 Atacas y causas ${dmgJugador} daño.`);
 
@@ -311,7 +321,22 @@ setTimeout(() => {
                 return;
             }
 
-            const dmgEnemigo = Math.max(1, Math.floor(enemigo.atk - player.def / 3 + Math.random() * 6));
+            if (window.jutsusSystem && typeof window.jutsusSystem.prepareTurn === 'function') {
+                window.jutsusSystem.prepareTurn(bingoJutsuBattle, 'enemy', enemigo, addLog);
+            }
+            const controlTurno = window.jutsusSystem && typeof window.jutsusSystem.beforeEnemyAttack === 'function'
+                ? window.jutsusSystem.beforeEnemyAttack(bingoJutsuBattle, enemigo, addLog)
+                : { skip: false };
+            if (controlTurno.skip) {
+                return;
+            }
+            let dmgEnemigo = Math.max(1, Math.floor(enemigo.atk - player.def / 3 + Math.random() * 6));
+            if (window.jutsusSystem && typeof window.jutsusSystem.modifyEnemyDamage === 'function') {
+                dmgEnemigo = window.jutsusSystem.modifyEnemyDamage(dmgEnemigo, bingoJutsuBattle);
+            }
+            if (window.jutsusSystem && typeof window.jutsusSystem.applyIncomingDamage === 'function') {
+                dmgEnemigo = window.jutsusSystem.applyIncomingDamage(dmgEnemigo, bingoJutsuBattle, enemigo, addLog);
+            }
             if (window.personaje) window.personaje.hp = Math.max(0, window.personaje.hp - dmgEnemigo);
             addLog(`👹 ${enemigo.nombre} ataca y causa ${dmgEnemigo} daño.`);
 
@@ -338,6 +363,10 @@ setTimeout(() => {
     function detenerBatallaBingo() {
         if (intervaloBatalla) { clearInterval(intervaloBatalla); intervaloBatalla = null; }
         window.combateActivo = false;
+        if (window.jutsusSystem && typeof window.jutsusSystem.endBattle === 'function') {
+            window.jutsusSystem.endBattle(bingoJutsuBattle);
+        }
+        bingoJutsuBattle = null;
     }
 
 function buildHTML() {

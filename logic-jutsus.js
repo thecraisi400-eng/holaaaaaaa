@@ -6,8 +6,15 @@
     const DEFAULT_JUTSUS = {
         slots: [null, null, null],
         skillLevels: {},
-        selectedId: null
+        selectedId: null,
+        prepMode: false
     };
+
+    const MP_COST_MULTIPLIER = 0.6;
+
+    function scaleMpCost(value) {
+        return Math.max(1, Math.round(Number(value || 0) * MP_COST_MULTIPLIER));
+    }
 
     const SKILLS = [
         { id: 0, name: 'Filo Ígneo', icon: '🔥', desc: 'Ignora parte de la defensa, otorga evasión temporal y añade quemadura al golpe.', dur: '1 turno', statLabels: ['⚕️Perf', '💨Evas', '🔥Comb', '📈Prob', '🔵MP'], levels: [[5.0,2.0,1.0,3,20],[6.0,2.5,1.1,5,23],[7.0,3.0,1.2,8,27],[8.0,3.5,1.3,10,30],[9.0,4.0,1.4,13,33],[10.0,4.5,1.5,15,37],[11.0,5.0,1.6,18,40],[12.0,5.5,1.7,20,43],[13.0,6.0,1.8,23,47],[15.0,8.0,2.0,25,50]] },
@@ -18,11 +25,15 @@
         { id: 5, name: 'Viento de Inercia', icon: '🌪️', desc: 'Otorga un segundo impacto, resistencia táctica y ralentiza al rival.', dur: '1 turno', statLabels: ['✌️Multi','💪Resil','🐢Ral','📈Prob','🔵MP'], levels: [[5,6,10,3,20],[6,7.5,11,5,23],[7,9,12,8,27],[8,10.5,13,10,30],[9,12,14,13,33],[10,13.5,15,15,37],[11,15,16,18,40],[12,16.5,17,20,43],[13,18,18,23,47],[16,25,25,25,50]] },
         { id: 6, name: 'Marca del Verdugo', icon: '💀', desc: 'Ejecuta mejor enemigos debilitados y fortalece la supervivencia temporal.', dur: '1 turno', statLabels: ['⚡Acel','🛡️Inm','⛓️Cad','📈Prob','🔵MP'], levels: [[8,0.5,15,3,20],[9,0.6,18,5,23],[10,0.7,21,8,27],[11,0.8,24,10,30],[12,1.0,27,13,33],[13,1.2,30,15,37],[14,1.4,33,18,40],[15,1.6,36,20,43],[16,1.8,39,23,47],[20,2.0,50,25,50]] },
         { id: 7, name: 'Sentencia Elemental', icon: '🌟', desc: 'Penetra defensas, potencia críticos y agrega una explosión de chakra.', dur: '1 turno', statLabels: ['🔓Pen','⚡EsqC','💣Mald','📈Prob','🔵MP'], levels: [[4,3,15,3,20],[5,4,18,5,23],[6,5,21,8,27],[7,6,24,10,30],[8,7,27,13,33],[9,8,30,15,37],[10,9,33,18,40],[11,10,36,20,43],[12,11,39,23,47],[15,15,50,25,50]] }
-    ];
+    ].map((skill) => ({
+        ...skill,
+        levels: skill.levels.map((levelStats) => levelStats.map((value, index) => index === 4 ? scaleMpCost(value) : value))
+    }));
 
     const state = {
         initialized: false,
         selectedId: null,
+        prepMode: false,
         battleCounter: 0,
         activeBattles: new Map()
     };
@@ -55,6 +66,24 @@
                 box-sizing: border-box;
                 color: #2a1f14;
                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            }
+            .jutsu-main-grid {
+                flex: 1;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+            }
+            .jutsu-shell.prep-only .jutsu-main-grid { display: none; }
+            .jutsu-shell.prep-only .jutsu-prep-card {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                min-height: 0;
+            }
+            .jutsu-shell.prep-only #jutsu-upgrade-panel,
+            .jutsu-shell.prep-only #jutsu-glossary {
+                max-height: none;
             }
             .jutsu-card {
                 background: rgba(255,255,255,0.94);
@@ -225,6 +254,32 @@
                 overflow-y: auto;
                 margin-top: 8px;
             }
+            .jutsu-prep-card { min-height: 155px; }
+            .jutsu-prep-card .jutsu-title { justify-content: space-between; }
+            .jutsu-prep-toggle {
+                margin-top: auto;
+                align-self: flex-start;
+                border: 1px solid #1a6b8a;
+                background: linear-gradient(135deg, #fff, #e8f4f8);
+                color: #1a6b8a;
+                width: 28px;
+                height: 28px;
+                border-radius: 999px;
+                font-size: 16px;
+                font-weight: 800;
+                cursor: pointer;
+                box-shadow: 0 2px 6px rgba(26,107,138,0.18);
+            }
+            .jutsu-prep-toggle:hover { transform: scale(1.05); }
+            .jutsu-prep-toggle.active {
+                background: linear-gradient(135deg, #1a6b8a, #14556d);
+                color: #fff;
+            }
+            .jutsu-prep-toggle-wrap {
+                display: flex;
+                justify-content: flex-start;
+                margin-top: 6px;
+            }
             .jutsu-glossary-item {
                 background: white;
                 border: 1px solid #d4c4b0;
@@ -285,7 +340,11 @@
         if (typeof window.personaje.jutsus.selectedId === 'undefined') {
             window.personaje.jutsus.selectedId = null;
         }
+        if (typeof window.personaje.jutsus.prepMode === 'undefined') {
+            window.personaje.jutsus.prepMode = false;
+        }
         state.selectedId = window.personaje.jutsus.selectedId;
+        state.prepMode = Boolean(window.personaje.jutsus.prepMode);
         return window.personaje.jutsus;
     }
 
@@ -297,6 +356,12 @@
         const data = ensureCharacterData();
         data.selectedId = selectedId;
         state.selectedId = selectedId;
+    }
+
+    function savePrepMode(enabled) {
+        const data = ensureCharacterData();
+        data.prepMode = Boolean(enabled);
+        state.prepMode = Boolean(enabled);
     }
 
     function clearSelection() {
@@ -439,17 +504,38 @@
         `).join('');
     }
 
+    function renderPrepMode() {
+        const shell = document.getElementById('jutsu-shell-root');
+        const toggleBtn = document.getElementById('jutsu-prep-toggle-btn');
+        if (shell) shell.classList.toggle('prep-only', state.prepMode);
+        if (toggleBtn) {
+            toggleBtn.classList.toggle('active', state.prepMode);
+            toggleBtn.textContent = state.prepMode ? '↩' : '?';
+            toggleBtn.title = state.prepMode ? 'Volver al panel completo de Jutsus' : 'Mostrar solo Preparación Shinobi';
+            toggleBtn.setAttribute('aria-label', toggleBtn.title);
+        }
+    }
+
     function renderAll() {
         renderSlots();
         renderSkillList();
         renderUpgradePanel();
         renderGlossary();
+        renderPrepMode();
     }
 
     function selectSkill(id) {
         saveSelection(id);
+        savePrepMode(true);
         renderSkillList();
         renderUpgradePanel();
+        renderPrepMode();
+    }
+
+    function togglePreparationFocus() {
+        savePrepMode(!state.prepMode);
+        renderPrepMode();
+        if (typeof window.guardarPartida === 'function') window.guardarPartida({ silent: true });
     }
 
     function upgradeSkill(id) {
@@ -512,26 +598,34 @@
 
     function buildShell() {
         return `
-            <div class="jutsu-shell">
-                <div class="jutsu-card">
-                    <div class="jutsu-topbar">
-                        <div class="jutsu-title">🔥 Sistema de Jutsus</div>
-                        <button class="jutsu-close" id="jutsu-close-btn">✖ Cerrar</button>
+            <div class="jutsu-shell" id="jutsu-shell-root">
+                <div class="jutsu-main-grid">
+                    <div class="jutsu-card">
+                        <div class="jutsu-topbar">
+                            <div class="jutsu-title">🔥 Sistema de Jutsus</div>
+                            <button class="jutsu-close" id="jutsu-close-btn">✖ Cerrar</button>
+                        </div>
+                        <div class="jutsu-slots-row">
+                            <div class="jutsu-slot" id="jutsu-slot-0"></div>
+                            <div class="jutsu-slot" id="jutsu-slot-1"></div>
+                            <div class="jutsu-slot" id="jutsu-slot-2"></div>
+                        </div>
                     </div>
-                    <div class="jutsu-slots-row">
-                        <div class="jutsu-slot" id="jutsu-slot-0"></div>
-                        <div class="jutsu-slot" id="jutsu-slot-1"></div>
-                        <div class="jutsu-slot" id="jutsu-slot-2"></div>
+                    <div class="jutsu-card" style="flex:1;display:flex;flex-direction:column;min-height:0;">
+                        <div class="jutsu-title">📜 Biblioteca de Técnicas</div>
+                        <div id="jutsu-skills-list" class="jutsu-list"></div>
                     </div>
                 </div>
-                <div class="jutsu-card" style="flex:1;display:flex;flex-direction:column;min-height:0;">
-                    <div class="jutsu-title">📜 Biblioteca de Técnicas</div>
-                    <div id="jutsu-skills-list" class="jutsu-list"></div>
-                </div>
-                <div class="jutsu-card">
-                    <div class="jutsu-title">⚙ Preparación Shinobi</div>
+                <div class="jutsu-card jutsu-prep-card">
+                    <div class="jutsu-topbar" style="margin-bottom:7px;">
+                        <div class="jutsu-title" style="margin-bottom:0;">⚙ Preparación Shinobi</div>
+                        <button class="jutsu-close" id="jutsu-close-btn-secondary" type="button">✖ Cerrar</button>
+                    </div>
                     <div id="jutsu-upgrade-panel"></div>
                     <div id="jutsu-glossary" class="jutsu-glossary"></div>
+                    <div class="jutsu-prep-toggle-wrap">
+                        <button class="jutsu-prep-toggle" id="jutsu-prep-toggle-btn" type="button" title="Mostrar solo Preparación Shinobi">?</button>
+                    </div>
                 </div>
             </div>
         `;
@@ -539,7 +633,11 @@
 
     function bindUI() {
         const closeBtn = document.getElementById('jutsu-close-btn');
+        const closeBtnSecondary = document.getElementById('jutsu-close-btn-secondary');
         if (closeBtn) closeBtn.addEventListener('click', closeJutsus);
+        if (closeBtnSecondary) closeBtnSecondary.addEventListener('click', closeJutsus);
+        const prepToggleBtn = document.getElementById('jutsu-prep-toggle-btn');
+        if (prepToggleBtn) prepToggleBtn.addEventListener('click', togglePreparationFocus);
         [0, 1, 2].forEach((index) => {
             const slot = document.getElementById(`jutsu-slot-${index}`);
             if (slot) slot.addEventListener('click', () => onSlotClick(index));

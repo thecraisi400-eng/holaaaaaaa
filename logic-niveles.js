@@ -245,6 +245,10 @@ function actualizarEstadisticasPorNivel() {
     // Restaurar HP y MP al máximo al subir nivel
     personaje.hp = personaje.hpMax;
     personaje.mp = personaje.mpMax;
+
+    if (typeof window.updateBars === 'function') {
+        window.updateBars();
+    }
 }
 
 /**
@@ -372,6 +376,10 @@ function actualizarPanelVisible() {
     
     // Actualizar HP y MP (aunque no son visibles, los necesitas internamente)
     actualizarBarrasVitales();
+
+    if (typeof window.updateBars === 'function') {
+        window.updateBars();
+    }
 }
 
 /**

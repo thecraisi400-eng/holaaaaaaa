@@ -20,7 +20,7 @@
         { id:7, name:'Sentencia Elemental', icon:'⚡', desc:'Anula resistencias, asegura críticos tras esquiva y explota.', dur:'4 turnos', labels:['Penet','Esq.C','Maldec','Prob','MP'], icons:['🔓','🎯','💥','📈','🔵'], levels:[[4,3,15,3,20],[5,4,18,5,23],[6,5,21,8,27],[7,6,24,10,30],[8,7,27,13,33],[9,8,30,15,37],[10,9,33,18,40],[11,10,36,20,43],[12,11,39,23,47],[15,15,50,25,50]] }
     ];
 
-    const state = { initialized: false };
+    const state = { initialized: false, selectedId: null };
 
     function injectStyles() {
         if (document.getElementById(STYLE_ID)) return;
@@ -167,6 +167,12 @@
         return Object.fromEntries(SKILLS.map((skill) => [skill.id, 1]));
     }
 
+    function coerceSkillId(id) {
+        if (id === null || typeof id === 'undefined' || id === '') return null;
+        const normalized = Number(id);
+        return Number.isInteger(normalized) && getSkillById(normalized) ? normalized : null;
+    }
+
     function ensureData() {
         if (!window.personaje) return null;
         if (!window.personaje.jutsus || typeof window.personaje.jutsus !== 'object') {
@@ -178,13 +184,22 @@
         if (!window.personaje.jutsus.skillLevels || typeof window.personaje.jutsus.skillLevels !== 'object') {
             window.personaje.jutsus.skillLevels = {};
         }
+        window.personaje.jutsus.slots = window.personaje.jutsus.slots
+            .slice(0, 3)
+            .map((id) => coerceSkillId(id))
+            .concat([null, null, null])
+            .slice(0, 3);
         const defaults = baseLevels();
         Object.keys(defaults).forEach((id) => {
             const current = Number(window.personaje.jutsus.skillLevels[id] || 1);
             window.personaje.jutsus.skillLevels[id] = Math.min(Math.max(1, current), 10);
         });
-        if (typeof window.personaje.jutsus.selectedId === 'undefined') {
-            window.personaje.jutsus.selectedId = null;
+        const persistedSelection = coerceSkillId(window.personaje.jutsus.selectedId);
+        window.personaje.jutsus.selectedId = persistedSelection;
+        if (persistedSelection !== null) {
+            state.selectedId = persistedSelection;
+        } else if (state.selectedId !== null && !getSkillById(state.selectedId)) {
+            state.selectedId = null;
         }
         return window.personaje.jutsus;
     }
@@ -198,7 +213,17 @@
     }
 
     function getSkillById(id) {
-        return SKILLS.find((skill) => skill.id === id) || null;
+        const normalized = Number(id);
+        return SKILLS.find((skill) => skill.id === normalized) || null;
+    }
+
+    function getSelectedSkillId(data) {
+        const persistedSelection = coerceSkillId(data?.selectedId);
+        if (persistedSelection !== null) {
+            state.selectedId = persistedSelection;
+            return persistedSelection;
+        }
+        return coerceSkillId(state.selectedId);
     }
 
     function fmt(value) {
@@ -276,9 +301,10 @@
                     <span class="jv2-stat">🔵 MP:<b style="color:#009DB9;margin-left:2px">${stats[4]}</b></span>
                 </div>`;
             card.addEventListener('click', () => {
+                state.selectedId = skill.id;
                 data.selectedId = skill.id;
-                saveSilently();
                 refresh(root);
+                saveSilently();
             });
             list.appendChild(card);
         });
@@ -329,12 +355,19 @@
         const goldLabel = root.querySelector('[data-role="gold"]');
         goldLabel.textContent = `ORO DISPONIBLE: 🪙 ${currentGold()}`;
 
-        if (data.selectedId === null) {
+        const selectedId = getSelectedSkillId(data);
+        if (selectedId === null) {
             content.innerHTML = '<div class="jv2-up-placeholder">← Selecciona una habilidad</div>';
             return;
         }
 
-        const skill = getSkillById(data.selectedId);
+        const skill = getSkillById(selectedId);
+        if (!skill) {
+            state.selectedId = null;
+            data.selectedId = null;
+            content.innerHTML = '<div class="jv2-up-placeholder">← Selecciona una habilidad válida</div>';
+            return;
+        }
         const level = data.skillLevels[skill.id] || 1;
         const current = skill.levels[level - 1];
         const next = skill.levels[Math.min(level, 9)];
@@ -490,7 +523,7 @@
         return {
             slots: data.slots.slice(0, 3),
             skillLevels: { ...data.skillLevels },
-            selectedId: data.selectedId
+            selectedId: getSelectedSkillId(data)
         };
     }
 
@@ -503,10 +536,12 @@
             const rawLevel = Number(saved?.skillLevels?.[skill.id] || 1);
             skillLevels[skill.id] = Math.min(Math.max(1, rawLevel), 10);
         });
+        const selectedId = coerceSkillId(saved?.selectedId);
+        state.selectedId = selectedId;
         window.personaje.jutsus = {
-            slots: slots.concat([null, null, null]).slice(0, 3).map((id) => getSkillById(id) ? id : null),
+            slots: slots.concat([null, null, null]).slice(0, 3).map((id) => coerceSkillId(id)),
             skillLevels,
-            selectedId: getSkillById(saved?.selectedId) ? saved.selectedId : null
+            selectedId
         };
         const container = document.getElementById(CONTAINER_ID);
         if (container && container.dataset.initialized === 'true') refresh(container);

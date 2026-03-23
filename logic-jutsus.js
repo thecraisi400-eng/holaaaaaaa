@@ -1,41 +1,28 @@
 (function () {
     'use strict';
 
-    const STYLE_ID = 'jutsus-system-styles';
+    const STYLE_ID = 'naruto-jutsus-v2-styles';
     const CONTAINER_ID = 'jutsus-overlay-container';
-    const DEFAULT_JUTSUS = {
+    const DEFAULT_DATA = {
         slots: [null, null, null],
         skillLevels: {},
-        selectedId: null,
-        prepMode: true
+        selectedId: null
     };
 
-    const MP_COST_MULTIPLIER = 0.6;
-
-    function scaleMpCost(value) {
-        return Math.max(1, Math.round(Number(value || 0) * MP_COST_MULTIPLIER));
-    }
-
     const SKILLS = [
-        { id: 0, name: 'Filo Ígneo', icon: '🔥', desc: 'Ignora parte de la defensa, otorga evasión temporal y añade quemadura al golpe.', dur: '1 turno', statLabels: ['⚕️Perf', '💨Evas', '🔥Comb', '📈Prob', '🔵MP'], levels: [[5.0,2.0,1.0,3,20],[6.0,2.5,1.1,5,23],[7.0,3.0,1.2,8,27],[8.0,3.5,1.3,10,30],[9.0,4.0,1.4,13,33],[10.0,4.5,1.5,15,37],[11.0,5.0,1.6,18,40],[12.0,5.5,1.7,20,43],[13.0,6.0,1.8,23,47],[15.0,8.0,2.0,25,50]] },
-        { id: 1, name: 'Baluarte Tóxico', icon: '☠️', desc: 'Aumenta crítico, reduce daño recibido y aplica veneno temporal.', dur: '1 turno', statLabels: ['💥Crit','🛡️Bloq','☠️Ven','📈Prob','🔵MP'], levels: [[10,3,5,3,20],[12,4,6,5,23],[14,5,7,8,27],[16,6,8,10,30],[18,7,9,13,33],[20,8,10,15,37],[22,9,11,18,40],[24,10,12,20,43],[26,11,13,23,47],[30,15,15,25,50]] },
-        { id: 2, name: 'Ojo del Segador', icon: '👁️', desc: 'Mejora la precisión ofensiva, regenera vida y castiga al rival con hemorragia.', dur: '1 turno', statLabels: ['🎯Prec','❤️Reg','🩸Hem','📈Prob','🔵MP'], levels: [[4.0,0.5,1.0,3,20],[5.0,0.6,1.2,5,23],[6.0,0.7,1.4,8,27],[7.0,0.8,1.6,10,30],[8.0,0.9,1.8,13,33],[9.0,1.0,2.0,15,37],[10.0,1.1,2.2,18,40],[11.0,1.2,2.4,20,43],[12.0,1.3,2.6,23,47],[15.0,2.0,3.5,25,50]] },
-        { id: 3, name: 'Espejo Glacial', icon: '🧊', desc: 'Roba vida con el golpe, refleja daño y tiene opción de congelar al rival un turno.', dur: '1 turno', statLabels: ['💧Dren','↩️Refl','❄️Cong','📈Prob','🔵MP'], levels: [[2.0,3.0,1.0,3,20],[2.5,4.0,1.1,5,23],[3.0,5.0,1.2,8,27],[3.5,6.0,1.3,10,30],[4.0,7.0,1.4,11,33],[4.5,8.0,1.5,15,37],[5.0,9.0,1.6,18,40],[5.5,10.0,1.7,20,43],[6.0,11.0,1.8,23,47],[8.0,15.0,2.2,25,50]] },
-        { id: 4, name: 'Martillo Sísmico', icon: '⚡', desc: 'Añade hemorragia, otorga escudo temporal y puede aturdir al enemigo.', dur: '1 turno', statLabels: ['🩸Hem','🛡️Esc','😵Atrd','📈Prob','🔵MP'], levels: [[3.0,10,1.5,3,20],[3.5,12,1.7,5,23],[4.0,14,1.9,8,27],[4.5,16,2.1,10,30],[5.0,18,2.3,13,33],[5.5,20,2.5,15,37],[6.0,22,2.7,18,40],[6.5,24,3.0,20,43],[7.0,26,3.2,23,47],[9.0,35,3.5,25,50]] },
-        { id: 5, name: 'Viento de Inercia', icon: '🌪️', desc: 'Otorga un segundo impacto, resistencia táctica y ralentiza al rival.', dur: '1 turno', statLabels: ['✌️Multi','💪Resil','🐢Ral','📈Prob','🔵MP'], levels: [[5,6,10,3,20],[6,7.5,11,5,23],[7,9,12,8,27],[8,10.5,13,10,30],[9,12,14,13,33],[10,13.5,15,15,37],[11,15,16,18,40],[12,16.5,17,20,43],[13,18,18,23,47],[16,25,25,25,50]] },
-        { id: 6, name: 'Marca del Verdugo', icon: '💀', desc: 'Ejecuta mejor enemigos debilitados y fortalece la supervivencia temporal.', dur: '1 turno', statLabels: ['⚡Acel','🛡️Inm','⛓️Cad','📈Prob','🔵MP'], levels: [[8,0.5,15,3,20],[9,0.6,18,5,23],[10,0.7,21,8,27],[11,0.8,24,10,30],[12,1.0,27,13,33],[13,1.2,30,15,37],[14,1.4,33,18,40],[15,1.6,36,20,43],[16,1.8,39,23,47],[20,2.0,50,25,50]] },
-        { id: 7, name: 'Sentencia Elemental', icon: '🌟', desc: 'Penetra defensas, potencia críticos y agrega una explosión de chakra.', dur: '1 turno', statLabels: ['🔓Pen','⚡EsqC','💣Mald','📈Prob','🔵MP'], levels: [[4,3,15,3,20],[5,4,18,5,23],[6,5,21,8,27],[7,6,24,10,30],[8,7,27,13,33],[9,8,30,15,37],[10,9,33,18,40],[11,10,36,20,43],[12,11,39,23,47],[15,15,50,25,50]] }
-    ].map((skill) => ({
-        ...skill,
-        levels: skill.levels.map((levelStats) => levelStats.map((value, index) => index === 4 ? scaleMpCost(value) : value))
-    }));
+        { id:0, name:'Filo Ígneo', icon:'🔥', desc:'Ignora defensa física, otorga evasión y quema al enemigo.', dur:'3.0s', labels:['Perf','Evas','Comb','Prob','MP'], icons:['⚕️','💨','🔥','📈','🔵'], levels:[[5,2,1,3,20],[6,2.5,1.1,5,23],[7,3,1.2,8,27],[8,3.5,1.3,10,30],[9,4,1.4,13,33],[10,4.5,1.5,15,37],[11,5,1.6,18,40],[12,5.5,1.7,20,43],[13,6,1.8,23,47],[15,8,2,25,50]] },
+        { id:1, name:'Baluarte Tóxico', icon:'☠️', desc:'Potencia críticos, bloquea daño a la mitad y envenena.', dur:'3 turnos', labels:['Crit','Bloq','Veneno','Prob','MP'], icons:['⚔️','🛡️','☠️','📈','🔵'], levels:[[10,3,5,3,20],[12,4,6,5,23],[14,5,7,8,27],[16,6,8,10,30],[18,7,9,13,33],[20,8,10,15,37],[22,9,11,18,40],[24,10,12,20,43],[26,11,13,23,47],[30,15,15,25,50]] },
+        { id:2, name:'Ojo del Segador', icon:'👁️', desc:'Asegura precisión, regenera vida y desangra al recibir daño.', dur:'4.0s', labels:['Prec','Reg','Hemorr','Prob','MP'], icons:['🎯','💚','🩸','📈','🔵'], levels:[[4,0.5,1,3,20],[5,0.6,1.2,5,23],[6,0.7,1.4,8,27],[7,0.8,1.6,10,30],[8,0.9,1.8,13,33],[9,1,2,15,37],[10,1.1,2.2,18,40],[11,1.2,2.4,20,43],[12,1.3,2.6,23,47],[15,2,3.5,25,50]] },
+        { id:3, name:'Espejo Glacial', icon:'🧊', desc:'Roba vida al dañar, devuelve daño y congela al rival.', dur:'2.2s', labels:['Dren','Refl','Congel','Prob','MP'], icons:['🩸','🔄','🧊','📈','🔵'], levels:[[2,3,'1.0s',3,20],[2.5,4,'1.1s',5,23],[3,5,'1.2s',8,27],[3.5,6,'1.3s',10,30],[4,7,'1.4s',11,33],[4.5,8,'1.5s',15,37],[5,9,'1.6s',18,40],[5.5,10,'1.7s',20,43],[6,11,'1.8s',23,47],[8,15,'2.2s',25,50]] },
+        { id:4, name:'Martillo Sísmico', icon:'🔨', desc:'Causa hemorragia crítica, crea escudos y aturde.', dur:'3.5s', labels:['Hemorr','Escudo','Aturd','Prob','MP'], icons:['🩸','🛡️','💫','📈','🔵'], levels:[[3,10,'1.5s',3,20],[3.5,12,'1.7s',5,23],[4,14,'1.9s',8,27],[4.5,16,'2.1s',10,30],[5,18,'2.3s',13,33],[5.5,20,'2.5s',15,37],[6,22,'2.7s',18,40],[6.5,24,'3.0s',20,43],[7,26,'3.2s',23,47],[9,35,'3.5s',25,50]] },
+        { id:5, name:'Viento de Inercia', icon:'💨', desc:'Ataca dos veces, resiste aturdimientos y ralentiza.', dur:'4 turnos', labels:['Multi','Resil','Ralent','Prob','MP'], icons:['⚡','💪','⏱️','📈','🔵'], levels:[[5,6,-10,3,20],[6,7.5,-11,5,23],[7,9,-12,8,27],[8,10.5,-13,10,30],[9,12,-14,13,33],[10,13.5,-15,15,37],[11,15,-16,18,40],[12,16.5,-17,20,43],[13,18,-18,23,47],[16,25,-25,25,50]] },
+        { id:6, name:'Marca del Verdugo', icon:'💀', desc:'Ejecuta al enemigo herido, da inmunidad y bloquea curas.', dur:'2.0s', labels:['Acel','Inmun','Cadena','Prob','MP'], icons:['⚡','🛡️','⛓️','📈','🔵'], levels:[[8,'0.5s',-15,3,20],[9,'0.6s',-18,5,23],[10,'0.7s',-21,8,27],[11,'0.8s',-24,10,30],[12,'1.0s',-27,13,33],[13,'1.2s',-30,15,37],[14,'1.4s',-33,18,40],[15,'1.6s',-36,20,43],[16,'1.8s',-39,23,47],[20,'2.0s',-50,25,50]] },
+        { id:7, name:'Sentencia Elemental', icon:'⚡', desc:'Anula resistencias, asegura críticos tras esquiva y explota.', dur:'4 turnos', labels:['Penet','Esq.C','Maldec','Prob','MP'], icons:['🔓','🎯','💥','📈','🔵'], levels:[[4,3,15,3,20],[5,4,18,5,23],[6,5,21,8,27],[7,6,24,10,30],[8,7,27,13,33],[9,8,30,15,37],[10,9,33,18,40],[11,10,36,20,43],[12,11,39,23,47],[15,15,50,25,50]] }
+    ];
 
     const state = {
         initialized: false,
-        selectedId: null,
-        prepMode: true,
-        battleCounter: 0,
-        activeBattles: new Map()
+        fallbackData: null
     };
 
     function injectStyles() {
@@ -49,658 +36,450 @@
                 height: 100%;
                 position: absolute;
                 inset: 0;
-                z-index: 105;
+                background: rgba(8, 8, 16, 0.96);
                 border-radius: 10px;
                 overflow: hidden;
-                background: linear-gradient(180deg, rgba(247,240,232,0.98), rgba(237,229,216,0.98));
             }
-            #${CONTAINER_ID}.active { display: block; }
-            .jutsu-shell {
-                width: 100%;
+            #${CONTAINER_ID}.active { display: flex !important; align-items: center; justify-content: center; }
+            #${CONTAINER_ID} * { box-sizing: border-box; }
+            .jv2-shell {
+                width: 355px;
+                max-width: 100%;
                 height: 100%;
+                max-height: 500px;
+                background: transparent;
                 display: flex;
                 flex-direction: column;
-                gap: 6px;
-                padding: 6px;
+                gap: 5px;
                 overflow: hidden;
-                box-sizing: border-box;
-                color: #2a1f14;
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            }
-            .jutsu-main-grid {
-                flex: 1;
-                min-height: 0;
-                display: flex;
-                flex-direction: column;
-                gap: 6px;
-            }
-            .jutsu-shell.prep-only .jutsu-main-grid { display: none; }
-            .jutsu-shell.prep-only .jutsu-prep-card {
-                flex: 1;
-                display: flex;
-                flex-direction: column;
-                min-height: 0;
-            }
-            .jutsu-shell.prep-only #jutsu-upgrade-panel,
-            .jutsu-shell.prep-only #jutsu-glossary {
-                max-height: none;
-            }
-            .jutsu-card {
-                background: rgba(255,255,255,0.94);
-                border: 1px solid #d4c4b0;
-                border-radius: 12px;
-                padding: 8px;
-                box-shadow: 0 2px 8px rgba(100,60,20,0.13);
-            }
-            .jutsu-title {
-                font-size: 9px;
-                letter-spacing: 2.5px;
-                color: #1a6b8a;
-                text-transform: uppercase;
-                margin-bottom: 7px;
-                font-weight: 800;
-                display: flex;
-                align-items: center;
-                gap: 4px;
-            }
-            .jutsu-title::after {
-                content: '';
-                flex: 1;
-                height: 1px;
-                background: linear-gradient(90deg, #d4c4b0, transparent);
-            }
-            .jutsu-topbar {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                gap: 6px;
-            }
-            .jutsu-close {
-                border: 1px solid #1a6b8a;
-                background: white;
-                color: #1a6b8a;
-                border-radius: 999px;
-                font-weight: 800;
-                font-size: 11px;
-                padding: 4px 10px;
-                cursor: pointer;
-            }
-            .jutsu-slots-row, .jutsu-action-row {
-                display: flex;
-                gap: 6px;
-                align-items: center;
-            }
-            .jutsu-slot {
-                flex: 1;
-                height: 54px;
-                border: 2px solid #d4c4b0;
-                border-radius: 10px;
-                background: #ede5d8;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                cursor: pointer;
+                padding: 3px;
+                font-family: 'Segoe UI', sans-serif;
                 position: relative;
-                overflow: hidden;
-                transition: all 0.2s;
             }
-            .jutsu-slot:hover { border-color: #1a6b8a; background: #e8f4f8; }
-            .jutsu-slot.occupied { border-color: #5a9e1a; background: #f0f8e8; }
-            .jutsu-slot::before, .jutsu-slot::after {
-                content: '';
+            .jv2-close {
                 position: absolute;
-                width: 9px;
-                height: 9px;
-                border-style: solid;
-                border-color: #c0550a;
-                opacity: 0.5;
-            }
-            .jutsu-slot::before { top: 3px; left: 3px; border-width: 2px 0 0 2px; }
-            .jutsu-slot::after { bottom: 3px; right: 3px; border-width: 0 2px 2px 0; }
-            .jutsu-slot-empty { font-size: 20px; color: #d4c4b0; font-weight: 300; }
-            .jutsu-slot-icon { font-size: 18px; line-height: 1; }
-            .jutsu-slot-name { font-size: 7px; color: #7a6a58; margin-top: 2px; text-align: center; max-width: 90%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-            .jutsu-list {
-                flex: 1;
-                min-height: 0;
-                overflow-y: auto;
-                display: flex;
-                flex-direction: column;
-                gap: 5px;
-                padding-right: 3px;
-            }
-            .jutsu-item {
-                background: #fdf8f3;
-                border: 1px solid #d4c4b0;
-                border-radius: 9px;
-                padding: 7px 9px;
-                cursor: pointer;
-                transition: all 0.18s;
-            }
-            .jutsu-item:hover { border-color: #1a6b8a; background: #edf6fa; transform: translateX(2px); }
-            .jutsu-item.selected { border-color: #c0550a; background: #fdf3ec; box-shadow: 0 0 0 2px rgba(192,85,10,0.12); }
-            .jutsu-item.equipped { border-left: 3px solid #5a9e1a; }
-            .jutsu-item-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 8px; }
-            .jutsu-item-name { font-size: 12px; font-weight: 700; }
-            .jutsu-badge {
-                font-size: 9px;
-                padding: 1px 6px;
-                border-radius: 10px;
-                background: #ede5d8;
-                color: #1a6b8a;
-                font-weight: 700;
-                border: 1px solid #d4c4b0;
-                white-space: nowrap;
-            }
-            .jutsu-stats-row, .jutsu-mini-grid { display: flex; flex-wrap: wrap; gap: 8px; }
-            .jutsu-chip { font-size: 9px; color: #7a6a58; display: flex; align-items: center; gap: 2px; white-space: nowrap; }
-            .jutsu-chip span { color: #c0550a; font-weight: 700; }
-            .jutsu-compare-grid {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 5px;
-                margin-bottom: 7px;
-            }
-            .jutsu-compare-box {
-                background: #ede5d8;
-                border-radius: 8px;
-                padding: 6px 8px;
-                border: 1px solid #d4c4b0;
-            }
-            .jutsu-compare-box.next { border-color: rgba(90,158,26,0.5); background: #f2fae8; }
-            .jutsu-compare-label {
-                font-size: 8px;
-                color: #7a6a58;
-                letter-spacing: 1px;
-                margin-bottom: 3px;
-                font-weight: 800;
-                text-transform: uppercase;
-            }
-            .jutsu-compare-stat { font-size: 9px; line-height: 1.55; }
-            .jutsu-up { color: #5a9e1a; font-weight: 700; }
-            .jutsu-btn {
-                flex: 1;
-                padding: 7px 4px;
-                border-radius: 8px;
-                border: none;
-                font-size: 10px;
-                font-weight: 800;
-                letter-spacing: 1px;
-                cursor: pointer;
-                text-transform: uppercase;
-            }
-            .jutsu-btn-upgrade { background: linear-gradient(135deg, #c0550a, #a03d00); color: white; }
-            .jutsu-btn-upgrade:disabled { background: #d9d0c7; color: #a89880; cursor: not-allowed; }
-            .jutsu-btn-equip { background: linear-gradient(135deg, #5a9e1a, #3d7a10); color: white; }
-            .jutsu-btn-equip.unequip { background: linear-gradient(135deg, #c0550a, #8a1a00); }
-            .jutsu-hint { font-size: 9px; color: #7a6a58; text-align: center; padding: 10px; }
-            .jutsu-gold { font-size: 10px; color: #b87800; font-weight: 700; background: #fff8e8; border: 1px solid #e8d090; border-radius: 10px; padding: 2px 8px; }
-            .jutsu-footer-note {
-                margin-top: 6px;
-                font-size: 9px;
-                line-height: 1.5;
-                color: #5d4d3c;
-                background: rgba(26,107,138,0.08);
-                border: 1px solid rgba(26,107,138,0.16);
-                border-radius: 8px;
-                padding: 6px 8px;
-            }
-            .jutsu-glossary {
-                display: grid;
-                grid-template-columns: 1fr;
-                gap: 6px;
-                max-height: 108px;
-                overflow-y: auto;
-                margin-top: 8px;
-            }
-            .jutsu-prep-card { min-height: 155px; }
-            .jutsu-prep-card .jutsu-title { justify-content: space-between; }
-            .jutsu-prep-toggle {
-                margin-top: auto;
-                align-self: flex-start;
-                border: 1px solid #1a6b8a;
-                background: linear-gradient(135deg, #fff, #e8f4f8);
-                color: #1a6b8a;
+                top: 6px;
+                right: 6px;
+                z-index: 3;
                 width: 28px;
                 height: 28px;
-                border-radius: 999px;
-                font-size: 16px;
-                font-weight: 800;
+                border-radius: 50%;
+                border: 2px solid #ffffff;
+                background: rgba(0,0,0,.35);
+                color: #fff;
+                font-weight: bold;
                 cursor: pointer;
-                box-shadow: 0 2px 6px rgba(26,107,138,0.18);
             }
-            .jutsu-prep-toggle:hover { transform: scale(1.05); }
-            .jutsu-prep-toggle.active {
-                background: linear-gradient(135deg, #1a6b8a, #14556d);
+            .jv2-header {
+                width: 100%; background: rgba(121,0,185,.18);
+                border: 1.5px solid #7900B9; border-radius: 10px;
+                padding: 7px 9px; display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+                margin-top: 24px;
+            }
+            .jv2-slots-row { display: flex; gap: 7px; flex: 1; }
+            .jv2-slot {
+                width: 74px; height: 74px; border: 2px solid #7900B9; border-radius: 8px;
+                background: rgba(0,0,0,.4); display: flex; flex-direction: column;
+                align-items: center; justify-content: center; cursor: pointer;
+                position: relative; overflow: hidden; transition: border-color .2s, background .2s;
                 color: #fff;
             }
-            .jutsu-prep-toggle-wrap {
-                display: flex;
-                justify-content: flex-start;
-                margin-top: 6px;
+            .jv2-slot:hover { border-color: #009DB9; background: rgba(0,157,185,.12); }
+            .jv2-slot.filled { border-color: #41B900; background: rgba(65,185,0,.12); }
+            .jv2-slot-lv { position: absolute; top: 2px; right: 4px; font-size: 7px; color: #41B900; font-weight: bold; }
+            .jv2-slot-icon { font-size: 26px; }
+            .jv2-slot-name { font-size: 7px; color: #ccc; text-align: center; margin-top: 2px; max-width: 70px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .jv2-slot-empty { font-size: 8.5px; color: #444; }
+            .jv2-info-btn {
+                width: 30px; height: 30px; border-radius: 50%;
+                border: 2px solid #009DB9; background: rgba(0,157,185,.15);
+                color: #009DB9; font-size: 14px; font-weight: bold;
+                cursor: pointer; display: flex; align-items: center; justify-content: center;
+                flex-shrink: 0; align-self: flex-start; margin-top: 20px; transition: background .2s;
             }
-            .jutsu-glossary-item {
-                background: white;
-                border: 1px solid #d4c4b0;
-                border-left: 3px solid #c0550a;
-                border-radius: 8px;
-                padding: 8px 10px;
+            .jv2-info-btn:hover { background: rgba(0,157,185,.35); }
+            .jv2-library {
+                width: 100%; background: rgba(0,0,0,.25);
+                border: 1.5px solid #B91C00; border-radius: 10px;
+                display: flex; flex-direction: column; overflow: hidden;
+                flex-shrink: 0; max-height: 180px;
             }
-            .jutsu-glossary-item strong { color: #c0550a; }
-            .jutsu-glossary-item p { font-size: 9px; color: #7a6a58; margin-top: 3px; line-height: 1.45; }
+            .jv2-lib-title {
+                padding: 5px 10px; font-size: 9px; font-weight: bold;
+                letter-spacing: 2px; color: #B91C00;
+                border-bottom: 1px solid rgba(185,28,0,.3);
+                text-transform: uppercase; flex-shrink: 0;
+            }
+            .jv2-skill-list {
+                overflow-y: auto; flex: 1; padding: 5px 7px;
+                display: flex; flex-direction: column; gap: 4px;
+                scroll-behavior: smooth;
+            }
+            .jv2-skill-list::-webkit-scrollbar, .jv2-modal-body::-webkit-scrollbar { width: 4px; }
+            .jv2-skill-list::-webkit-scrollbar-thumb { background: #B91C00; border-radius: 2px; }
+            .jv2-skill-card {
+                background: rgba(185,28,0,.08); border: 1.5px solid rgba(185,28,0,.25);
+                border-radius: 7px; padding: 6px 8px; cursor: pointer;
+                transition: border-color .2s, background .2s; flex-shrink: 0; color: #fff;
+            }
+            .jv2-skill-card:hover { border-color: #B91C00; background: rgba(185,28,0,.18); }
+            .jv2-skill-card.selected { border-color: #41B900; background: rgba(65,185,0,.1); }
+            .jv2-skill-card.equipped { border-left: 3px solid #41B900; }
+            .jv2-sc-name { font-size: 10px; font-weight: bold; color: #fff; margin-bottom: 3px; display: flex; align-items: center; gap: 5px; }
+            .jv2-eq-badge { font-size: 6.5px; background: #41B900; color: #000; border-radius: 3px; padding: 1px 3px; font-weight: bold; }
+            .jv2-sc-stats { display: flex; gap: 6px; flex-wrap: wrap; }
+            .jv2-stat { font-size: 8px; color: #bbb; display: flex; align-items: center; gap: 2px; white-space: nowrap; }
+            .jv2-upgrade-panel {
+                width: 100%; background: rgba(65,185,0,.07);
+                border: 1.5px solid #41B900; border-radius: 10px;
+                padding: 7px 9px; flex-shrink: 0;
+                display: flex; flex-direction: column; gap: 5px; color: #fff;
+            }
+            .jv2-up-title { font-size: 8.5px; font-weight: bold; color: #41B900; letter-spacing: 1.5px; text-transform: uppercase; text-align: center; }
+            .jv2-up-placeholder { text-align: center; color: #555; font-size: 9px; padding: 8px 0; }
+            .jv2-gold { text-align: center; color: #ffd54f; font-size: 8px; letter-spacing: 1px; }
+            .jv2-compare-row { display: grid; grid-template-columns: 1fr auto 1fr; gap: 4px; align-items: start; }
+            .jv2-cbox { background: rgba(0,0,0,.3); border-radius: 6px; padding: 5px 6px; }
+            .jv2-cbox-label { font-size: 7.5px; color: #777; margin-bottom: 3px; text-align: center; text-transform: uppercase; letter-spacing: 1px; }
+            .jv2-cstat { font-size: 8px; color: #bbb; display: flex; align-items: center; gap: 2px; margin-bottom: 1px; }
+            .jv2-cstat.better { color: #41B900; font-weight: bold; }
+            .jv2-c-arrow { font-size: 13px; color: #41B900; align-self: center; text-align: center; }
+            .jv2-up-actions { display: flex; gap: 6px; }
+            .jv2-btn { flex: 1; height: 29px; border-radius: 7px; border: none; font-size: 9px; font-weight: bold; letter-spacing: .8px; cursor: pointer; transition: opacity .2s, transform .1s; text-transform: uppercase; }
+            .jv2-btn:active { transform: scale(.97); }
+            .jv2-btn-upgrade { background: linear-gradient(135deg,#B91C00,#7900B9); color: #fff; }
+            .jv2-btn-upgrade.off { background: #444; color: #666; cursor: not-allowed; }
+            .jv2-btn-equip { background: linear-gradient(135deg,#41B900,#009DB9); color: #000; }
+            .jv2-btn-equip.unequip { background: linear-gradient(135deg,#B91C00,#7900B9); color: #fff; }
+            .jv2-modal-ov { position: absolute; inset: 0; background: rgba(0,0,0,.7); display: none; align-items: center; justify-content: center; z-index: 200; }
+            .jv2-modal-ov.open { display: flex; }
+            .jv2-modal { width: 310px; max-height: 400px; background: #0d0d1a; border: 2px solid #7900B9; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+            .jv2-modal-hdr { background: linear-gradient(90deg,#7900B9,#B91C00); padding: 9px 12px; font-size: 10px; font-weight: bold; color: #fff; letter-spacing: 2px; display: flex; justify-content: space-between; align-items: center; }
+            .jv2-modal-close { background: none; border: none; color: #fff; font-size: 15px; cursor: pointer; }
+            .jv2-modal-body { overflow-y: auto; flex: 1; padding: 8px 10px; display: flex; flex-direction: column; gap: 7px; }
+            .jv2-modal-body::-webkit-scrollbar-thumb { background: #7900B9; border-radius: 2px; }
+            .jv2-g-item { background: rgba(121,0,185,.1); border: 1px solid rgba(121,0,185,.3); border-radius: 7px; padding: 7px 9px; }
+            .jv2-g-name { font-size: 10.5px; font-weight: bold; color: #c084fc; margin-bottom: 2px; }
+            .jv2-g-desc { font-size: 9px; color: #aaa; line-height: 1.5; }
+            .jv2-g-dur { font-size: 8px; color: #009DB9; margin-top: 3px; }
         `;
         document.head.appendChild(style);
     }
 
-    function getContainer() {
-        return document.getElementById(CONTAINER_ID);
+    function baseLevels() {
+        return Object.fromEntries(SKILLS.map((skill) => [skill.id, 1]));
+    }
+
+    function createDefaultData() {
+        return {
+            slots: [null, null, null],
+            skillLevels: baseLevels(),
+            selectedId: null
+        };
+    }
+
+    function cloneData(data) {
+        return {
+            slots: Array.isArray(data?.slots) ? data.slots.slice(0, 3).concat([null, null, null]).slice(0, 3) : [null, null, null],
+            skillLevels: { ...(data?.skillLevels || {}) },
+            selectedId: data?.selectedId ?? null
+        };
+    }
+
+    function normalizeData(target) {
+        const normalized = target && typeof target === 'object' ? target : createDefaultData();
+        if (!Array.isArray(normalized.slots)) {
+            normalized.slots = [null, null, null];
+        }
+        normalized.slots = normalized.slots.slice(0, 3).concat([null, null, null]).slice(0, 3).map((id) => getSkillById(id) ? id : null);
+        if (!normalized.skillLevels || typeof normalized.skillLevels !== 'object') {
+            normalized.skillLevels = {};
+        }
+        const defaults = baseLevels();
+        Object.keys(defaults).forEach((id) => {
+            const current = Number(normalized.skillLevels[id] || 1);
+            normalized.skillLevels[id] = Math.min(Math.max(1, current), 10);
+        });
+        normalized.selectedId = getSkillById(normalized.selectedId) ? normalized.selectedId : null;
+        return normalized;
+    }
+
+    function ensureData() {
+        if (!state.fallbackData) {
+            state.fallbackData = createDefaultData();
+        }
+
+        if (!window.personaje) {
+            return normalizeData(state.fallbackData);
+        }
+
+        if (!window.personaje.jutsus || typeof window.personaje.jutsus !== 'object') {
+            window.personaje.jutsus = cloneData(state.fallbackData);
+        }
+
+        const normalized = normalizeData(window.personaje.jutsus);
+        state.fallbackData = cloneData(normalized);
+        return normalized;
+    }
+
+    function getData() {
+        return ensureData();
     }
 
     function getSkillById(id) {
         return SKILLS.find((skill) => skill.id === id) || null;
     }
 
-    function getLevel(skillId) {
-        const data = ensureCharacterData();
-        return Math.max(1, Number(data.skillLevels[skillId] || 1));
+    function fmt(value) {
+        return typeof value === 'string' ? value : `${value}%`;
     }
 
-    function getSkillStats(skillId, levelOverride) {
-        const skill = getSkillById(skillId);
-        if (!skill) return null;
-        const level = Math.max(1, Math.min(skill.levels.length, levelOverride || getLevel(skillId)));
-        return skill.levels[level - 1];
+    function cost(level) {
+        return level * 150;
     }
 
-    function upgradeCost(level) {
-        return level * 120 + 80;
+    function currentGold() {
+        return Number(window.personaje?.oro || 0);
     }
 
-    function formatStat(skill, index, value) {
-        return (skill.id === 3 && index === 2) || (skill.id === 4 && index === 2) ? `${value}s` : `${value}%`;
-    }
-
-    function syncCharacterReference() {
-        if (!window.personaje) return null;
-        if (!window.personaje.jutsus || typeof window.personaje.jutsus !== 'object') {
-            window.personaje.jutsus = JSON.parse(JSON.stringify(DEFAULT_JUTSUS));
+    function updateGoldUi() {
+        if (typeof window.actualizarOroPanel === 'function') {
+            window.actualizarOroPanel();
+        } else {
+            const goldNode = document.getElementById('oro-valor');
+            if (goldNode) goldNode.textContent = String(currentGold());
         }
-        if (!Array.isArray(window.personaje.jutsus.slots)) {
-            window.personaje.jutsus.slots = [null, null, null];
-        }
-        if (!window.personaje.jutsus.skillLevels || typeof window.personaje.jutsus.skillLevels !== 'object') {
-            window.personaje.jutsus.skillLevels = {};
-        }
-        SKILLS.forEach((skill) => {
-            if (!window.personaje.jutsus.skillLevels[skill.id]) {
-                window.personaje.jutsus.skillLevels[skill.id] = 1;
-            }
-        });
-        if (typeof window.personaje.jutsus.selectedId === 'undefined') {
-            window.personaje.jutsus.selectedId = null;
-        }
-        if (typeof window.personaje.jutsus.prepMode === 'undefined') {
-            window.personaje.jutsus.prepMode = true;
-        }
-        state.selectedId = window.personaje.jutsus.selectedId;
-        state.prepMode = Boolean(window.personaje.jutsus.prepMode);
-        return window.personaje.jutsus;
-    }
-
-    function ensureCharacterData() {
-        return syncCharacterReference() || { ...DEFAULT_JUTSUS, skillLevels: Object.fromEntries(SKILLS.map((skill) => [skill.id, 1])) };
-    }
-
-    function saveSelection(selectedId) {
-        const data = ensureCharacterData();
-        data.selectedId = selectedId;
-        state.selectedId = selectedId;
-    }
-
-    function savePrepMode(enabled) {
-        const data = ensureCharacterData();
-        data.prepMode = Boolean(enabled);
-        state.prepMode = Boolean(enabled);
-    }
-
-    function clearSelection() {
-        saveSelection(null);
-        renderAll();
-    }
-
-    function getGold() {
-        return Math.max(0, Number(window.personaje?.oro || 0));
     }
 
     function showToast(message) {
         if (typeof window.mostrarNotificacion === 'function') {
             window.mostrarNotificacion(message, 'sistema');
-            return;
         }
-        window.alert(message);
     }
 
-    function renderSlots() {
-        const data = ensureCharacterData();
-        data.slots.forEach((skillId, index) => {
-            const slot = document.getElementById(`jutsu-slot-${index}`);
-            if (!slot) return;
-            if (skillId === null || typeof skillId === 'undefined') {
-                slot.classList.remove('occupied');
-                slot.innerHTML = '<span class="jutsu-slot-empty">+</span>';
-                return;
+    function saveSilently() {
+        if (typeof window.guardarPartida === 'function') {
+            window.guardarPartida({ silent: true });
+        }
+    }
+
+    function renderSlots(data, root) {
+        const row = root.querySelector('[data-role="slots-row"]');
+        row.innerHTML = '';
+        for (let i = 0; i < 3; i += 1) {
+            const skillId = data.slots[i];
+            const skill = skillId !== null ? getSkillById(skillId) : null;
+            const slot = document.createElement('div');
+            slot.className = `jv2-slot${skill ? ' filled' : ''}`;
+            if (skill) {
+                const level = data.skillLevels[skill.id] || 1;
+                slot.innerHTML = `<div class="jv2-slot-lv">Lv${level}</div><div class="jv2-slot-icon">${skill.icon}</div><div class="jv2-slot-name">${skill.name}</div>`;
+                slot.addEventListener('click', () => {
+                    data.slots[i] = null;
+                    saveSilently();
+                    refresh(root);
+                });
+            } else {
+                slot.innerHTML = '<div class="jv2-slot-empty">VACÍO</div>';
             }
-            const skill = getSkillById(skillId);
-            if (!skill) return;
-            slot.classList.add('occupied');
-            slot.innerHTML = `<span class="jutsu-slot-icon">${skill.icon}</span><span class="jutsu-slot-name">${skill.name}</span>`;
-        });
+            row.appendChild(slot);
+        }
     }
 
-    function renderSkillList() {
-        const list = document.getElementById('jutsu-skills-list');
-        if (!list) return;
-        const data = ensureCharacterData();
+    function renderList(data, root) {
+        const list = root.querySelector('[data-role="skill-list"]');
         list.innerHTML = '';
         SKILLS.forEach((skill) => {
-            const level = getLevel(skill.id);
+            const level = data.skillLevels[skill.id] || 1;
             const stats = skill.levels[level - 1];
             const equipped = data.slots.includes(skill.id);
-            const selected = state.selectedId === skill.id;
-            const item = document.createElement('div');
-            item.className = `jutsu-item${selected ? ' selected' : ''}${equipped ? ' equipped' : ''}`;
-            item.innerHTML = `
-                <div class="jutsu-item-head">
-                    <span class="jutsu-item-name">${skill.icon} ${skill.name}</span>
-                    <span class="jutsu-badge">Nv.${level}${equipped ? ' ✓' : ''}</span>
+            const card = document.createElement('div');
+            card.className = `jv2-skill-card${data.selectedId === skill.id ? ' selected' : ''}${equipped ? ' equipped' : ''}`;
+            card.innerHTML = `
+                <div class="jv2-sc-name">${skill.icon} ${skill.name}
+                    ${equipped ? '<span class="jv2-eq-badge">✓ SLOT</span>' : ''}
+                    <span style="margin-left:auto;font-size:7.5px;color:#7900B9;font-weight:bold">Lv${level}</span>
                 </div>
-                <div class="jutsu-stats-row">
-                    <div class="jutsu-chip">${skill.statLabels[0]} <span>${formatStat(skill, 0, stats[0])}</span></div>
-                    <div class="jutsu-chip">${skill.statLabels[1]} <span>${formatStat(skill, 1, stats[1])}</span></div>
-                    <div class="jutsu-chip">${skill.statLabels[2]} <span>${formatStat(skill, 2, stats[2])}</span></div>
-                </div>
-            `;
-            item.addEventListener('click', () => selectSkill(skill.id));
-            list.appendChild(item);
+                <div class="jv2-sc-stats">
+                    ${skill.labels.slice(0, 3).map((label, index) => `<span class="jv2-stat">${skill.icons[index]}&nbsp;${label}:<b style="color:#fff;margin-left:2px">${fmt(stats[index])}</b></span>`).join('')}
+                    <span class="jv2-stat">🔵 MP:<b style="color:#009DB9;margin-left:2px">${stats[4]}</b></span>
+                </div>`;
+            card.addEventListener('click', () => {
+                data.selectedId = skill.id;
+                saveSilently();
+                refresh(root);
+            });
+            list.appendChild(card);
         });
     }
 
-    function renderUpgradePanel() {
-        const panel = document.getElementById('jutsu-upgrade-panel');
-        if (!panel) return;
-        if (state.selectedId === null || !getSkillById(state.selectedId)) {
-            panel.innerHTML = '<p class="jutsu-hint">Selecciona una habilidad para ver detalles, mejorarla y equiparla.</p>';
+    function upgradeSkill(skill, data, root) {
+        const level = data.skillLevels[skill.id] || 1;
+        const price = cost(level);
+        if (level >= 10) return;
+        const success = typeof window.gastarOro === 'function'
+            ? window.gastarOro(price)
+            : (() => {
+                if (!window.personaje || currentGold() < price) return false;
+                window.personaje.oro -= price;
+                return true;
+            })();
+        if (!success) {
+            showToast('❌ Oro insuficiente para mejorar este Jutsu.');
+            return;
+        }
+        data.skillLevels[skill.id] = level + 1;
+        updateGoldUi();
+        saveSilently();
+        showToast(`⬆️ ${skill.name} subió a nivel ${data.skillLevels[skill.id]}.`);
+        refresh(root);
+    }
+
+    function toggleEquipSkill(skill, data, root) {
+        const equippedIndex = data.slots.indexOf(skill.id);
+        if (equippedIndex !== -1) {
+            data.slots[equippedIndex] = null;
+            saveSilently();
+            refresh(root);
+            return;
+        }
+        const free = data.slots.indexOf(null);
+        if (free !== -1) {
+            data.slots[free] = skill.id;
+        } else {
+            data.slots[0] = skill.id;
+        }
+        saveSilently();
+        refresh(root);
+    }
+
+    function renderUpgrade(data, root) {
+        const content = root.querySelector('[data-role="up-content"]');
+        const goldLabel = root.querySelector('[data-role="gold"]');
+        goldLabel.textContent = `ORO DISPONIBLE: 🪙 ${currentGold()}`;
+
+        if (data.selectedId === null) {
+            content.innerHTML = '<div class="jv2-up-placeholder">← Selecciona una habilidad</div>';
             return;
         }
 
-        const data = ensureCharacterData();
-        const skill = getSkillById(state.selectedId);
-        const level = getLevel(skill.id);
+        const skill = getSkillById(data.selectedId);
+        const level = data.skillLevels[skill.id] || 1;
         const current = skill.levels[level - 1];
-        const isMax = level >= skill.levels.length;
-        const next = isMax ? null : skill.levels[level];
-        const cost = isMax ? 0 : upgradeCost(level);
+        const next = skill.levels[Math.min(level, 9)];
+        const maxed = level >= 10;
+        const price = cost(level);
+        const canBuy = currentGold() >= price;
         const equipped = data.slots.includes(skill.id);
-        const slotIndex = data.slots.indexOf(skill.id);
-        const canAfford = getGold() >= cost && !isMax;
 
-        const currentHtml = skill.statLabels.map((label, index) => `<div>${label}: ${formatStat(skill, index, current[index])}</div>`).join('');
-        const nextHtml = isMax ? '<em style="color:#b87800">¡Nivel Máximo!</em>' : skill.statLabels.map((label, index) => {
-            const increased = next[index] > current[index];
-            return `<div>${label}: <span class="${increased ? 'jutsu-up' : ''}">${formatStat(skill, index, next[index])}${increased ? ' ▲' : ''}</span></div>`;
-        }).join('');
-
-        panel.innerHTML = `
-            <div class="jutsu-topbar" style="margin-bottom:6px;">
-                <span style="font-size:11px;font-weight:800;color:#c0550a;">${skill.icon} ${skill.name} — Nv.${level}</span>
-                <div style="display:flex;align-items:center;gap:6px;">
-                    <span class="jutsu-gold">🪙 ${getGold()}</span>
-                    <button class="jutsu-close" id="jutsu-detail-close-btn" type="button">↩ Volver</button>
+        content.innerHTML = `
+            <div class="jv2-compare-row">
+                <div class="jv2-cbox">
+                    <div class="jv2-cbox-label">Ahora (Lv${level})</div>
+                    ${skill.labels.map((label, index) => `<div class="jv2-cstat">${skill.icons[index]} ${label}: <b>${fmt(current[index])}</b></div>`).join('')}
+                </div>
+                <div class="jv2-c-arrow">→</div>
+                <div class="jv2-cbox">
+                    <div class="jv2-cbox-label">${maxed ? '✓ MAX' : `Lv${level + 1}`}</div>
+                    ${maxed
+                        ? '<div style="font-size:9px;color:#41B900;text-align:center;margin-top:10px">¡NIVEL MÁXIMO!</div>'
+                        : skill.labels.map((label, index) => `<div class="jv2-cstat${next[index] !== current[index] ? ' better' : ''}">${skill.icons[index]} ${label}: <b>${fmt(next[index])}</b></div>`).join('')}
                 </div>
             </div>
-            <div class="jutsu-compare-grid">
-                <div class="jutsu-compare-box">
-                    <div class="jutsu-compare-label">⬛ Ahora</div>
-                    <div class="jutsu-compare-stat">${currentHtml}</div>
-                </div>
-                <div class="jutsu-compare-box next">
-                    <div class="jutsu-compare-label">🟩 Siguiente</div>
-                    <div class="jutsu-compare-stat">${nextHtml}</div>
-                </div>
-            </div>
-            <div class="jutsu-action-row">
-                <button class="jutsu-btn jutsu-btn-upgrade" id="jutsu-upgrade-btn" ${canAfford ? '' : 'disabled'}>${isMax ? '⭐ MAX' : `⬆ Mejorar 🪙${cost}`}</button>
-                <button class="jutsu-btn jutsu-btn-equip ${equipped ? 'unequip' : ''}" id="jutsu-equip-btn">${equipped ? '❌ Quitar' : '✅ Equipar'}</button>
-            </div>
-            <div class="jutsu-footer-note">
-                Las estadísticas de Jutsus <strong>no se aplican al equiparlas</strong>. Solo se activan durante combate, cada turno vuelve a revisar su probabilidad, consumen MP al activarse y sus efectos se limpian al terminar la pelea.
-            </div>
-        `;
+            <div class="jv2-up-actions">
+                <button class="jv2-btn jv2-btn-upgrade ${canBuy && !maxed ? '' : 'off'}" data-role="btn-upgrade">${maxed ? 'MAX ✓' : `MEJORAR 🪙${price}`}</button>
+                <button class="jv2-btn jv2-btn-equip ${equipped ? 'unequip' : ''}" data-role="btn-equip">${equipped ? '⬆️ QUITAR' : '⬇️ EQUIPAR'}</button>
+            </div>`;
 
-        const detailCloseBtn = document.getElementById('jutsu-detail-close-btn');
-        const upgradeBtn = document.getElementById('jutsu-upgrade-btn');
-        const equipBtn = document.getElementById('jutsu-equip-btn');
-        if (detailCloseBtn) detailCloseBtn.addEventListener('click', clearSelection);
-        if (upgradeBtn) upgradeBtn.addEventListener('click', () => upgradeSkill(skill.id));
-        if (equipBtn) equipBtn.addEventListener('click', () => {
-            if (equipped) {
-                unequipSkill(slotIndex);
-            } else {
-                equipSkill(skill.id);
-            }
+        const upgradeBtn = content.querySelector('[data-role="btn-upgrade"]');
+        const equipBtn = content.querySelector('[data-role="btn-equip"]');
+        if (upgradeBtn) {
+            upgradeBtn.addEventListener('click', () => {
+                if (maxed || !canBuy) return;
+                upgradeSkill(skill, data, root);
+            });
+        }
+        if (equipBtn) {
+            equipBtn.addEventListener('click', () => toggleEquipSkill(skill, data, root));
+        }
+    }
+
+    function renderGlossary(root) {
+        const modalBody = root.querySelector('[data-role="modal-body"]');
+        modalBody.innerHTML = SKILLS.map((skill) => `
+            <div class="jv2-g-item">
+                <div class="jv2-g-name">${skill.icon} ${skill.name}</div>
+                <div class="jv2-g-desc">${skill.desc}</div>
+                <div class="jv2-g-dur">⏱ ${skill.dur} &nbsp;|&nbsp; ${skill.labels.join(', ')}</div>
+            </div>`).join('');
+    }
+
+    function refresh(root) {
+        const data = getData();
+        renderSlots(data, root);
+        renderList(data, root);
+        renderUpgrade(data, root);
+        renderGlossary(root);
+    }
+
+    function buildUi() {
+        const container = document.getElementById(CONTAINER_ID);
+        if (!container) return null;
+        if (container.dataset.initialized === 'true') return container;
+
+        container.innerHTML = `
+            <div class="jv2-shell">
+                <button class="jv2-close" data-role="close">✕</button>
+                <div class="jv2-header">
+                    <div class="jv2-slots-row" data-role="slots-row"></div>
+                    <button class="jv2-info-btn" data-role="open-modal">?</button>
+                </div>
+                <div class="jv2-library">
+                    <div class="jv2-lib-title">⚔️ Biblioteca de Técnicas</div>
+                    <div class="jv2-skill-list" data-role="skill-list"></div>
+                </div>
+                <div class="jv2-upgrade-panel">
+                    <div class="jv2-up-title">🔮 Sistema de Evolución</div>
+                    <div class="jv2-gold" data-role="gold"></div>
+                    <div data-role="up-content"><div class="jv2-up-placeholder">← Selecciona una habilidad</div></div>
+                </div>
+                <div class="jv2-modal-ov" data-role="modal-ov">
+                    <div class="jv2-modal">
+                        <div class="jv2-modal-hdr">📜 GLOSARIO DE ATRIBUTOS <button class="jv2-modal-close" data-role="close-modal">✕</button></div>
+                        <div class="jv2-modal-body" data-role="modal-body"></div>
+                    </div>
+                </div>
+            </div>`;
+
+        const modal = container.querySelector('[data-role="modal-ov"]');
+        container.querySelector('[data-role="close"]').addEventListener('click', closeJutsus);
+        container.querySelector('[data-role="open-modal"]').addEventListener('click', () => modal.classList.add('open'));
+        container.querySelector('[data-role="close-modal"]').addEventListener('click', () => modal.classList.remove('open'));
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) modal.classList.remove('open');
         });
-    }
 
-    function renderGlossary() {
-        const glossary = document.getElementById('jutsu-glossary');
-        if (!glossary) return;
-        glossary.innerHTML = SKILLS.map((skill) => `
-            <div class="jutsu-glossary-item">
-                <strong>${skill.icon} ${skill.name}</strong>
-                <p>${skill.desc}</p>
-                <p>⏱ Duración funcional: ${skill.dur}. Probabilidad y MP suben por nivel; el juego lanza la tirada en cada turno.</p>
-            </div>
-        `).join('');
-    }
-
-    function renderPrepMode() {
-        const shell = document.getElementById('jutsu-shell-root');
-        const toggleBtn = document.getElementById('jutsu-prep-toggle-btn');
-        if (shell) shell.classList.toggle('prep-only', state.prepMode);
-        if (toggleBtn) {
-            toggleBtn.classList.toggle('active', state.prepMode);
-            toggleBtn.textContent = state.prepMode ? '↩' : '?';
-            toggleBtn.title = state.prepMode ? 'Volver al panel completo de Jutsus' : 'Mostrar solo Preparación Shinobi';
-            toggleBtn.setAttribute('aria-label', toggleBtn.title);
-        }
-    }
-
-    function renderAll() {
-        renderSlots();
-        renderSkillList();
-        renderUpgradePanel();
-        renderGlossary();
-        renderPrepMode();
-    }
-
-    function selectSkill(id) {
-        saveSelection(id);
-        savePrepMode(true);
-        renderSkillList();
-        renderUpgradePanel();
-        renderPrepMode();
-    }
-
-    function togglePreparationFocus() {
-        savePrepMode(!state.prepMode);
-        renderPrepMode();
-        if (typeof window.guardarPartida === 'function') window.guardarPartida({ silent: true });
-    }
-
-    function upgradeSkill(id) {
-        const data = ensureCharacterData();
-        const level = getLevel(id);
-        const skill = getSkillById(id);
-        if (!skill) return;
-        if (level >= skill.levels.length) {
-            showToast('⭐ Esta técnica ya está al máximo.');
-            return;
-        }
-        const cost = upgradeCost(level);
-        if (getGold() < cost) {
-            showToast('❌ No tienes suficiente oro para mejorar este Jutsu.');
-            return;
-        }
-        if (window.personaje) {
-            window.personaje.oro = Math.max(0, getGold() - cost);
-        }
-        data.skillLevels[id] = level + 1;
-        clearSelection();
-        if (typeof window.actualizarPanelVisible === 'function') window.actualizarPanelVisible();
-        if (typeof window.guardarPartida === 'function') window.guardarPartida({ silent: true });
-        showToast(`⬆️ ${skill.name} subió a nivel ${data.skillLevels[id]}.`);
-    }
-
-    function equipSkill(id) {
-        const data = ensureCharacterData();
-        if (data.slots.includes(id)) {
-            showToast('⚠️ Ese Jutsu ya está equipado.');
-            return;
-        }
-        const freeIndex = data.slots.indexOf(null);
-        if (freeIndex === -1) {
-            showToast('⚠️ No hay slots libres. Quita un Jutsu primero.');
-            return;
-        }
-        data.slots[freeIndex] = id;
-        clearSelection();
-        if (typeof window.guardarPartida === 'function') window.guardarPartida({ silent: true });
-        showToast(`✅ ${getSkillById(id)?.name || 'Jutsu'} equipado.`);
-    }
-
-    function unequipSkill(index) {
-        const data = ensureCharacterData();
-        const skillId = data.slots[index];
-        if (skillId === null || typeof skillId === 'undefined') return;
-        data.slots[index] = null;
-        renderAll();
-        if (typeof window.guardarPartida === 'function') window.guardarPartida({ silent: true });
-        showToast(`❌ ${getSkillById(skillId)?.name || 'Jutsu'} retirado.`);
-    }
-
-    function onSlotClick(index) {
-        const data = ensureCharacterData();
-        if (data.slots[index] !== null) {
-            unequipSkill(index);
-        }
-    }
-
-    function buildShell() {
-        return `
-            <div class="jutsu-shell" id="jutsu-shell-root">
-                <div class="jutsu-main-grid">
-                    <div class="jutsu-card">
-                        <div class="jutsu-topbar">
-                            <div class="jutsu-title">🔥 Técnicas equipadas</div>
-                            <button class="jutsu-close" id="jutsu-close-btn">✖ Cerrar</button>
-                        </div>
-                        <div class="jutsu-slots-row">
-                            <div class="jutsu-slot" id="jutsu-slot-0"></div>
-                            <div class="jutsu-slot" id="jutsu-slot-1"></div>
-                            <div class="jutsu-slot" id="jutsu-slot-2"></div>
-                        </div>
-                    </div>
-                    <div class="jutsu-card" style="flex:1;display:flex;flex-direction:column;min-height:0;">
-                        <div class="jutsu-title">📜 Biblioteca de Técnicas</div>
-                        <div id="jutsu-skills-list" class="jutsu-list"></div>
-                    </div>
-                </div>
-                <div class="jutsu-card jutsu-prep-card">
-                    <div class="jutsu-topbar" style="margin-bottom:7px;">
-                        <div class="jutsu-title" style="margin-bottom:0;">⚙ Preparación Shinobi</div>
-                        <button class="jutsu-close" id="jutsu-close-btn-secondary" type="button">✖ Cerrar</button>
-                    </div>
-                    <div id="jutsu-upgrade-panel"></div>
-                    <div id="jutsu-glossary" class="jutsu-glossary"></div>
-                    <div class="jutsu-prep-toggle-wrap">
-                        <button class="jutsu-prep-toggle" id="jutsu-prep-toggle-btn" type="button" title="Mostrar solo Preparación Shinobi">?</button>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-
-    function bindUI() {
-        const closeBtn = document.getElementById('jutsu-close-btn');
-        const closeBtnSecondary = document.getElementById('jutsu-close-btn-secondary');
-        if (closeBtn) closeBtn.addEventListener('click', closeJutsus);
-        if (closeBtnSecondary) closeBtnSecondary.addEventListener('click', closeJutsus);
-        const prepToggleBtn = document.getElementById('jutsu-prep-toggle-btn');
-        if (prepToggleBtn) prepToggleBtn.addEventListener('click', togglePreparationFocus);
-        [0, 1, 2].forEach((index) => {
-            const slot = document.getElementById(`jutsu-slot-${index}`);
-            if (slot) slot.addEventListener('click', () => onSlotClick(index));
-        });
-    }
-
-    function ensureContainer() {
-        injectStyles();
-        let container = getContainer();
-        if (container) return container;
-        const centerArea = document.querySelector('.center-area');
-        if (!centerArea) return null;
-        if (getComputedStyle(centerArea).position === 'static') {
-            centerArea.style.position = 'relative';
-        }
-        container = document.createElement('div');
-        container.id = CONTAINER_ID;
-        centerArea.appendChild(container);
+        container.dataset.initialized = 'true';
         return container;
     }
 
-    function init() {
-        const container = ensureContainer();
-        if (!container) return false;
-        syncCharacterReference();
-        container.innerHTML = buildShell();
-        bindUI();
-        renderAll();
+    function ensureInitialized() {
+        injectStyles();
+        const container = buildUi();
+        if (!container) return null;
         state.initialized = true;
-        return true;
+        refresh(container);
+        return container;
     }
 
-    function hideBaseContent() {
-        if (typeof window.hideMissionContent === 'function') {
-            window.hideMissionContent();
-            return;
-        }
-        const content = document.querySelector('.mission-content');
-        if (content) content.style.display = 'none';
+    function hideMissionContent() {
+        const missionContent = document.querySelector('.mission-content');
+        if (missionContent) missionContent.style.display = 'none';
     }
 
-    function showBaseContent() {
-        if (typeof window.showMissionContent === 'function') {
-            window.showMissionContent();
-            return;
-        }
-        const content = document.querySelector('.mission-content');
-        if (content) content.style.display = 'flex';
-    }
-
-    function hideOtherPanels() {
-        if (typeof window.closeHeroEquipment === 'function') window.closeHeroEquipment();
-        if (typeof window.closeMisiones === 'function') window.closeMisiones();
-        if (typeof window.closeArbol === 'function') window.closeArbol();
-        if (typeof window.cerrarAjustes === 'function') window.cerrarAjustes();
-        if (typeof window.closeBatallaNinja === 'function') window.closeBatallaNinja();
-
-        ['hero-equipment-container', 'missions-overlay-container', 'arbol-overlay-container', 'ajustes-overlay-container', 'batalla-ninja-container'].forEach((id) => {
-            const panel = document.getElementById(id);
-            if (!panel) return;
-            panel.style.display = id === 'ajustes-overlay-container' ? 'none' : 'none';
-            panel.classList.remove('active');
-        });
+    function showMissionContent() {
+        const missionContent = document.querySelector('.mission-content');
+        if (missionContent) missionContent.style.display = 'flex';
     }
 
     function toggleJutsus(event) {
@@ -708,359 +487,95 @@
             event.preventDefault();
             event.stopPropagation();
         }
-        if (!state.initialized) init();
-        const container = getContainer();
+        const container = ensureInitialized();
         if (!container) return;
-        const isVisible = container.classList.contains('active');
-        if (typeof window.closeAllPanels === 'function') {
-            window.closeAllPanels();
-        }
-        if (isVisible) {
+        const visible = container.classList.contains('active');
+        if (visible) {
             closeJutsus();
             return;
         }
-        hideOtherPanels();
-        syncCharacterReference();
-        renderAll();
-        hideBaseContent();
+        if (typeof window.closeHeroEquipment === 'function') window.closeHeroEquipment();
+        if (typeof window.closeMisiones === 'function') window.closeMisiones();
+        if (typeof window.closeArbol === 'function') window.closeArbol();
+        if (typeof window.closeBatallaNinja === 'function') window.closeBatallaNinja();
+        const ajustes = document.getElementById('ajustes-overlay-container');
+        if (ajustes) ajustes.style.display = 'none';
+        hideMissionContent();
+        refresh(container);
         container.classList.add('active');
-        container.style.display = 'block';
+        container.style.display = 'flex';
     }
 
     function closeJutsus() {
-        const container = getContainer();
+        const container = document.getElementById(CONTAINER_ID);
         if (!container) return;
         container.classList.remove('active');
         container.style.display = 'none';
-        showBaseContent();
+        showMissionContent();
     }
 
-    function getEquippedSkills() {
-        const data = ensureCharacterData();
-        return data.slots.map((id) => getSkillById(id)).filter(Boolean);
+    function getPersistentData() {
+        const data = getData();
+        return {
+            slots: data.slots.slice(0, 3),
+            skillLevels: { ...data.skillLevels },
+            selectedId: data.selectedId
+        };
     }
 
-    function consumeMp(amount) {
-        if (!window.personaje) return false;
-        const cost = Math.max(0, Math.round(amount));
-        if ((window.personaje.mp || 0) < cost) return false;
-        window.personaje.mp -= cost;
-        if (typeof window.updateBars === 'function') window.updateBars();
-        return true;
-    }
+    function restoreFromSave(saved) {
+        const base = getData();
+        const slots = Array.isArray(saved?.slots) ? saved.slots.slice(0, 3) : base.slots;
+        const skillLevels = baseLevels();
+        SKILLS.forEach((skill) => {
+            const rawLevel = Number(saved?.skillLevels?.[skill.id] || 1);
+            skillLevels[skill.id] = Math.min(Math.max(1, rawLevel), 10);
+        });
+        const restored = normalizeData({
+            slots,
+            skillLevels,
+            selectedId: saved?.selectedId
+        });
 
-    function healPlayer(amount) {
-        if (!window.personaje || amount <= 0) return 0;
-        const before = window.personaje.hp || 0;
-        window.personaje.hp = Math.min(window.personaje.hpMax || before, before + amount);
-        if (typeof window.updateBars === 'function') window.updateBars();
-        return Math.max(0, (window.personaje.hp || 0) - before);
-    }
+        state.fallbackData = cloneData(restored);
+        if (window.personaje) {
+            window.personaje.jutsus = restored;
+        }
 
-    function getEnemyRatios(enemy) {
-        const hp = Math.max(1, Number(enemy?.hp || enemy?.currentHp || 1));
-        const maxHp = Math.max(hp, Number(enemy?.maxHp || enemy?.stats?.hp || hp));
-        return { hp, maxHp };
+        const container = document.getElementById(CONTAINER_ID);
+        if (container && container.dataset.initialized === 'true') refresh(container);
     }
 
     function createBattleState(source) {
-        const id = `${source || 'battle'}-${Date.now()}-${++state.battleCounter}`;
-        const battleState = {
-            id,
-            source: source || 'general',
-            turn: 0,
-            playerTurnEffects: null,
-            enemyTurnEffects: null
-        };
-        state.activeBattles.set(id, battleState);
-        return battleState;
+        return { source, createdAt: Date.now(), equipped: getPersistentData().slots.filter((id) => id !== null) };
     }
 
-    function resolveEffects(skill, stats, phase, enemy) {
-        const [primary, secondary, tertiary] = stats;
-        const enemyRatios = getEnemyRatios(enemy);
-        const effects = {
-            player: {
-                attackBonus: 0,
-                damageMultiplier: 1,
-                extraHitPercent: 0,
-                critChanceBonus: 0,
-                defenseIgnorePercent: 0,
-                directDamage: 0,
-                lifestealPercent: 0,
-                executeThreshold: 0,
-                guaranteedCrit: false,
-                logs: []
-            },
-            enemy: {
-                skipChance: 0,
-                damageReductionPercent: 0,
-                reflectPercent: 0,
-                healFlat: 0,
-                shield: 0,
-                evadeBonus: 0,
-                enemyAttackReductionPercent: 0,
-                logs: []
-            }
-        };
-
-        switch (skill.id) {
-            case 0:
-                if (phase === 'player') {
-                    effects.player.defenseIgnorePercent += primary;
-                    effects.player.directDamage += Math.ceil(enemyRatios.maxHp * (tertiary / 100));
-                    effects.player.logs.push(`${skill.icon} ${skill.name} reduce la defensa rival y añade quemadura.`);
-                } else {
-                    effects.enemy.evadeBonus += secondary;
-                    effects.enemy.logs.push(`${skill.icon} ${skill.name} mejora tu evasión este turno.`);
-                }
-                break;
-            case 1:
-                if (phase === 'player') {
-                    effects.player.critChanceBonus += primary;
-                    effects.player.directDamage += Math.ceil(enemyRatios.maxHp * (tertiary / 100));
-                    effects.player.logs.push(`${skill.icon} ${skill.name} potencia tu crítico y deja veneno.`);
-                } else {
-                    effects.enemy.damageReductionPercent += secondary;
-                    effects.enemy.logs.push(`${skill.icon} ${skill.name} reduce el daño recibido este turno.`);
-                }
-                break;
-            case 2:
-                if (phase === 'player') {
-                    effects.player.attackBonus += Math.ceil(primary);
-                    effects.player.directDamage += Math.ceil(enemyRatios.maxHp * (tertiary / 100));
-                    effects.player.logs.push(`${skill.icon} ${skill.name} mejora el golpe y causa hemorragia.`);
-                } else {
-                    effects.enemy.healFlat += Math.max(1, Math.ceil((window.personaje?.hpMax || 100) * (secondary / 100)));
-                    effects.enemy.logs.push(`${skill.icon} ${skill.name} regenera vida para este intercambio.`);
-                }
-                break;
-            case 3:
-                if (phase === 'player') {
-                    effects.player.lifestealPercent += primary;
-                    effects.player.logs.push(`${skill.icon} ${skill.name} activó drenaje de vida.`);
-                } else {
-                    effects.enemy.reflectPercent += secondary;
-                    effects.enemy.skipChance += tertiary;
-                    effects.enemy.logs.push(`${skill.icon} ${skill.name} puede congelar o reflejar daño.`);
-                }
-                break;
-            case 4:
-                if (phase === 'player') {
-                    effects.player.directDamage += Math.ceil(enemyRatios.maxHp * (primary / 100));
-                    effects.player.logs.push(`${skill.icon} ${skill.name} agrega hemorragia sísmica.`);
-                } else {
-                    effects.enemy.shield += Math.ceil((window.personaje?.hpMax || 100) * (secondary / 100));
-                    effects.enemy.skipChance += tertiary;
-                    effects.enemy.logs.push(`${skill.icon} ${skill.name} genera escudo y puede aturdir.`);
-                }
-                break;
-            case 5:
-                if (phase === 'player') {
-                    effects.player.extraHitPercent += primary;
-                    effects.player.logs.push(`${skill.icon} ${skill.name} prepara un segundo impacto.`);
-                } else {
-                    effects.enemy.damageReductionPercent += secondary;
-                    effects.enemy.enemyAttackReductionPercent += tertiary;
-                    effects.enemy.logs.push(`${skill.icon} ${skill.name} ralentiza al enemigo y mejora tu resistencia.`);
-                }
-                break;
-            case 6:
-                if (phase === 'player') {
-                    effects.player.attackBonus += Math.ceil(primary);
-                    effects.player.executeThreshold += tertiary;
-                    effects.player.logs.push(`${skill.icon} ${skill.name} busca ejecutar al enemigo debilitado.`);
-                } else {
-                    effects.enemy.damageReductionPercent += Math.min(secondary * 10, 40);
-                    effects.enemy.logs.push(`${skill.icon} ${skill.name} fortalece tu supervivencia momentánea.`);
-                }
-                break;
-            case 7:
-                if (phase === 'player') {
-                    effects.player.defenseIgnorePercent += primary;
-                    effects.player.critChanceBonus += secondary;
-                    effects.player.directDamage += Math.ceil(enemyRatios.maxHp * (tertiary / 100));
-                    effects.player.logs.push(`${skill.icon} ${skill.name} desata una explosión elemental.`);
-                } else {
-                    effects.enemy.evadeBonus += secondary;
-                    effects.enemy.enemyAttackReductionPercent += Math.ceil(primary / 2);
-                    effects.enemy.logs.push(`${skill.icon} ${skill.name} distorsiona el turno enemigo.`);
-                }
-                break;
-            default:
-                break;
-        }
-
-        return effects[phase];
-    }
-
-    function getEmptyPhaseEffects(phase) {
-        return phase === 'player'
-            ? { attackBonus: 0, damageMultiplier: 1, extraHitPercent: 0, critChanceBonus: 0, defenseIgnorePercent: 0, directDamage: 0, lifestealPercent: 0, executeThreshold: 0, guaranteedCrit: false, logs: [] }
-            : { skipChance: 0, damageReductionPercent: 0, reflectPercent: 0, healFlat: 0, shield: 0, evadeBonus: 0, enemyAttackReductionPercent: 0, logs: [] };
-    }
-
-    function prepareTurn(battleState, phase, enemy, logFn) {
-        const targetBattle = battleState || createBattleState('general');
-        targetBattle.turn += 1;
-        const effects = getEmptyPhaseEffects(phase);
-        getEquippedSkills().forEach((skill) => {
-            const stats = getSkillStats(skill.id);
-            if (!stats) return;
-            const procChance = stats[3];
-            const mpCost = stats[4];
-            if (Math.random() * 100 > procChance) return;
-            if (!consumeMp(mpCost)) {
-                if (typeof logFn === 'function') logFn(`🔵 MP insuficiente para activar ${skill.name}.`);
-                return;
-            }
-            const resolved = resolveEffects(skill, stats, phase, enemy);
-            Object.keys(resolved).forEach((key) => {
-                if (key === 'logs') return;
-                if (typeof effects[key] === 'number') {
-                    effects[key] += resolved[key];
-                } else if (typeof effects[key] === 'boolean') {
-                    effects[key] = effects[key] || resolved[key];
-                }
-            });
-            if (Array.isArray(resolved.logs)) {
-                resolved.logs.forEach((line) => {
-                    if (typeof logFn === 'function') logFn(line);
-                    effects.logs.push(line);
-                });
-            }
-        });
-
-        if (phase === 'player') {
-            targetBattle.playerTurnEffects = effects;
-        } else {
-            targetBattle.enemyTurnEffects = effects;
-            if (effects.healFlat > 0) {
-                const healed = healPlayer(effects.healFlat);
-                if (healed > 0 && typeof logFn === 'function') {
-                    logFn(`💚 Recuperas ${healed} HP por efecto de Jutsu.`);
-                }
-            }
-        }
-        return effects;
-    }
-
-    function applyPlayerDamage(baseDamage, enemy, battleState, logFn) {
-        const effects = battleState?.playerTurnEffects || getEmptyPhaseEffects('player');
-        const enemyDefense = Math.max(0, Number(enemy?.def || enemy?.stats?.def || 0));
-        const defenseReduction = enemyDefense * (effects.defenseIgnorePercent / 100);
-        const extraHit = Math.floor(baseDamage * (effects.extraHitPercent / 100));
-        let finalDamage = Math.max(1, Math.floor(baseDamage + effects.attackBonus + extraHit + effects.directDamage + defenseReduction));
-
-        const ratios = getEnemyRatios(enemy);
-        if (effects.executeThreshold > 0 && (ratios.hp / ratios.maxHp) * 100 <= effects.executeThreshold) {
-            finalDamage = Math.max(finalDamage, ratios.hp);
-            if (typeof logFn === 'function') logFn('💀 Marca del Verdugo ejecuta al objetivo debilitado.');
-        }
-
-        if (effects.lifestealPercent > 0) {
-            const healAmount = Math.max(1, Math.floor(finalDamage * (effects.lifestealPercent / 100)));
-            const healed = healPlayer(healAmount);
-            if (healed > 0 && typeof logFn === 'function') logFn(`💧 Robas ${healed} HP con tu Jutsu.`);
-        }
-
-        return finalDamage;
-    }
-
-    function modifyPlayerCritChance(baseCritChance, battleState) {
-        const effects = battleState?.playerTurnEffects || getEmptyPhaseEffects('player');
-        return baseCritChance + effects.critChanceBonus;
-    }
-
-    function beforeEnemyAttack(battleState, enemy, logFn) {
-        const effects = battleState?.enemyTurnEffects || getEmptyPhaseEffects('enemy');
-        const finalSkipChance = Math.max(0, effects.skipChance);
-        if (finalSkipChance > 0 && Math.random() * 100 <= finalSkipChance) {
-            if (typeof logFn === 'function') logFn(`❄️ ${enemy?.name || enemy?.nombre || 'El enemigo'} quedó afectado por un Jutsu y perdió el turno.`);
-            return { skip: true, damageReductionPercent: effects.damageReductionPercent, enemyAttackReductionPercent: effects.enemyAttackReductionPercent };
-        }
-        return { skip: false, damageReductionPercent: effects.damageReductionPercent, enemyAttackReductionPercent: effects.enemyAttackReductionPercent };
-    }
-
-    function applyIncomingDamage(baseDamage, battleState, enemy, logFn) {
-        const effects = battleState?.enemyTurnEffects || getEmptyPhaseEffects('enemy');
-        let finalDamage = Math.max(1, Math.floor(baseDamage * (1 - (effects.damageReductionPercent / 100))));
-
-        if (effects.shield > 0) {
-            const absorbed = Math.min(effects.shield, finalDamage);
-            finalDamage -= absorbed;
-            if (typeof logFn === 'function' && absorbed > 0) logFn(`🛡️ Un escudo de Jutsu absorbió ${absorbed} daño.`);
-        }
-
-        if (effects.reflectPercent > 0 && enemy) {
-            const reflected = Math.max(1, Math.floor(finalDamage * (effects.reflectPercent / 100)));
-            if (typeof enemy.currentHp === 'number') enemy.currentHp = Math.max(0, enemy.currentHp - reflected);
-            else if (typeof enemy.hp === 'number') enemy.hp = Math.max(0, enemy.hp - reflected);
-            if (typeof logFn === 'function') logFn(`↩️ Reflejas ${reflected} daño al enemigo.`);
-        }
-
-        return Math.max(0, finalDamage);
-    }
-
-    function modifyEvasion(baseEvasion, battleState) {
-        const effects = battleState?.enemyTurnEffects || getEmptyPhaseEffects('enemy');
-        return baseEvasion + effects.evadeBonus;
-    }
-
-    function modifyEnemyDamage(baseDamage, battleState) {
-        const effects = battleState?.enemyTurnEffects || getEmptyPhaseEffects('enemy');
-        return Math.max(1, Math.floor(baseDamage * (1 - (effects.enemyAttackReductionPercent / 100))));
-    }
-
-    function endBattle(battleState) {
-        if (!battleState) return;
-        battleState.playerTurnEffects = null;
-        battleState.enemyTurnEffects = null;
-        state.activeBattles.delete(battleState.id);
-        if (typeof window.updateBars === 'function') window.updateBars();
-    }
-
-    function restoreFromSave(data) {
-        syncCharacterReference();
-        if (!data || typeof data !== 'object') return;
-        window.personaje.jutsus = {
-            slots: Array.isArray(data.slots) ? data.slots.slice(0, 3).concat([null, null, null]).slice(0, 3) : [null, null, null],
-            skillLevels: {},
-            selectedId: typeof data.selectedId === 'number' ? data.selectedId : null
-        };
-        SKILLS.forEach((skill) => {
-            const savedLevel = Number(data.skillLevels?.[skill.id] || 1);
-            window.personaje.jutsus.skillLevels[skill.id] = Math.min(Math.max(1, savedLevel), skill.levels.length);
-        });
-        state.selectedId = window.personaje.jutsus.selectedId;
-        if (state.initialized) renderAll();
-    }
+    function noopReturnFirst(first) { return first; }
 
     window.jutsusSystem = {
-        init,
+        init: ensureInitialized,
         toggle: toggleJutsus,
         close: closeJutsus,
-        render: renderAll,
-        createBattleState,
-        prepareTurn,
-        applyPlayerDamage,
-        modifyPlayerCritChance,
-        beforeEnemyAttack,
-        applyIncomingDamage,
-        modifyEvasion,
-        modifyEnemyDamage,
-        endBattle,
+        getPersistentData,
         restoreFromSave,
-        syncCharacterReference,
-        getPersistentData: () => JSON.parse(JSON.stringify(ensureCharacterData()))
+        createBattleState,
+        prepareTurn: function () {},
+        modifyPlayerCritChance: noopReturnFirst,
+        applyPlayerDamage: noopReturnFirst,
+        modifyEvasion: noopReturnFirst,
+        beforeEnemyAttack: function () { return { skip: false, blocked: false }; },
+        modifyEnemyDamage: noopReturnFirst,
+        applyIncomingDamage: noopReturnFirst,
+        endBattle: function () {},
+        getEquippedSkills: function () { return getPersistentData().slots.map((id) => getSkillById(id)).filter(Boolean); }
     };
 
     window.toggleJutsus = toggleJutsus;
     window.closeJutsus = closeJutsus;
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init, { once: true });
+        document.addEventListener('DOMContentLoaded', ensureInitialized);
     } else {
-        init();
+        ensureInitialized();
     }
 })();

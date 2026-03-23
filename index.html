@@ -87,18 +87,22 @@
 
   <!-- ─── BLOQUE CENTRAL  :  VENTANA DE ACCIÓN ─── -->
   <section id="hud-center">
+    <div id="hud-center-inner">
+      <div class="hud-view active" id="idlePanel">
+        <!-- Misión activa -->
+        <div class="mission-card">
+          <div class="mission-title">🎯 MISIÓN A: Eliminar a Kabuto</div>
+          <div class="mission-desc">Derrota 30 enemigos en la Zona Oculta · Tiempo: 18 min restantes</div>
+          <div class="mission-prog-track">
+            <div class="mission-prog-fill" id="missionProg" style="width:63%"></div>
+          </div>
+        </div>
 
-    <!-- Misión activa -->
-    <div class="mission-card">
-      <div class="mission-title">🎯 MISIÓN A: Eliminar a Kabuto</div>
-      <div class="mission-desc">Derrota 30 enemigos en la Zona Oculta · Tiempo: 18 min restantes</div>
-      <div class="mission-prog-track">
-        <div class="mission-prog-fill" id="missionProg" style="width:63%"></div>
+        <!-- Feed de combate idle -->
+        <div class="combat-feed" id="combatFeed"></div>
       </div>
+      <div class="hud-view" id="heroPanel"></div>
     </div>
-
-    <!-- Feed de combate idle -->
-    <div class="combat-feed" id="combatFeed"></div>
   </section>
 
   <!-- ─── BLOQUE INFERIOR  :  NAVEGACIÓN ─── -->
@@ -158,6 +162,9 @@
 </div>
 
 <script src="data.js"></script>
+<script src="equip-data.js"></script>
+<script src="equip-logic.js"></script>
+<script src="equip-ui.js"></script>
 <script src="ui.js"></script>
 <script src="engine.js"></script>
 </body>

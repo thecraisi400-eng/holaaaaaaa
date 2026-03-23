@@ -74,7 +74,9 @@
   }
 
   function init() {
+    window.equipUI?.init?.(state);
     window.gameUI.bindNavigation(state, sections);
+    window.gameUI.updateBars(state);
 
     for (let i = 0; i < 5; i += 1) {
       addFeedLine();

@@ -106,24 +106,31 @@
                 text-transform: uppercase; flex-shrink: 0;
             }
             .jv2-skill-list {
-                overflow-y: auto; flex: 1; padding: 5px 7px;
-                display: flex; flex-direction: column; gap: 4px;
-                scroll-behavior: smooth;
+                overflow-y: auto; flex: 1; min-height: 0; padding: 5px 7px;
+                display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px;
+                align-content: start; scroll-behavior: smooth;
             }
             .jv2-skill-list::-webkit-scrollbar, .jv2-modal-body::-webkit-scrollbar { width: 4px; }
             .jv2-skill-list::-webkit-scrollbar-thumb { background: #B91C00; border-radius: 2px; }
             .jv2-skill-card {
                 background: rgba(185,28,0,.08); border: 1.5px solid rgba(185,28,0,.25);
-                border-radius: 7px; padding: 6px 8px; cursor: pointer;
+                border-radius: 7px; padding: 5px 6px; cursor: pointer;
                 transition: border-color .2s, background .2s; flex-shrink: 0; color: #fff;
+                display: flex; flex-direction: column; gap: 4px; min-width: 0;
             }
             .jv2-skill-card:hover { border-color: #B91C00; background: rgba(185,28,0,.18); }
             .jv2-skill-card.selected { border-color: #41B900; background: rgba(65,185,0,.1); }
             .jv2-skill-card.equipped { border-left: 3px solid #41B900; }
-            .jv2-sc-name { font-size: 10px; font-weight: bold; color: #fff; margin-bottom: 3px; display: flex; align-items: center; gap: 5px; }
+            .jv2-sc-name {
+                font-size: 8.5px; font-weight: bold; color: #fff; line-height: 1.2;
+                display: flex; align-items: flex-start; gap: 4px; flex-wrap: wrap;
+            }
             .jv2-eq-badge { font-size: 6.5px; background: #41B900; color: #000; border-radius: 3px; padding: 1px 3px; font-weight: bold; }
-            .jv2-sc-stats { display: flex; gap: 6px; flex-wrap: wrap; }
-            .jv2-stat { font-size: 8px; color: #bbb; display: flex; align-items: center; gap: 2px; white-space: nowrap; }
+            .jv2-sc-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px 4px; }
+            .jv2-stat {
+                font-size: 7px; color: #bbb; display: flex; align-items: center; gap: 2px;
+                min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            }
             .jv2-upgrade-panel {
                 width: 100%; background: rgba(65,185,0,.07);
                 border: 1.5px solid #41B900; border-radius: 10px;

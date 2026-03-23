@@ -595,11 +595,15 @@
         if (typeof window.closeHeroEquipment === 'function') window.closeHeroEquipment();
         if (typeof window.closeMisiones === 'function') window.closeMisiones();
         if (typeof window.closeArbol === 'function') window.closeArbol();
+        if (typeof window.closeJutsus === 'function') window.closeJutsus();
         if (typeof window.cerrarAjustes === 'function') window.cerrarAjustes();
 
-        ['hero-equipment-container', 'missions-overlay-container', 'arbol-overlay-container'].forEach((id) => {
+        ['hero-equipment-container', 'missions-overlay-container', 'arbol-overlay-container', 'jutsus-overlay-container'].forEach((id) => {
             const panel = document.getElementById(id);
-            if (panel) panel.style.display = 'none';
+            if (panel) {
+                panel.style.display = 'none';
+                panel.classList.remove('active');
+            }
         });
     }
 
@@ -1052,6 +1056,7 @@
         stopBattle({ silent: true, preserveView: true });
         hideOtherPanels();
         hideBaseContent();
+        container.style.display = 'block';
         container.classList.add('active');
         state.currentView = 'scroll';
         render();
@@ -1064,7 +1069,10 @@
         state.currentView = 'scroll';
         state.resultMessage = '';
         const container = document.getElementById(CONTAINER_ID);
-        if (container) container.classList.remove('active');
+        if (container) {
+            container.classList.remove('active');
+            container.style.display = 'none';
+        }
         if (restoreBase) showBaseContent();
         queueSave();
     }

@@ -100,7 +100,7 @@
                 height: 100%;
                 position: absolute;
                 inset: 0;
-                z-index: 104;
+                z-index: 106;
                 border-radius: 10px;
                 overflow: hidden;
                 background: radial-gradient(circle at top, rgba(255,255,255,0.92), rgba(247,235,218,0.98));
@@ -570,7 +570,8 @@
     }
 
     function getBattleButton() {
-        return Array.from(document.querySelectorAll('.menu-btn')).find((btn) => btn.textContent.includes(BATTLE_BUTTON_LABEL));
+        return document.getElementById('menu-batalla-btn')
+            || Array.from(document.querySelectorAll('.menu-btn')).find((btn) => btn.textContent.includes(BATTLE_BUTTON_LABEL));
     }
 
     function hideBaseContent() {
@@ -1057,6 +1058,7 @@
         hideOtherPanels();
         hideBaseContent();
         container.style.display = 'block';
+        container.style.zIndex = '106';
         container.classList.add('active');
         state.currentView = 'scroll';
         render();

@@ -7,7 +7,7 @@
         slots: [null, null, null],
         skillLevels: {},
         selectedId: null,
-        prepMode: false
+        prepMode: true
     };
 
     const MP_COST_MULTIPLIER = 0.6;
@@ -33,7 +33,7 @@
     const state = {
         initialized: false,
         selectedId: null,
-        prepMode: false,
+        prepMode: true,
         battleCounter: 0,
         activeBattles: new Map()
     };
@@ -341,7 +341,7 @@
             window.personaje.jutsus.selectedId = null;
         }
         if (typeof window.personaje.jutsus.prepMode === 'undefined') {
-            window.personaje.jutsus.prepMode = false;
+            window.personaje.jutsus.prepMode = true;
         }
         state.selectedId = window.personaje.jutsus.selectedId;
         state.prepMode = Boolean(window.personaje.jutsus.prepMode);
@@ -602,7 +602,7 @@
                 <div class="jutsu-main-grid">
                     <div class="jutsu-card">
                         <div class="jutsu-topbar">
-                            <div class="jutsu-title">🔥 Sistema de Jutsus</div>
+                            <div class="jutsu-title">🔥 Técnicas equipadas</div>
                             <button class="jutsu-close" id="jutsu-close-btn">✖ Cerrar</button>
                         </div>
                         <div class="jutsu-slots-row">

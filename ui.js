@@ -3,6 +3,19 @@
   const overlayTitle = document.getElementById('overlayTitle');
   const overlayDesc = document.getElementById('overlayDesc');
   const overlayClose = document.getElementById('overlayClose');
+  const idlePanel = document.getElementById('idlePanel');
+  const heroPanel = document.getElementById('heroPanel');
+
+  function setCenterView(section) {
+    const isHero = section === 'heroe';
+    idlePanel?.classList.toggle('active', !isHero);
+    heroPanel?.classList.toggle('active', isHero);
+
+    if (isHero) {
+      overlay.classList.remove('visible');
+      window.equipUI?.render?.();
+    }
+  }
 
   function spawnParticles(x, y, type = 'chakra') {
     const container = document.getElementById('particleContainer');
@@ -64,9 +77,12 @@
       : 'linear-gradient(90deg,#2d9e55,#5de68c)';
 
     document.getElementById('missionProg').style.width = state.missionProg + '%';
+    window.equipUI?.syncFromState?.(state);
   }
 
   function bindNavigation(state, sections) {
+    setCenterView(state.activeSection);
+
     document.querySelectorAll('.nav-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const rect = btn.getBoundingClientRect();
@@ -94,9 +110,10 @@
         document.querySelectorAll('.nav-btn').forEach(button => button.classList.remove('active'));
         btn.classList.add('active');
         state.activeSection = sec;
+        setCenterView(sec);
 
         const info = sections[sec];
-        if (info) {
+        if (info && sec !== 'heroe') {
           overlayTitle.innerHTML = `${info.icon} ${info.title}`;
           overlayDesc.textContent = info.desc;
           overlay.classList.add('visible');
@@ -114,6 +131,7 @@
 
   window.gameUI = {
     bindNavigation,
+    setCenterView,
     spawnFloatText,
     spawnParticles,
     updateBars,

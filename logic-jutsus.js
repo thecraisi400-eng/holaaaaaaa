@@ -43,13 +43,12 @@
                 width: 355px;
                 max-width: 100%;
                 height: 100%;
-                max-height: 500px;
                 background: transparent;
-                display: flex;
-                flex-direction: column;
+                display: grid;
+                grid-template-rows: auto minmax(0, 1fr) auto;
                 gap: 5px;
                 overflow: hidden;
-                padding: 3px;
+                padding: 36px 3px 3px;
                 font-family: 'Segoe UI', sans-serif;
                 position: relative;
             }
@@ -71,7 +70,6 @@
                 width: 100%; background: rgba(121,0,185,.18);
                 border: 1.5px solid #7900B9; border-radius: 10px;
                 padding: 7px 9px; display: flex; align-items: center; gap: 8px; flex-shrink: 0;
-                margin-top: 24px;
             }
             .jv2-slots-row { display: flex; gap: 7px; flex: 1; }
             .jv2-slot {
@@ -99,7 +97,7 @@
                 width: 100%; background: rgba(0,0,0,.25);
                 border: 1.5px solid #B91C00; border-radius: 10px;
                 display: flex; flex-direction: column; overflow: hidden;
-                flex-shrink: 0; max-height: 180px;
+                flex: 1 1 auto; min-height: 0;
             }
             .jv2-lib-title {
                 padding: 5px 10px; font-size: 9px; font-weight: bold;
@@ -131,6 +129,7 @@
                 border: 1.5px solid #41B900; border-radius: 10px;
                 padding: 7px 9px; flex-shrink: 0;
                 display: flex; flex-direction: column; gap: 5px; color: #fff;
+                min-height: 164px;
             }
             .jv2-up-title { font-size: 8.5px; font-weight: bold; color: #41B900; letter-spacing: 1.5px; text-transform: uppercase; text-align: center; }
             .jv2-up-placeholder { text-align: center; color: #555; font-size: 9px; padding: 8px 0; }
@@ -303,6 +302,9 @@
             card.addEventListener('click', () => {
                 state.selectedId = skill.id;
                 data.selectedId = skill.id;
+                if (window.personaje?.jutsus) {
+                    window.personaje.jutsus.selectedId = skill.id;
+                }
                 refresh(root);
                 saveSilently();
             });

@@ -87,18 +87,37 @@
 
   <!-- ─── BLOQUE CENTRAL  :  VENTANA DE ACCIÓN ─── -->
   <section id="hud-center">
+    <div id="hud-center-inner">
+      <div id="centerDefault" class="center-content text-mode">
 
-    <!-- Misión activa -->
-    <div class="mission-card">
-      <div class="mission-title">🎯 MISIÓN A: Eliminar a Kabuto</div>
-      <div class="mission-desc">Derrota 30 enemigos en la Zona Oculta · Tiempo: 18 min restantes</div>
-      <div class="mission-prog-track">
-        <div class="mission-prog-fill" id="missionProg" style="width:63%"></div>
+        <!-- Misión activa -->
+        <div class="mission-card">
+          <div class="mission-title">🎯 MISIÓN A: Eliminar a Kabuto</div>
+          <div class="mission-desc">Derrota 30 enemigos en la Zona Oculta · Tiempo: 18 min restantes</div>
+          <div class="mission-prog-track">
+            <div class="mission-prog-fill" id="missionProg" style="width:63%"></div>
+          </div>
+        </div>
+
+        <!-- Feed de combate idle -->
+        <div class="combat-feed" id="combatFeed"></div>
+      </div>
+      <div id="heroPanel" class="center-content hero-panel" aria-hidden="true">
+        <div class="panel" id="gamePanel">
+          <div class="section-label">── ESTADÍSTICAS ──</div>
+          <div class="stats-panel">
+            <div class="stats-grid" id="statsGrid"></div>
+          </div>
+
+          <div class="section-label">── EQUIPAMIENTO ──</div>
+          <div class="equip-grid" id="equipGrid"></div>
+
+          <div class="overlay" id="equipOverlay">
+            <div class="upgrade-card" id="upgradeCard"></div>
+          </div>
+        </div>
       </div>
     </div>
-
-    <!-- Feed de combate idle -->
-    <div class="combat-feed" id="combatFeed"></div>
   </section>
 
   <!-- ─── BLOQUE INFERIOR  :  NAVEGACIÓN ─── -->
@@ -158,6 +177,9 @@
 </div>
 
 <script src="data.js"></script>
+<script src="equipData.js"></script>
+<script src="equipLogic.js"></script>
+<script src="equipUI.js"></script>
 <script src="ui.js"></script>
 <script src="engine.js"></script>
 </body>

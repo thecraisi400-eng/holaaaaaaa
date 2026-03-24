@@ -96,6 +96,13 @@
         state.activeSection = sec;
 
         const info = sections[sec];
+        if (sec === 'heroe') {
+          overlay.classList.remove('visible');
+          if (window.equipUI) window.equipUI.showHeroSection(true);
+          return;
+        }
+
+        if (window.equipUI) window.equipUI.showHeroSection(false);
         if (info) {
           overlayTitle.innerHTML = `${info.icon} ${info.title}`;
           overlayDesc.textContent = info.desc;

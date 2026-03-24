@@ -74,7 +74,19 @@
   }
 
   function init() {
+    if (window.equipUI) {
+      window.equipUI.init({
+        getGold: () => state.gold,
+        setGold: (value) => {
+          state.gold = Math.max(0, value);
+          window.gameUI.updateBars(state);
+        },
+      });
+      window.equipUI.showHeroSection(state.activeSection === 'heroe');
+    }
+
     window.gameUI.bindNavigation(state, sections);
+    window.gameUI.updateBars(state);
 
     for (let i = 0; i < 5; i += 1) {
       addFeedLine();

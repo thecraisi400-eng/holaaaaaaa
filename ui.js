@@ -83,9 +83,17 @@
   }
 
   function showCenterPanels({ hero = false, missions = false } = {}) {
+    const centerInner = document.getElementById('hud-center-inner');
     const heroPanel = document.getElementById('heroPanel');
     const defaultPanel = document.getElementById('centerDefault');
     const missionsPanel = document.getElementById('missionsPanel');
+
+    if (centerInner) {
+      centerInner.classList.remove('mode-default', 'mode-hero', 'mode-missions');
+      if (hero) centerInner.classList.add('mode-hero');
+      else if (missions) centerInner.classList.add('mode-missions');
+      else centerInner.classList.add('mode-default');
+    }
 
     if (heroPanel) {
       heroPanel.classList.toggle('active', hero);

@@ -7,20 +7,20 @@
 
   const missionsData = {
     D: [
-      { name: 'Eliminar lobos hambrientos', xp: 2, gold: 4, hp: 138, atk: 25, def: 17, lvl: 1 },
-      { name: 'Recuperar suministros robados por goblins', xp: 4, gold: 8, hp: 174, atk: 43, def: 28, lvl: 3 },
-      { name: 'Proteger la aldea de jabalíes', xp: 6, gold: 12, hp: 210, atk: 61, def: 39, lvl: 5 },
-      { name: 'Investigar ruinas infestadas de ratas gigantes', xp: 8, gold: 16, hp: 246, atk: 78, def: 50, lvl: 7 },
-      { name: 'Escoltar a un mercader (bandido)', xp: 9, gold: 18, hp: 264, atk: 87, def: 55, lvl: 9 },
-      { name: 'Cazar una bestia nocturna', xp: 10, gold: 20, hp: 282, atk: 96, def: 61, lvl: 12 },
+      { name: 'Eliminar lobos hambrientos', xp: 3, gold: 4, hp: 75, atk: 4, def: 2, lvl: 1 },
+      { name: 'Recuperar suministros robados por goblins', xp: 5, gold: 8, hp: 315, atk: 13, def: 11, lvl: 3 },
+      { name: 'Proteger la aldea de jabalíes', xp: 7, gold: 12, hp: 517, atk: 26, def: 24, lvl: 5 },
+      { name: 'Investigar ruinas infestadas de ratas gigantes', xp: 9, gold: 16, hp: 720, atk: 44, def: 42, lvl: 7 },
+      { name: 'Escoltar a un mercader (bandido)', xp: 12, gold: 18, hp: 930, atk: 69, def: 67, lvl: 9 },
+      { name: 'Cazar una bestia nocturna', xp: 15, gold: 20, hp: 1200, atk: 111, def: 107, lvl: 12 },
     ],
     C: [
-      { name: 'Limpiar una mina de murciélagos vampíricos', xp: 12, gold: 24, hp: 318, atk: 113, def: 72, lvl: 14 },
-      { name: 'Derrotar a un grupo de orcos merodeadores', xp: 14, gold: 28, hp: 354, atk: 131, def: 83, lvl: 16 },
-      { name: 'Rescatar a un rehén de los bandidos', xp: 16, gold: 32, hp: 390, atk: 149, def: 94, lvl: 18 },
-      { name: 'Eliminar una amenaza de lobos de las nieves', xp: 18, gold: 36, hp: 426, atk: 166, def: 105, lvl: 20 },
-      { name: 'Recuperar un artefacto custodiado por esqueletos', xp: 19, gold: 38, hp: 444, atk: 175, def: 110, lvl: 22 },
-      { name: 'Acabar con un troll de las colinas', xp: 20, gold: 40, hp: 462, atk: 184, def: 116, lvl: 24 },
+      { name: 'Limpiar una mina de murciélagos vampíricos', xp: 12, gold: 24, hp: 1455, atk: 158, def: 154, lvl: 14 },
+      { name: 'Derrotar a un grupo de orcos merodeadores', xp: 14, gold: 28, hp: 1710, atk: 220, def: 208, lvl: 16 },
+      { name: 'Rescatar a un rehén de los bandidos', xp: 16, gold: 32, hp: 2050, atk: 297, def: 285, lvl: 18 },
+      { name: 'Eliminar una amenaza de lobos de las nieves', xp: 18, gold: 36, hp: 2400, atk: 391, def: 379, lvl: 20 },
+      { name: 'Recuperar un artefacto custodiado por esqueletos', xp: 19, gold: 38, hp: 2800, atk: 501, def: 489, lvl: 22 },
+      { name: 'Acabar con un troll de las colinas', xp: 20, gold: 40, hp: 3050, atk: 577, def: 565, lvl: 24 },
     ],
     B: [
       { name: 'Exterminar una colonia de arácnidos gigantes', xp: 22, gold: 44, hp: 498, atk: 201, def: 127, lvl: 28 },

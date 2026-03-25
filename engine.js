@@ -1,5 +1,5 @@
 (() => {
-  const { combatLines, initialState, sections } = window.gameData;
+  const { combatLines, initialState, sections, clanPresets } = window.gameData;
   const state = { ...initialState };
   let feedIndex = 0;
 
@@ -73,7 +73,7 @@
     }
   }
 
-  function init() {
+  function startRuntime() {
     if (window.equipUI) {
       window.equipUI.init({
         getGold: () => state.gold,
@@ -94,6 +94,40 @@
 
     setInterval(addFeedLine, 1600);
     setInterval(tickState, 800);
+  }
+
+  function applyProfile(profile) {
+    if (!profile) return;
+
+    state.hpMax = Math.round(initialState.hpMax * profile.stateMult.hpMax);
+    state.mpMax = Math.round(initialState.mpMax * profile.stateMult.mpMax);
+    state.hp = Math.round(state.hpMax * 0.72);
+    state.mp = Math.round(state.mpMax * 0.58);
+    state.atk = Math.round(initialState.atk * profile.stateMult.atk);
+    state.def = Math.round(initialState.def * profile.stateMult.def);
+
+    if (window.equipLogic) {
+      window.equipLogic.setBaseStats(profile.equipBase);
+    }
+    if (window.gameUI) {
+      window.gameUI.applyProfileToHUD(state, profile);
+    }
+  }
+
+  function init() {
+    if (window.gameUI && window.gameUI.initNewGameFlow) {
+      window.gameUI.initNewGameFlow({
+        state,
+        presets: clanPresets,
+        onComplete: ({ profile }) => {
+          applyProfile(profile);
+          startRuntime();
+        },
+      });
+      return;
+    }
+
+    startRuntime();
   }
 
   window.gameEngine = {

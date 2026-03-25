@@ -42,9 +42,9 @@
   }
 
   function updateBars(state) {
-    const hpPct = Math.round(state.hp / state.hpMax * 100);
-    const mpPct = Math.round(state.mp / state.mpMax * 100);
-    const expPct = Math.round(state.exp / state.expMax * 100);
+    const hpPct = state.hpMax > 0 ? Math.round(state.hp / state.hpMax * 100) : 0;
+    const mpPct = state.mpMax > 0 ? Math.round(state.mp / state.mpMax * 100) : 0;
+    const expPct = state.expMax > 0 ? Math.round(state.exp / state.expMax * 100) : 0;
 
     document.getElementById('hpFill').style.width = hpPct + '%';
     document.getElementById('mpFill').style.width = mpPct + '%';
@@ -102,13 +102,6 @@
         }
 
         if (window.equipUI) window.equipUI.showHeroSection(false);
-        if (sec === 'misiones') {
-          overlayTitle.innerHTML = '📜 MISIONES';
-          overlayDesc.textContent = 'Esta sección está vacía.';
-          overlay.classList.add('visible');
-          return;
-        }
-
         if (info) {
           overlayTitle.innerHTML = `${info.icon} ${info.title}`;
           overlayDesc.textContent = info.desc;

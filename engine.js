@@ -1,72 +1,7 @@
 (() => {
-  const { combatLines, initialState, sections } = window.gameData;
+  const { initialState, sections } = window.gameData;
   const state = { ...initialState };
-  let feedIndex = 0;
   let started = false;
-
-  function addFeedLine() {
-    const feed = document.getElementById('combatFeed');
-    const data = combatLines[feedIndex % combatLines.length];
-    feedIndex += 1;
-
-    const now = new Date();
-    const time = `${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-
-    const line = document.createElement('div');
-    line.className = 'feed-line';
-    line.style.animationDelay = '0s';
-
-    const timeEl = document.createElement('span');
-    timeEl.className = 'feed-time';
-    timeEl.textContent = time;
-
-    const actorEl = document.createElement('span');
-    actorEl.className = 'feed-actor';
-    actorEl.textContent = data.actor;
-
-    const msgEl = document.createElement('span');
-    msgEl.className = 'feed-msg';
-    msgEl.textContent = ` ${data.msg} `;
-
-    line.append(timeEl, actorEl, msgEl);
-
-    if (data.jutsu) {
-      const jutsuEl = document.createElement('span');
-      jutsuEl.className = 'feed-jutsu';
-      jutsuEl.textContent = `${data.jutsu} `;
-      line.append(jutsuEl);
-    }
-
-    if (data.dmg && data.dmg !== '-0' && data.dmg !== '') {
-      const dmgEl = document.createElement('span');
-      dmgEl.className = 'feed-dmg';
-      dmgEl.textContent = data.dmg;
-      line.append(dmgEl);
-    }
-
-    if (data.heal) {
-      const healEl = document.createElement('span');
-      healEl.className = 'feed-heal';
-      healEl.textContent = data.heal;
-      line.append(healEl);
-    }
-
-    feed.appendChild(line);
-    feed.scrollTop = feed.scrollHeight;
-
-    while (feed.children.length > 30) {
-      feed.removeChild(feed.firstChild);
-    }
-  }
-
-  function tickState() {
-    state.hp = Math.max(10, Math.min(state.hpMax, state.hp + (Math.random() > .65 ? 8 : -14)));
-    state.mp = Math.max(30, Math.min(state.mpMax, state.mp + (Math.random() > .45 ? 12 : -20)));
-    state.exp = Math.min(state.expMax, state.exp + Math.floor(Math.random() * 28 + 8));
-    state.gold += Math.floor(Math.random() * 12 + 3);
-
-    window.gameUI.updateBars(state);
-  }
 
   function applyProfile(profile) {
     if (!profile) return;
@@ -82,14 +17,14 @@
     }
 
     if (profile.stats) {
-      state.hp = Number(profile.stats.HP);
-      state.hpMax = Number(profile.stats.HP);
-      state.mp = Number(profile.stats.MP);
-      state.mpMax = Number(profile.stats.MP);
-      state.atk = Number(profile.stats.ATK);
-      state.def = Number(profile.stats.DEF);
+      state.hp = Number(profile.stats.HP) || 0;
+      state.hpMax = Number(profile.stats.HP) || 0;
+      state.mp = Number(profile.stats.MP) || 0;
+      state.mpMax = Number(profile.stats.MP) || 0;
+      state.atk = Number(profile.stats.ATK) || 0;
+      state.def = Number(profile.stats.DEF) || 0;
       state.exp = 0;
-      state.expMax = Number(profile.stats.XP);
+      state.expMax = Number(profile.stats.XP) || 0;
       state.level = 1;
       state.gold = profile.gold ?? 0;
       document.getElementById('statAtk').textContent = Math.round(state.atk).toLocaleString();
@@ -115,19 +50,10 @@
     applyProfile(profile);
     window.gameUI.bindNavigation(state, sections);
     window.gameUI.updateBars(state);
-
-    for (let i = 0; i < 5; i += 1) {
-      addFeedLine();
-    }
-
-    setInterval(addFeedLine, 1600);
-    setInterval(tickState, 800);
   }
 
   window.gameEngine = {
-    addFeedLine,
     init,
     state,
-    tickState,
   };
 })();

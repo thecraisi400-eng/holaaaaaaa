@@ -78,9 +78,34 @@
       : 'linear-gradient(90deg,#2d9e55,#5de68c)';
 
     document.getElementById('missionProg').style.width = state.missionProg + '%';
+    const missionProgSolo = document.getElementById('missionProgSolo');
+    if (missionProgSolo) missionProgSolo.style.width = state.missionProg + '%';
+  }
+
+  function showCenterPanels({ hero = false, missions = false } = {}) {
+    const heroPanel = document.getElementById('heroPanel');
+    const defaultPanel = document.getElementById('centerDefault');
+    const missionsPanel = document.getElementById('missionsPanel');
+
+    if (heroPanel) {
+      heroPanel.classList.toggle('active', hero);
+      heroPanel.setAttribute('aria-hidden', hero ? 'false' : 'true');
+    }
+    if (missionsPanel) {
+      missionsPanel.classList.toggle('active', missions);
+      missionsPanel.setAttribute('aria-hidden', missions ? 'false' : 'true');
+    }
+    if (defaultPanel) {
+      defaultPanel.classList.toggle('hidden', hero || missions);
+    }
   }
 
   function bindNavigation(state, sections) {
+    showCenterPanels({
+      hero: state.activeSection === 'heroe',
+      missions: state.activeSection === 'misiones',
+    });
+
     document.querySelectorAll('.nav-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const rect = btn.getBoundingClientRect();
@@ -112,10 +137,19 @@
         const info = sections[sec];
         if (sec === 'heroe') {
           overlay.classList.remove('visible');
+          showCenterPanels({ hero: true, missions: false });
           if (window.equipUI) window.equipUI.showHeroSection(true);
           return;
         }
 
+        if (sec === 'misiones') {
+          overlay.classList.remove('visible');
+          showCenterPanels({ hero: false, missions: true });
+          if (window.equipUI) window.equipUI.showHeroSection(false);
+          return;
+        }
+
+        showCenterPanels({ hero: false, missions: false });
         if (window.equipUI) window.equipUI.showHeroSection(false);
         if (info) {
           overlayTitle.innerHTML = `${info.icon} ${info.title}`;

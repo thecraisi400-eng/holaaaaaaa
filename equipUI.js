@@ -110,10 +110,9 @@
 
   function showHeroSection(show) {
     const heroPanel = document.getElementById('heroPanel');
-    const defaultPanel = document.getElementById('centerDefault');
-    if (!heroPanel || !defaultPanel) return;
+    if (!heroPanel) return;
     heroPanel.classList.toggle('active', show);
-    defaultPanel.classList.toggle('hidden', show);
+    heroPanel.setAttribute('aria-hidden', show ? 'false' : 'true');
     if (!show) closeUpgrade();
   }
 

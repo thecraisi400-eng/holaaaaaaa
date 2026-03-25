@@ -41,6 +41,16 @@
     el.addEventListener('animationend', () => el.remove());
   }
 
+
+  function applyProfile(profile = {}) {
+    if (profile.heroName) document.getElementById('charName').textContent = profile.heroName.toUpperCase();
+    if (profile.rank) document.getElementById('charRank').textContent = profile.rank.toUpperCase();
+    if (profile.avatar) {
+      const frame = document.getElementById('avatarFrame');
+      frame.innerHTML = `<div class="avatar-placeholder">${profile.avatar}</div><div class="avatar-corner"></div>`;
+    }
+  }
+
   function updateBars(state) {
     const hpPct = Math.round(state.hp / state.hpMax * 100);
     const mpPct = Math.round(state.mp / state.mpMax * 100);
@@ -51,9 +61,13 @@
     document.getElementById('expFill').style.width = expPct + '%';
 
     document.getElementById('hpCur').textContent = state.hp;
+    document.getElementById('hpMax').textContent = state.hpMax;
     document.getElementById('hpPct').textContent = hpPct + '%';
     document.getElementById('mpCur').textContent = state.mp;
+    document.getElementById('mpMax').textContent = state.mpMax;
     document.getElementById('mpPct').textContent = mpPct + '%';
+    document.getElementById('statAtk').textContent = state.atk.toLocaleString();
+    document.getElementById('statDef').textContent = state.def.toLocaleString();
     document.getElementById('expNext').textContent =
       `${state.exp.toLocaleString()} / ${state.expMax.toLocaleString()} EXP — Próx. nivel: ${(state.expMax - state.exp).toLocaleString()}`;
     document.getElementById('statGold').textContent = state.gold.toLocaleString();
@@ -123,6 +137,7 @@
     bindNavigation,
     spawnFloatText,
     spawnParticles,
+    applyProfile,
     updateBars,
   };
 })();

@@ -24,6 +24,12 @@ window.gameData = {
     habilidades:  { icon:'🌿', title:'ÁRBOL DE HABILIDAD', desc:'Asigna puntos de habilidad en ramas de Ninjutsu, Taijutsu y Genjutsu para personalizar tu estilo de combate.' },
     ajustes:      { icon:'⚙️', title:'AJUSTES',          desc:'Configura notificaciones, audio, gráficos y tu cuenta de shinobi. También puedes vincular tu aldea.' },
   },
+  profile: {
+    heroName: "Uzumaki Naruto",
+    rank: "Chunin",
+    avatar: "🥷",
+    clanName: "Clan Uzumaki",
+  },
   combatLines: [
     { actor:'Naruto', msg:'usa', jutsu:'Rasengan', dmg:'-342' },
     { actor:'Naruto', msg:'ataca a', jutsu:'Kabuto', dmg:'-128' },

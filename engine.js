@@ -1,6 +1,10 @@
 (() => {
   const { combatLines, initialState, sections } = window.gameData;
   const state = { ...initialState };
+
+  function heroName() {
+    return window.gameData.profile?.heroName || 'Naruto';
+  }
   let feedIndex = 0;
 
   function addFeedLine() {
@@ -21,7 +25,7 @@
 
     const actorEl = document.createElement('span');
     actorEl.className = 'feed-actor';
-    actorEl.textContent = data.actor;
+    actorEl.textContent = data.actor === 'Naruto' ? heroName() : data.actor;
 
     const msgEl = document.createElement('span');
     msgEl.className = 'feed-msg';
@@ -74,6 +78,12 @@
   }
 
   function init() {
+    Object.assign(state, window.gameData.initialState);
+
+    if (window.gameUI) {
+      window.gameUI.applyProfile(window.gameData.profile);
+    }
+
     if (window.equipUI) {
       window.equipUI.init({
         getGold: () => state.gold,
@@ -103,5 +113,4 @@
     tickState,
   };
 
-  init();
 })();

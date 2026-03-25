@@ -9,10 +9,40 @@
 </head>
 <body>
 
+<div id="startFlow" class="start-flow">
+  <div class="sf-screen active" data-screen="menu">
+    <div class="sf-title">忍 NARUTO IDLE RPG</div>
+    <button class="sf-btn sf-btn-primary" data-action="new">⚔ NUEVA PARTIDA</button>
+    <button class="sf-btn" data-action="load">◈ CARGAR PARTIDA</button>
+    <p class="sf-load-msg">No se encontró ninguna partida guardada.</p>
+  </div>
+
+  <div class="sf-screen" data-screen="clan">
+    <div class="sf-header">
+      <button class="sf-back" data-action="menu">← Atrás</button>
+      <h2>Selecciona tu clan</h2>
+    </div>
+    <div id="sfClanGrid" class="sf-clan-grid"></div>
+  </div>
+
+  <div class="sf-screen" data-screen="char">
+    <div class="sf-header">
+      <button class="sf-back" data-action="clan">← Atrás</button>
+      <h2>Elige personaje y nombre</h2>
+    </div>
+    <div id="sfClanName" class="sf-selected-clan">—</div>
+    <div id="sfCharList" class="sf-char-list"></div>
+    <label class="sf-name-label" for="sfCustomName">Nombre del personaje</label>
+    <input id="sfCustomName" class="sf-input" maxlength="24" placeholder="Escribe el nombre final" />
+    <button class="sf-btn sf-btn-primary" data-action="start">Entrar al juego</button>
+  </div>
+</div>
+
+
 <!-- ══════════════════════════════════════════
      APP ROOT
      ══════════════════════════════════════════ -->
-<div id="app">
+<div id="app" class="app-hidden">
 
   <!-- ─── BLOQUE SUPERIOR  :  ESTADO DEL SHINOBI ─── -->
   <section id="hud-top">
@@ -180,6 +210,9 @@
 <script src="equipData.js"></script>
 <script src="equipLogic.js"></script>
 <script src="equipUI.js"></script>
+<script src="charData.js"></script>
+<script src="charLogic.js"></script>
+<script src="charUI.js"></script>
 <script src="ui.js"></script>
 <script src="engine.js"></script>
 </body>

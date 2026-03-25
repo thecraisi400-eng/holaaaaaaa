@@ -58,6 +58,18 @@
       `${state.exp.toLocaleString()} / ${state.expMax.toLocaleString()} EXP — Próx. nivel: ${(state.expMax - state.exp).toLocaleString()}`;
     document.getElementById('statGold').textContent = state.gold.toLocaleString();
 
+    const levelVal = document.getElementById('levelVal');
+    if (levelVal) levelVal.textContent = state.level;
+
+    if (state.charName) {
+      const nameNode = document.getElementById('charName');
+      if (nameNode) nameNode.textContent = state.charName.toUpperCase();
+    }
+    if (state.rank) {
+      const rankNode = document.getElementById('charRank');
+      if (rankNode) rankNode.textContent = String(state.rank).toUpperCase();
+    }
+
     const fill = document.getElementById('hpFill');
     fill.style.background = hpPct < 25
       ? 'linear-gradient(90deg,#7a1a1a,#c93b3b)'

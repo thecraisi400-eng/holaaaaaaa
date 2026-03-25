@@ -79,7 +79,7 @@
         <div class="bar-track exp-track">
           <div class="bar-fill exp-fill" id="expFill" style="width:44%"></div>
         </div>
-        <span class="bar-info" style="font-size:.6rem; color:var(--text-lo)">Nv. <span style="color:var(--amber)">23</span></span>
+        <span class="bar-info" style="font-size:.6rem; color:var(--text-lo)">Nv. <span id="levelVal" style="color:var(--amber)">23</span></span>
       </div>
       <div class="exp-next" id="expNext">4 400 / 10 000 EXP — Próx. nivel: 5 600</div>
     </div>
@@ -164,6 +164,41 @@
 
 </div><!-- /#app -->
 
+<div id="startupOverlay" class="startup-overlay" aria-modal="true" role="dialog">
+  <div class="setup-frame">
+    <section id="setup-menu" class="setup-screen active">
+      <div class="setup-logo">忍</div>
+      <h1>NARUTO IDLE RPG</h1>
+      <button id="setupNewGameBtn" class="setup-btn primary">⚔ NUEVA PARTIDA</button>
+      <button id="setupLoadBtn" class="setup-btn">◈ CARGAR PARTIDA</button>
+    </section>
+
+    <section id="setup-load" class="setup-screen">
+      <h2>📂 Cargar Partida</h2>
+      <p id="setupLoadText">No se encontró ninguna partida guardada.</p>
+      <button id="setupBackLoad" class="setup-btn">← Volver</button>
+    </section>
+
+    <section id="setup-clan" class="setup-screen">
+      <div class="setup-head"><button id="setupBackMenu" class="setup-back">← Atrás</button><h2>Selecciona tu clan</h2></div>
+      <div id="setupClanGrid" class="setup-clan-grid"></div>
+    </section>
+
+    <section id="setup-char" class="setup-screen">
+      <div class="setup-head"><button id="setupBackClan" class="setup-back">← Atrás</button><h2>Elige personaje</h2></div>
+      <div class="setup-clan-pill" id="setupCharClan">—</div>
+      <div id="setupCharList" class="setup-char-list"></div>
+    </section>
+
+    <section id="setup-profile" class="setup-screen">
+      <div class="setup-head"><button id="setupBackChar" class="setup-back">← Atrás</button><h2>Ficha inicial</h2></div>
+      <div id="setupProfileBody" class="setup-profile-body"></div>
+      <button id="setupStartBtn" class="setup-btn primary">COMENZAR PARTIDA</button>
+    </section>
+  </div>
+</div>
+
+
 <!-- ─── CAPA DE PARTÍCULAS ─── -->
 <div class="particle-container" id="particleContainer"></div>
 
@@ -180,7 +215,11 @@
 <script src="equipData.js"></script>
 <script src="equipLogic.js"></script>
 <script src="equipUI.js"></script>
+<script src="charData.js"></script>
+<script src="charLogic.js"></script>
+<script src="charUI.js"></script>
 <script src="ui.js"></script>
 <script src="engine.js"></script>
+<script>window.charUI && window.charUI.init();</script>
 </body>
 </html>

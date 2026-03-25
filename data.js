@@ -12,6 +12,10 @@ window.gameData = {
     level: 23,
     activeSection: 'heroe',
     missionProg: 63,
+    rank: 'Chunin',
+    charName: 'Uzumaki Naruto',
+    charClan: 'CLAN UZUMAKI',
+    charEmoji: '🥷',
   },
   sections: {
     heroe:        { icon:'🥷', title:'HÉROE',            desc:'Consulta y mejora el equipo de tu shinobi. Cambia armadura, armas y accesorios para maximizar tu poder de combate.' },

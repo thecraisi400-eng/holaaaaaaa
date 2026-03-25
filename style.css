@@ -306,6 +306,17 @@ html, body {
 .hero-panel.active {
   display: flex;
 }
+.missions-panel {
+  display: none;
+  padding: 8px;
+}
+.missions-panel.active {
+  display: block;
+}
+.missions-only-panel {
+  justify-content: flex-start;
+  gap: 8px;
+}
 
 /* feed de combate idle */
 .combat-feed {

@@ -65,13 +65,7 @@
     state.exp = Math.min(state.expMax, state.exp + Math.floor(Math.random() * 28 + 8));
     state.gold += Math.floor(Math.random() * 12 + 3);
 
-    state.missionProg = Math.min(100, state.missionProg + .15);
     window.gameUI.updateBars(state);
-
-    if (state.missionProg >= 100) {
-      state.missionProg = 0;
-      window.gameUI.updateBars(state);
-    }
   }
 
   function applyProfile(profile) {
@@ -98,8 +92,6 @@
       state.expMax = Number(profile.stats.XP);
       state.level = 1;
       state.gold = profile.gold ?? 0;
-      state.missionProg = 0;
-
       document.getElementById('statAtk').textContent = Math.round(state.atk).toLocaleString();
       document.getElementById('statDef').textContent = Math.round(state.def).toLocaleString();
     }

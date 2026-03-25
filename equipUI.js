@@ -5,6 +5,9 @@
   let currentUpgradeKey = null;
   let getGold = () => 0;
   let setGold = () => {};
+  let getPlayer = () => null;
+  let onEquipmentChange = () => {};
+  let overlayBound = false;
 
   function renderStats() {
     const grid = document.getElementById('statsGrid');
@@ -96,6 +99,7 @@
 
     setGold(gold - cost);
     logic.levels[key] += 1;
+    onEquipmentChange(getPlayer(), key);
 
     renderStats();
     renderEquipment();
@@ -120,11 +124,14 @@
   function init(options = {}) {
     getGold = options.getGold || getGold;
     setGold = options.setGold || setGold;
+    getPlayer = options.getPlayer || getPlayer;
+    onEquipmentChange = options.onEquipmentChange || onEquipmentChange;
     renderStats();
     renderEquipment();
 
     const overlay = document.getElementById('equipOverlay');
-    if (overlay) {
+    if (overlay && !overlayBound) {
+      overlayBound = true;
       overlay.addEventListener('click', (e) => {
         if (e.target === overlay) closeUpgrade();
       });

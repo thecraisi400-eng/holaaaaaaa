@@ -1,7 +1,43 @@
 (() => {
   const { initialState, sections } = window.gameData;
   const state = { ...initialState };
+  const player = state;
   let started = false;
+
+  function updateUI() {
+    if (window.gameUI) window.gameUI.updateBars(player);
+    const atkNode = document.getElementById('statAtk');
+    const defNode = document.getElementById('statDef');
+    if (atkNode) atkNode.textContent = Math.round(player.atk).toLocaleString();
+    if (defNode) defNode.textContent = Math.round(player.def).toLocaleString();
+  }
+
+  function syncStatsWithEquipment() {
+    if (!window.equipLogic || !window.equipLogic.computeStats) return;
+    const equippedStats = window.equipLogic.computeStats(player.baseStats || {});
+    player.hpMax = Math.round(equippedStats.HP || player.hpMax || 0);
+    player.mpMax = Math.round(equippedStats.MP || player.mpMax || 0);
+    player.atk = Number((equippedStats.ATK ?? player.atk).toFixed(1));
+    player.def = Number((equippedStats.DEF ?? player.def).toFixed(1));
+    player.hp = Math.min(player.hpMax, Math.max(0, player.hp));
+    player.mp = Math.min(player.mpMax, Math.max(0, player.mp));
+  }
+
+  function nextExpRequirement(level) {
+    return Math.max(1, Math.round(120 * Math.pow(level, 1.3)));
+  }
+
+  function addExperience(amount) {
+    const gain = Math.max(0, Math.floor(Number(amount) || 0));
+    if (!gain) return;
+    player.exp += gain;
+    while (player.exp >= player.expMax) {
+      player.exp -= player.expMax;
+      player.level += 1;
+      player.expMax = nextExpRequirement(player.level + 1);
+    }
+    updateUI();
+  }
 
   function applyProfile(profile) {
     if (!profile) return;
@@ -17,18 +53,22 @@
     }
 
     if (profile.stats) {
-      state.hp = Number(profile.stats.HP) || 0;
-      state.hpMax = Number(profile.stats.HP) || 0;
-      state.mp = Number(profile.stats.MP) || 0;
-      state.mpMax = Number(profile.stats.MP) || 0;
-      state.atk = Number(profile.stats.ATK) || 0;
-      state.def = Number(profile.stats.DEF) || 0;
-      state.exp = 0;
-      state.expMax = Number(profile.stats.XP) || 0;
-      state.level = 1;
-      state.gold = profile.gold ?? 0;
-      document.getElementById('statAtk').textContent = Math.round(state.atk).toLocaleString();
-      document.getElementById('statDef').textContent = Math.round(state.def).toLocaleString();
+      player.baseStats = {
+        HP: Number(profile.stats.HP) || 0,
+        MP: Number(profile.stats.MP) || 0,
+        ATK: Number(profile.stats.ATK) || 0,
+        DEF: Number(profile.stats.DEF) || 0,
+      };
+      player.hp = player.baseStats.HP;
+      player.hpMax = player.baseStats.HP;
+      player.mp = player.baseStats.MP;
+      player.mpMax = player.baseStats.MP;
+      player.atk = player.baseStats.ATK;
+      player.def = player.baseStats.DEF;
+      player.exp = 0;
+      player.level = 1;
+      player.expMax = nextExpRequirement(2);
+      player.gold = profile.gold ?? 0;
     }
   }
 
@@ -38,23 +78,34 @@
 
     if (window.equipUI) {
       window.equipUI.init({
-        getGold: () => state.gold,
+        getGold: () => player.gold,
         setGold: (value) => {
-          state.gold = Math.max(0, value);
-          window.gameUI.updateBars(state);
+          player.gold = Math.max(0, value);
+          updateUI();
+        },
+        getPlayer: () => player,
+        onEquipmentChange: () => {
+          syncStatsWithEquipment();
+          updateUI();
         },
       });
-      window.equipUI.showHeroSection(state.activeSection === 'heroe');
+      window.equipUI.showHeroSection(player.activeSection === 'heroe');
     }
 
     applyProfile(profile);
-    window.gameUI.bindMissionDelegation(state);
-    window.gameUI.bindNavigation(state, sections);
-    window.gameUI.updateBars(state);
+    syncStatsWithEquipment();
+    window.gameUI.bindMissionDelegation(player);
+    window.gameUI.bindNavigation(player, sections);
+    updateUI();
   }
 
+  window.updateUI = updateUI;
   window.gameEngine = {
     init,
-    state,
+    state: player,
+    updateUI,
+    addExperience,
+    syncStatsWithEquipment,
   };
+  window.player = player;
 })();

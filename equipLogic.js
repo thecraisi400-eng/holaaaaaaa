@@ -37,8 +37,8 @@
     return { label: 'BÁSICO', bg: '#1f2937', color: '#9ca3af' };
   }
 
-  function computeStats() {
-    const stats = { ...BASE_STATS };
+  function computeStats(baseStats = BASE_STATS) {
+    const stats = { ...baseStats };
     for (const key of SLOT_ORDER) {
       const gains = levels[key] - 1;
       if (gains <= 0) continue;

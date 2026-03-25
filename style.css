@@ -280,8 +280,12 @@ html, body {
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  padding: 0;
 }
-#hud-center-inner img {
+#hud-center-inner img,
+.fit-contain {
+  width: 100%;
+  height: 100%;
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
@@ -293,6 +297,7 @@ html, body {
 .text-mode {
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 #centerDefault.hidden {
   display: none;
@@ -620,6 +625,139 @@ html, body {
 #section-overlay.visible {
   opacity: 1;
   pointer-events: all;
+}
+
+/* ═══════════════════════════════════════════
+   FLUJO INICIAL (NUEVA PARTIDA)
+   ═══════════════════════════════════════════ */
+#startFlow.start-flow {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  background: rgba(8,12,20,.92);
+  backdrop-filter: blur(6px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+}
+#startFlow.start-flow.visible { display: flex; }
+#startFlow .start-screen {
+  width: 100%;
+  max-height: 100%;
+  overflow: auto;
+  display: none;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  gap: 8px;
+}
+#startFlow .start-screen.active { display: flex; flex-direction: column; }
+#startFlow .start-logo { font-size: 2rem; text-align: center; color: var(--amber); }
+#startFlow .start-title {
+  text-align: center;
+  font-family: var(--font-title);
+  font-size: .95rem;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+#startFlow .start-mini { font-size: .72rem; color: var(--text-mid); text-align: center; }
+#startFlow .start-btn {
+  width: 100%;
+  border: 1px solid var(--btn-border);
+  border-radius: var(--radius);
+  background: var(--btn-bg);
+  color: var(--text-hi);
+  padding: 10px 8px;
+  font-family: var(--font-hud);
+  font-weight: 700;
+  letter-spacing: .8px;
+  cursor: pointer;
+}
+#startFlow .start-btn.primary { border-color: var(--amber); color: var(--amber-glow); }
+#startFlow .start-hdr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#startFlow .start-hdr h2 {
+  font-size: .85rem;
+  letter-spacing: .8px;
+}
+#startFlow .start-back {
+  border: 1px solid var(--btn-border);
+  background: var(--btn-bg);
+  color: var(--teal);
+  border-radius: 3px;
+  font-size: .66rem;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+#startFlow .start-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+#startFlow .start-clan-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  cursor: pointer;
+}
+#startFlow .start-clan-title {
+  font-size: .7rem;
+  color: var(--amber);
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+#startFlow .start-stat {
+  display: flex;
+  justify-content: space-between;
+  font-size: .62rem;
+  color: var(--text-mid);
+}
+#startFlow .start-stat b { color: var(--text-hi); }
+#startFlow .start-selected {
+  font-size: .72rem;
+  color: var(--amber);
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-align: center;
+}
+#startFlow .start-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+#startFlow .start-char {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  font-size: .76rem;
+  cursor: pointer;
+}
+#startFlow .start-profile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  font-size: .72rem;
+}
+#startFlow .start-name-input {
+  width: 100%;
+  background: #0f1728;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-hi);
+  padding: 8px 10px;
+  font-family: var(--font-hud);
 }
 .overlay-panel {
   background: var(--panel);

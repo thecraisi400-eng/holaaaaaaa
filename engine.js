@@ -74,6 +74,9 @@
   }
 
   function init() {
+    const hasStartFlow = window.gameUI.initStartFlow(state);
+    window.gameUI.applyProfileToHud(state, window.gameData.profile);
+
     if (window.equipUI) {
       window.equipUI.init({
         getGold: () => state.gold,
@@ -82,7 +85,7 @@
           window.gameUI.updateBars(state);
         },
       });
-      window.equipUI.showHeroSection(state.activeSection === 'heroe');
+      window.equipUI.showHeroSection(false);
     }
 
     window.gameUI.bindNavigation(state, sections);
@@ -92,8 +95,20 @@
       addFeedLine();
     }
 
-    setInterval(addFeedLine, 1600);
-    setInterval(tickState, 800);
+    let started = false;
+    const startGameLoops = () => {
+      if (started) return;
+      started = true;
+      if (window.equipUI) window.equipUI.showHeroSection(true);
+      setInterval(addFeedLine, 1600);
+      setInterval(tickState, 800);
+    };
+
+    if (hasStartFlow) {
+      document.addEventListener('game:start-selected', startGameLoops, { once: true });
+    } else {
+      startGameLoops();
+    }
   }
 
   window.gameEngine = {

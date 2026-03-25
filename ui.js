@@ -58,6 +58,7 @@
     battleActive: false,
   };
   let missionDelegatedBound = false;
+  let navigationBound = false;
 
   function spawnParticles(x, y, type = 'chakra') {
     const container = document.getElementById('particleContainer');
@@ -106,11 +107,15 @@
     document.getElementById('expFill').style.width = expPct + '%';
 
     document.getElementById('hpCur').textContent = state.hp;
+    document.getElementById('hpMax').textContent = state.hpMax;
     document.getElementById('hpPct').textContent = hpPct + '%';
     document.getElementById('mpCur').textContent = state.mp;
+    document.getElementById('mpMax').textContent = state.mpMax;
     document.getElementById('mpPct').textContent = mpPct + '%';
+    const levelNode = document.getElementById('levelValue');
+    if (levelNode) levelNode.textContent = state.level;
     document.getElementById('expNext').textContent =
-      `${state.exp.toLocaleString()} / ${state.expMax.toLocaleString()} EXP — Próx. nivel: ${(state.expMax - state.exp).toLocaleString()}`;
+      `${state.exp.toLocaleString()} / ${state.expMax.toLocaleString()} EXP — Próx. nivel: ${Math.max(0, state.expMax - state.exp).toLocaleString()}`;
     document.getElementById('statGold').textContent = state.gold.toLocaleString();
 
     const fill = document.getElementById('hpFill');
@@ -121,6 +126,9 @@
   }
 
   function bindNavigation(state, sections) {
+    if (navigationBound) return;
+    navigationBound = true;
+
     document.querySelectorAll('.nav-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const rect = btn.getBoundingClientRect();
@@ -157,6 +165,7 @@
         if (sec === 'heroe') {
           overlay.classList.remove('visible');
           if (window.equipUI) window.equipUI.showHeroSection(true);
+          if (window.updateUI) window.updateUI();
           return;
         }
 
@@ -345,7 +354,10 @@
         if (missionState.enemy.hp <= 0) {
           addBattleLog(`💀 Enemigo derrotado: +${missionState.enemy.xp} XP y +${missionState.enemy.gold} Oro.`);
           state.gold += missionState.enemy.gold;
-          window.gameUI.updateBars(state);
+          if (window.gameEngine && window.gameEngine.addExperience) {
+            window.gameEngine.addExperience(missionState.enemy.xp);
+          }
+          if (window.updateUI) window.updateUI();
           missionState.enemyIndex = (missionState.enemyIndex + 1) % missionState.missionList.length;
           loadMissionEnemy();
           addBattleLog(`⚔️ Nuevo enemigo: ${missionState.enemy.name}`);
@@ -356,7 +368,7 @@
         const received = Math.max(1, Math.floor(missionState.enemy.atk - (state.def / 3) + (Math.random() * 6)));
         state.hp = Math.max(0, state.hp - received);
         addBattleLog(`👹 ${missionState.enemy.name} te golpea por ${received}.`);
-        window.gameUI.updateBars(state);
+        if (window.updateUI) window.updateUI();
         updateBattleBars(state);
 
         if (state.hp <= 0) {

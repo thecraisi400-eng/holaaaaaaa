@@ -2,9 +2,11 @@
   const { combatLines, initialState, sections } = window.gameData;
   const state = { ...initialState };
   let feedIndex = 0;
+  let booted = false;
 
   function addFeedLine() {
     const feed = document.getElementById('combatFeed');
+    if (!feed) return;
     const data = combatLines[feedIndex % combatLines.length];
     feedIndex += 1;
 
@@ -74,6 +76,11 @@
   }
 
   function init() {
+    if (booted) return;
+    booted = true;
+
+    Object.assign(state, window.gameData.initialState);
+
     if (window.equipUI) {
       window.equipUI.init({
         getGold: () => state.gold,
@@ -88,9 +95,7 @@
     window.gameUI.bindNavigation(state, sections);
     window.gameUI.updateBars(state);
 
-    for (let i = 0; i < 5; i += 1) {
-      addFeedLine();
-    }
+    for (let i = 0; i < 5; i += 1) addFeedLine();
 
     setInterval(addFeedLine, 1600);
     setInterval(tickState, 800);
@@ -102,6 +107,4 @@
     state,
     tickState,
   };
-
-  init();
 })();

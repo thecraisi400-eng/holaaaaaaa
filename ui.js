@@ -98,11 +98,19 @@
         const info = sections[sec];
         if (sec === 'heroe') {
           overlay.classList.remove('visible');
+          if (window.missionsUI) window.missionsUI.hide();
           if (window.equipUI) window.equipUI.showHeroSection(true);
           return;
         }
 
         if (window.equipUI) window.equipUI.showHeroSection(false);
+        if (sec === 'misiones') {
+          overlay.classList.remove('visible');
+          if (window.missionsUI) window.missionsUI.show(window.gameEngine?.state);
+          return;
+        }
+
+        if (window.missionsUI) window.missionsUI.hide();
         if (info) {
           overlayTitle.innerHTML = `${info.icon} ${info.title}`;
           overlayDesc.textContent = info.desc;

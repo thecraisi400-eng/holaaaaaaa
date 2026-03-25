@@ -48,6 +48,7 @@
     }
 
     applyProfile(profile);
+    window.gameUI.bindMissionDelegation(state);
     window.gameUI.bindNavigation(state, sections);
     window.gameUI.updateBars(state);
   }

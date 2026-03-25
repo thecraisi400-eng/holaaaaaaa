@@ -336,6 +336,136 @@ html, body {
   transition: width .8s ease;
 }
 
+.missions-panel {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.missions-title {
+  text-align: center;
+  font-family: var(--font-title);
+  font-size: .78rem;
+  color: var(--teal);
+  letter-spacing: 1px;
+}
+.missions-menu-btn, .missions-back-btn, .missions-stop-btn, .mission-row {
+  width: 100%;
+  border-radius: 999px;
+  padding: 11px 10px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: var(--btn-bg);
+  color: var(--text-hi);
+  font-family: var(--font-hud);
+  font-weight: 700;
+  cursor: pointer;
+}
+.missions-menu-btn:active, .missions-back-btn:active, .missions-stop-btn:active, .mission-row:active {
+  transform: translateY(2px);
+}
+.missions-back-btn {
+  color: var(--text-mid);
+}
+.missions-stop-btn {
+  background: #531010;
+  border-color: #8e2929;
+  color: #ffd8d8;
+}
+.rank-d { border-color: #2e7d32; color: #a5d6a7; }
+.rank-c { border-color: #0277bd; color: #80d4ff; }
+.rank-b { border-color: #ef6c00; color: #ffb74d; }
+.rank-a { border-color: #b71c1c; color: #ef9a9a; }
+.rank-s { border-color: #6a1b9a; color: #ce93d8; }
+
+.mission-row {
+  border-radius: 8px;
+  background: var(--surface);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mission-row-title {
+  font-size: .68rem;
+  font-weight: 800;
+}
+.mission-row-meta {
+  font-size: .56rem;
+  color: var(--text-mid);
+}
+.mission-rank-d { border-left: 4px solid #2e7d32; }
+.mission-rank-c { border-left: 4px solid #0277bd; }
+.mission-rank-b { border-left: 4px solid #ef6c00; }
+.mission-rank-a { border-left: 4px solid #b71c1c; }
+.mission-rank-s { border-left: 4px solid #6a1b9a; }
+.mission-row.locked {
+  opacity: .5;
+  filter: grayscale(.5);
+  cursor: not-allowed;
+}
+
+.mission-battle {
+  gap: 10px;
+}
+.mission-battle-head {
+  display: flex;
+  gap: 8px;
+}
+.battle-card {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  background: rgba(17, 34, 64, .8);
+}
+.battle-card.enemy {
+  background: rgba(56, 14, 14, .8);
+}
+.battle-emoji {
+  font-size: 1.4rem;
+  text-align: center;
+}
+.battle-name {
+  font-size: .58rem;
+  text-align: center;
+  margin-bottom: 6px;
+}
+.battle-hp-track {
+  height: 8px;
+  background: #0a1020;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.battle-hp-fill {
+  height: 100%;
+  width: 100%;
+  background: #2d9e55;
+}
+.battle-hp-fill.enemy {
+  background: #c93b3b;
+}
+.mission-battle-log {
+  flex: 1;
+  min-height: 120px;
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 8px;
+  background: rgba(8, 12, 20, .85);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mission-battle-log-row {
+  font-family: monospace;
+  font-size: .6rem;
+  color: #c9d1d9;
+}
+
 /* ═══════════════════════════════════════════
    HÉROE / EQUIPAMIENTO
    ═══════════════════════════════════════════ */

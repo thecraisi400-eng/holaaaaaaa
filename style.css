@@ -280,6 +280,7 @@ html, body {
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  position: relative;
 }
 #hud-center-inner img {
   max-width: 100%;
@@ -289,6 +290,8 @@ html, body {
 .center-content {
   width: 100%;
   height: 100%;
+  position: absolute;
+  inset: 0;
 }
 .text-mode {
   display: flex;

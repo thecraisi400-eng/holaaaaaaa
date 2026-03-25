@@ -114,6 +114,12 @@
           return;
         }
 
+        if (sec === 'misiones') {
+          overlay.classList.remove('visible');
+          if (window.equipUI) window.equipUI.showHeroSection(false);
+          return;
+        }
+
         if (window.equipUI) window.equipUI.showHeroSection(false);
         if (info) {
           overlayTitle.innerHTML = `${info.icon} ${info.title}`;

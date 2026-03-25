@@ -2,6 +2,7 @@
   const { combatLines, initialState, sections } = window.gameData;
   const state = { ...initialState };
   let feedIndex = 0;
+  let started = false;
 
   function addFeedLine() {
     const feed = document.getElementById('combatFeed');
@@ -73,7 +74,41 @@
     }
   }
 
-  function init() {
+  function applyProfile(profile) {
+    if (!profile) return;
+
+    if (profile.avatar) {
+      document.querySelector('#avatarFrame .avatar-placeholder').textContent = profile.avatar;
+    }
+    if (profile.charName) {
+      document.getElementById('charName').textContent = profile.charName.toUpperCase();
+    }
+    if (profile.rank) {
+      document.getElementById('charRank').textContent = profile.rank.toUpperCase();
+    }
+
+    if (profile.stats) {
+      state.hp = Number(profile.stats.HP);
+      state.hpMax = Number(profile.stats.HP);
+      state.mp = Number(profile.stats.MP);
+      state.mpMax = Number(profile.stats.MP);
+      state.atk = Number(profile.stats.ATK);
+      state.def = Number(profile.stats.DEF);
+      state.exp = 0;
+      state.expMax = Number(profile.stats.XP);
+      state.level = 1;
+      state.gold = profile.gold ?? 0;
+      state.missionProg = 0;
+
+      document.getElementById('statAtk').textContent = Math.round(state.atk).toLocaleString();
+      document.getElementById('statDef').textContent = Math.round(state.def).toLocaleString();
+    }
+  }
+
+  function init(profile) {
+    if (started) return;
+    started = true;
+
     if (window.equipUI) {
       window.equipUI.init({
         getGold: () => state.gold,
@@ -85,6 +120,7 @@
       window.equipUI.showHeroSection(state.activeSection === 'heroe');
     }
 
+    applyProfile(profile);
     window.gameUI.bindNavigation(state, sections);
     window.gameUI.updateBars(state);
 
@@ -102,6 +138,4 @@
     state,
     tickState,
   };
-
-  init();
 })();

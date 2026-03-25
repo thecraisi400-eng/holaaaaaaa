@@ -688,3 +688,58 @@ html, body {
   .nav-btn  { min-height: 68px; }
   .btn-icon { font-size: 1.5rem; }
 }
+
+/* ═══════════════════════════════════════════
+   NUEVA PARTIDA (ONBOARDING)
+   ═══════════════════════════════════════════ */
+#start-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: rgba(5, 9, 18, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+#start-overlay.hidden { display: none; }
+.start-panel {
+  width: min(420px, 100%);
+  max-height: 95vh;
+  overflow: auto;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+}
+.start-step { display: none; }
+.start-step.active { display: block; }
+.start-step h2, .start-step h3 {
+  font-family: var(--font-title);
+  color: var(--amber);
+  margin-bottom: 10px;
+  text-align: center;
+}
+.start-main-btn, .start-back-btn, .start-char-btn, .start-stat-card {
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid var(--btn-border);
+  background: var(--btn-bg);
+  color: var(--text-hi);
+  padding: 10px;
+  font-family: var(--font-hud);
+}
+.start-main-btn { margin-bottom: 8px; font-weight: 700; }
+.start-main-btn.secondary { color: var(--text-mid); }
+.start-help { color: var(--text-mid); font-size: .8rem; margin: 6px 0 10px; text-align: center; }
+.start-stats-grid { display: grid; gap: 8px; }
+.start-stat-card { text-align: left; }
+.start-stat-title { color: var(--amber); font-weight: 700; margin-bottom: 6px; }
+.start-stat-body { display: grid; gap: 3px; }
+.start-stat-row { display: flex; justify-content: space-between; font-size: .75rem; }
+.is-high { color: #52e59c; }
+.is-low { color: #ff7171; }
+.is-mid { color: var(--text-mid); }
+.start-char-list { display: grid; gap: 7px; margin-bottom: 10px; }
+.start-char-btn { display: flex; align-items: center; gap: 8px; font-size: .9rem; }
+.start-back-btn { margin-top: 8px; color: var(--text-mid); }

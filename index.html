@@ -168,6 +168,33 @@
 <div class="particle-container" id="particleContainer"></div>
 
 <!-- ─── OVERLAY / PANEL DE SECCIÓN ─── -->
+
+
+<!-- ─── FLUJO DE NUEVA PARTIDA ─── -->
+<div id="start-overlay">
+  <div class="start-panel">
+    <div id="start-step-menu" class="start-step active">
+      <h2>忍 NARUTO IDLE RPG</h2>
+      <button class="start-main-btn" id="btn-new-run">⚔ NUEVA PARTIDA</button>
+      <button class="start-main-btn secondary" id="btn-load-run">◈ CARGAR PARTIDA</button>
+      <p id="start-load-msg" class="start-help"></p>
+    </div>
+
+    <div id="start-step-stats" class="start-step">
+      <h3>Elige 1 de 6 tipos de Estadísticas</h3>
+      <div id="start-stats-grid" class="start-stats-grid"></div>
+      <button class="start-back-btn" id="btn-back-menu">← Volver</button>
+    </div>
+
+    <div id="start-step-chars" class="start-step">
+      <h3>Elige tu personaje</h3>
+      <p class="start-help" id="start-selected-info"></p>
+      <div id="start-char-list" class="start-char-list"></div>
+      <button class="start-back-btn" id="btn-back-stats">← Cambiar estadísticas</button>
+    </div>
+  </div>
+</div>
+
 <div id="section-overlay">
   <div class="overlay-panel" id="overlayPanel">
     <h2 id="overlayTitle">🥷 SECCIÓN</h2>
@@ -182,5 +209,6 @@
 <script src="equipUI.js"></script>
 <script src="ui.js"></script>
 <script src="engine.js"></script>
+<script src="startFlow.js"></script>
 </body>
 </html>

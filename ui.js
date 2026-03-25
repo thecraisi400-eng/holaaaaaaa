@@ -63,7 +63,6 @@
       ? 'linear-gradient(90deg,#7a1a1a,#c93b3b)'
       : 'linear-gradient(90deg,#2d9e55,#5de68c)';
 
-    document.getElementById('missionProg').style.width = state.missionProg + '%';
   }
 
   function bindNavigation(state, sections) {
@@ -103,6 +102,13 @@
         }
 
         if (window.equipUI) window.equipUI.showHeroSection(false);
+        if (sec === 'misiones') {
+          overlayTitle.innerHTML = '📜 MISIONES';
+          overlayDesc.textContent = 'Esta sección está vacía.';
+          overlay.classList.add('visible');
+          return;
+        }
+
         if (info) {
           overlayTitle.innerHTML = `${info.icon} ${info.title}`;
           overlayDesc.textContent = info.desc;

@@ -11,7 +11,6 @@ window.gameData = {
     def: 880,
     level: 23,
     activeSection: 'heroe',
-    missionProg: 63,
   },
 
   startOptions: [
@@ -114,7 +113,7 @@ window.gameData = {
   ],
   sections: {
     heroe:        { icon:'🥷', title:'HÉROE',            desc:'Consulta y mejora el equipo de tu shinobi. Cambia armadura, armas y accesorios para maximizar tu poder de combate.' },
-    misiones:     { icon:'📜', title:'MISIONES',         desc:'Tienes 3 misiones pendientes. Completa misiones diarias, de historia y especiales para ganar EXP y recursos.' },
+    misiones:     { icon:'📜', title:'MISIONES',         desc:'Esta sección está vacía.' },
     clanes:       { icon:'⛩️', title:'CLANES',           desc:'Únete o crea tu clan. Participa en guerras de clanes y desbloquea jutsus exclusivos de linaje.' },
     eventos:      { icon:'🎴', title:'EVENTOS',          desc:'¡Evento especial activo! Festival del Chakra Lunar: consigue multiplicadores ×3 de EXP durante 2 horas.' },
     jutsus:       { icon:'🌀', title:'JUTSUS',           desc:'Gestiona tus técnicas ninja. Equipa hasta 4 jutsus activos y mejora sus rangos con sellos de chakra.' },

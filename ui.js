@@ -141,7 +141,7 @@
     const profileBox = document.getElementById('startProfile');
     const msg = document.getElementById('startFlowMsg');
     const customNameInput = document.getElementById('heroCustomName');
-    if (!flow || !clanGrid || !charList || !selectedClan || !profileBox) return;
+    if (!flow || !clanGrid || !charList || !selectedClan || !profileBox) return false;
     let currentClan = null;
     let currentHero = null;
 
@@ -256,6 +256,7 @@
       flow.classList.remove('visible');
       document.dispatchEvent(new CustomEvent('game:start-selected'));
     });
+    return true;
   }
 
   window.gameUI = {

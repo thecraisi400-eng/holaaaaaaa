@@ -74,7 +74,7 @@
   }
 
   function init() {
-    window.gameUI.initStartFlow(state);
+    const hasStartFlow = window.gameUI.initStartFlow(state);
     window.gameUI.applyProfileToHud(state, window.gameData.profile);
 
     if (window.equipUI) {
@@ -104,7 +104,11 @@
       setInterval(tickState, 800);
     };
 
-    document.addEventListener('game:start-selected', startGameLoops, { once: true });
+    if (hasStartFlow) {
+      document.addEventListener('game:start-selected', startGameLoops, { once: true });
+    } else {
+      startGameLoops();
+    }
   }
 
   window.gameEngine = {

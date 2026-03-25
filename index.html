@@ -164,6 +164,38 @@
 
 </div><!-- /#app -->
 
+<!-- ─── WIZARD DE NUEVA PARTIDA ─── -->
+<div id="newgame-overlay" class="newgame-overlay active">
+  <div class="newgame-shell">
+    <div class="newgame-screen active" data-screen="menu">
+      <div class="ng-logo">忍</div>
+      <div class="ng-title">NARUTO IDLE RPG</div>
+      <div class="ng-subtitle">NUEVA AVENTURA SHINOBI</div>
+      <button class="ng-btn ng-btn-main" id="ngStartBtn">⚔ NUEVA PARTIDA</button>
+      <button class="ng-btn" id="ngLoadBtn">◈ CARGAR PARTIDA</button>
+    </div>
+
+    <div class="newgame-screen" data-screen="load">
+      <div class="ng-msg">📂 No se encontró ninguna partida guardada.</div>
+      <button class="ng-btn" data-back="menu">← VOLVER</button>
+    </div>
+
+    <div class="newgame-screen" data-screen="clan">
+      <div class="ng-hdr">Selecciona tu Clan</div>
+      <div id="ngClanGrid" class="ng-clan-grid"></div>
+      <button class="ng-btn ng-btn-inline" data-back="menu">← ATRÁS</button>
+    </div>
+
+    <div class="newgame-screen" data-screen="profile">
+      <div class="ng-hdr">Ficha Inicial</div>
+      <div class="ng-profile-box" id="ngProfileBox"></div>
+      <input id="ngNameInput" class="ng-input" maxlength="22" placeholder="Nombre del personaje" />
+      <button class="ng-btn ng-btn-main" id="ngConfirmBtn">✅ INICIAR JUEGO</button>
+      <button class="ng-btn ng-btn-inline" data-back="clan">← ATRÁS</button>
+    </div>
+  </div>
+</div>
+
 <!-- ─── CAPA DE PARTÍCULAS ─── -->
 <div class="particle-container" id="particleContainer"></div>
 

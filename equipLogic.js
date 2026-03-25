@@ -1,5 +1,6 @@
 (() => {
   const { EQUIPMENT_DATA, SLOT_ORDER, BASE_STATS, STAT_META } = window.equipData;
+  const dynamicBaseStats = { ...BASE_STATS };
   const levels = { cabeza: 1, pecho: 1, manos: 1, piernas: 1, pies: 1, accesorio: 1 };
 
   function getUpgradeCost(equipKey, currentLevel) {
@@ -38,7 +39,7 @@
   }
 
   function computeStats() {
-    const stats = { ...BASE_STATS };
+    const stats = { ...dynamicBaseStats };
     for (const key of SLOT_ORDER) {
       const gains = levels[key] - 1;
       if (gains <= 0) continue;
@@ -64,6 +65,10 @@
     return `+${amount}`;
   }
 
+  function setBaseStats(nextBaseStats = {}) {
+    Object.assign(dynamicBaseStats, nextBaseStats);
+  }
+
   window.equipLogic = {
     EQUIPMENT_DATA,
     SLOT_ORDER,
@@ -73,6 +78,7 @@
     fmtGain,
     fmtNum,
     fmtStat,
+    setBaseStats,
     getUpgradeCost,
     rankClass,
     rankName,

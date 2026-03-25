@@ -621,6 +621,95 @@ html, body {
   opacity: 1;
   pointer-events: all;
 }
+
+/* ═══════════════════════════════════════════
+   NUEVA PARTIDA (PRE-JUEGO)
+   ═══════════════════════════════════════════ */
+.newgame-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: rgba(5, 9, 16, .96);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+.newgame-overlay.active { display: flex; }
+.newgame-shell {
+  width: min(460px, 95vw);
+  height: min(720px, 94vh);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 0 40px rgba(46,207,207,.15);
+  padding: 12px;
+}
+.newgame-screen {
+  display: none;
+  height: 100%;
+  flex-direction: column;
+  gap: 10px;
+}
+.newgame-screen.active { display: flex; }
+.ng-logo { font-size: 3rem; text-align: center; margin-top: 16px; }
+.ng-title { text-align: center; font-family: var(--font-title); color: var(--amber); font-size: 1.05rem; letter-spacing: 2px; }
+.ng-subtitle { text-align: center; color: var(--text-mid); font-size: .72rem; letter-spacing: 1px; margin-bottom: 14px; }
+.ng-hdr { font-family: var(--font-title); color: var(--teal); text-align: center; letter-spacing: 1px; margin-top: 4px; }
+.ng-btn {
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  color: var(--text-hi);
+  border-radius: 6px;
+  padding: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+.ng-btn:hover { border-color: var(--teal); }
+.ng-btn-main { background: linear-gradient(135deg, #1e3060 0%, #162440 100%); color: #f3ce7b; border-color: rgba(240,192,64,.4); }
+.ng-btn-inline { margin-top: auto; }
+.ng-msg { text-align: center; margin: auto 0; color: var(--text-mid); font-size: .84rem; }
+.ng-clan-grid {
+  flex: 1;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding-right: 4px;
+}
+.ng-clan-card {
+  background: #1b253b;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  cursor: pointer;
+}
+.ng-clan-card:hover { border-color: var(--teal); transform: translateY(-1px); }
+.ng-clan-name { font-size: .7rem; font-weight: 700; color: var(--amber); margin-bottom: 5px; text-align: center; }
+.ng-clan-stat { display: flex; justify-content: space-between; font-size: .58rem; color: var(--text-mid); }
+.ng-profile-box {
+  background: #1b253b;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.ng-profile-name { color: var(--text-hi); font-size: .85rem; font-weight: 700; }
+.ng-profile-clan { color: var(--amber); font-size: .7rem; }
+.ng-profile-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.ng-profile-stat { background: #0f1628; padding: 4px 6px; border-radius: 4px; font-size: .58rem; display: flex; justify-content: space-between; }
+.ng-input {
+  width: 100%;
+  border: 1px solid var(--btn-border);
+  background: #11192d;
+  color: var(--text-hi);
+  border-radius: 6px;
+  padding: 10px;
+  font-family: var(--font-hud);
+}
 .overlay-panel {
   background: var(--panel);
   border: 1px solid var(--teal);

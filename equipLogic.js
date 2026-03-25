@@ -1,6 +1,7 @@
 (() => {
   const { EQUIPMENT_DATA, SLOT_ORDER, BASE_STATS, STAT_META } = window.equipData;
   const levels = { cabeza: 1, pecho: 1, manos: 1, piernas: 1, pies: 1, accesorio: 1 };
+  let currentBaseStats = { ...BASE_STATS };
 
   function getUpgradeCost(equipKey, currentLevel) {
     const ranges = EQUIPMENT_DATA[equipKey].ranges;
@@ -38,7 +39,7 @@
   }
 
   function computeStats() {
-    const stats = { ...BASE_STATS };
+    const stats = { ...currentBaseStats };
     for (const key of SLOT_ORDER) {
       const gains = levels[key] - 1;
       if (gains <= 0) continue;
@@ -47,6 +48,10 @@
       }
     }
     return stats;
+  }
+
+  function setBaseStats(nextBase = {}) {
+    currentBaseStats = { ...currentBaseStats, ...nextBase };
   }
 
   function fmtNum(n) { return n.toLocaleString('es-ES'); }
@@ -76,5 +81,6 @@
     getUpgradeCost,
     rankClass,
     rankName,
+    setBaseStats,
   };
 })();

@@ -164,6 +164,43 @@
 
 </div><!-- /#app -->
 
+<!-- ─── FLUJO INICIAL / NUEVA PARTIDA ─── -->
+<div id="startFlow" class="start-flow visible" aria-modal="true" role="dialog">
+  <div class="start-screen active" data-start-screen="menu">
+    <div class="start-logo">忍</div>
+    <div class="start-title">NARUTO IDLE RPG</div>
+    <button class="start-btn primary" id="btnNewGame">⚔ NUEVA PARTIDA</button>
+    <button class="start-btn" id="btnLoadGame">◈ CARGAR PARTIDA</button>
+    <p class="start-mini" id="startFlowMsg">Configura tu héroe antes de comenzar.</p>
+  </div>
+
+  <div class="start-screen" data-start-screen="clan">
+    <div class="start-hdr">
+      <button class="start-back" data-back="menu">← Atrás</button>
+      <h2>Selecciona tu Clan</h2>
+    </div>
+    <div class="start-grid" id="startClanGrid"></div>
+  </div>
+
+  <div class="start-screen" data-start-screen="char">
+    <div class="start-hdr">
+      <button class="start-back" data-back="clan">← Atrás</button>
+      <h2>Elige tu Personaje</h2>
+    </div>
+    <div class="start-selected" id="startSelectedClan">—</div>
+    <div class="start-list" id="startCharList"></div>
+  </div>
+
+  <div class="start-screen" data-start-screen="profile">
+    <div class="start-hdr">
+      <button class="start-back" data-back="char">← Atrás</button>
+      <h2>Ficha Inicial</h2>
+    </div>
+    <div class="start-profile" id="startProfile"></div>
+    <button class="start-btn primary" id="btnConfirmHero">✅ EMPEZAR COMO HÉROE</button>
+  </div>
+</div>
+
 <!-- ─── CAPA DE PARTÍCULAS ─── -->
 <div class="particle-container" id="particleContainer"></div>
 

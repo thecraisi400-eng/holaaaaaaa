@@ -164,25 +164,63 @@
 
 <!-- ─── FLUJO DE NUEVA PARTIDA ─── -->
 <div id="start-overlay">
-  <div class="start-panel">
-    <div id="start-step-menu" class="start-step active">
-      <h2>忍 NARUTO IDLE RPG</h2>
-      <button class="start-main-btn" id="btn-new-run">⚔ NUEVA PARTIDA</button>
-      <button class="start-main-btn secondary" id="btn-load-run">◈ CARGAR PARTIDA</button>
-      <p id="start-load-msg" class="start-help"></p>
+  <div class="start-shell">
+    <!-- SCREEN: MAIN MENU -->
+    <div id="s-menu" class="start-screen active" data-screen="menu">
+      <div class="menu-bg"></div>
+      <div class="menu-inner">
+        <div class="logo-wrap">
+          <div class="logo-kanji">忍</div>
+          <div class="logo-title">NARUTO</div>
+          <div class="logo-sub">Idle RPG</div>
+        </div>
+        <div class="divider-line"></div>
+        <button class="menu-btn btn-primary" data-action="to-clan">⚔ NUEVA PARTIDA</button>
+        <button class="menu-btn btn-secondary" data-action="to-load">◈ CARGAR PARTIDA</button>
+        <div class="menu-version">VER 0.2.0 · Sennin Mode V2</div>
+      </div>
     </div>
 
-    <div id="start-step-stats" class="start-step">
-      <h3>Elige 1 de 6 tipos de Estadísticas</h3>
-      <div id="start-stats-grid" class="start-stats-grid"></div>
-      <button class="start-back-btn" id="btn-back-menu">← Volver</button>
+    <!-- SCREEN: LOAD -->
+    <div id="s-load" class="start-screen" data-screen="load">
+      <div class="load-msg">
+        <span>📂</span>
+        No se encontró ninguna partida guardada.
+      </div>
+      <button class="load-back-btn" data-action="to-menu">← VOLVER</button>
     </div>
 
-    <div id="start-step-chars" class="start-step">
-      <h3>Elige tu personaje</h3>
-      <p class="start-help" id="start-selected-info"></p>
-      <div id="start-char-list" class="start-char-list"></div>
-      <button class="start-back-btn" id="btn-back-stats">← Cambiar estadísticas</button>
+    <!-- SCREEN: CLAN SELECT -->
+    <div id="s-clan" class="start-screen" data-screen="clan">
+      <div class="hdr">
+        <button class="hdr-back" data-action="to-menu">← Atrás</button>
+        <div class="hdr-title">Selecciona tu Clan</div>
+      </div>
+      <div class="clan-scroll" id="clan-grid"></div>
+    </div>
+
+    <!-- SCREEN: CHARACTER SELECT -->
+    <div id="s-char" class="start-screen" data-screen="char">
+      <div class="hdr">
+        <button class="hdr-back" data-action="to-clan">← Atrás</button>
+        <div class="hdr-title">Elige tu Personaje</div>
+      </div>
+      <div class="char-clan-banner">
+        <div>
+          <div class="char-clan-name" id="char-clan-label">—</div>
+          <div class="char-clan-tag">Selecciona un ninja</div>
+        </div>
+      </div>
+      <div class="char-list" id="char-list"></div>
+    </div>
+
+    <!-- SCREEN: PROFILE -->
+    <div id="s-profile" class="start-screen" data-screen="profile">
+      <div class="hdr">
+        <button class="hdr-back" data-action="to-char">← Atrás</button>
+        <div class="hdr-title">Ficha de Personaje</div>
+      </div>
+      <div class="profile-body" id="profile-body"></div>
     </div>
   </div>
 </div>

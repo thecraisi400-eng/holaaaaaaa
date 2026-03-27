@@ -49,6 +49,7 @@
   };
   const missionRanks = ['D', 'C', 'B', 'A', 'S'];
   const BINGO_COOLDOWN_MS = 6 * 60 * 60 * 1000;
+  const BINGO_STORAGE_KEY = 'naruto-idle-rpg-bingo-v1';
   const bingoRankEnemies = {
     D: ['Naruto Uzumaki', 'Sakura Haruno', 'Shikamaru Nara', 'Hinata Hyūga', 'Rock Lee', 'Neji Hyūga', 'Tenten'],
     C: ['Sai Yamanaka', 'Yamato', 'Rin Nohara', 'Shizune', 'Ibiki Morino', 'Zabuza Momochi', 'Haku'],
@@ -75,6 +76,55 @@
   const navClickHandlers = new Map();
   let overlayCloseHandler = null;
   let missionDelegatedHandler = null;
+
+  function sanitizeBingoEnemies(enemies = []) {
+    if (!Array.isArray(enemies)) return [];
+    return enemies
+      .filter((enemy) => enemy && typeof enemy.name === 'string')
+      .map((enemy) => ({
+        name: enemy.name,
+        hp: Math.max(0, Number(enemy.hp) || 0),
+        maxHp: Math.max(1, Number(enemy.maxHp) || 1),
+        atk: Math.max(0, Number(enemy.atk) || 0),
+        def: Math.max(0, Number(enemy.def) || 0),
+        xp: Math.max(0, Number(enemy.xp) || 0),
+        gold: Math.max(0, Number(enemy.gold) || 0),
+        defeated: Boolean(enemy.defeated),
+      }));
+  }
+
+  function saveBingoState() {
+    try {
+      const bingo = missionState.bingo;
+      localStorage.setItem(BINGO_STORAGE_KEY, JSON.stringify({
+        offeredRanks: Array.isArray(bingo.offeredRanks) ? bingo.offeredRanks : [],
+        selectedRank: bingo.selectedRank || null,
+        enemies: sanitizeBingoEnemies(bingo.enemies),
+        cooldownEndsAt: Number(bingo.cooldownEndsAt) || 0,
+      }));
+    } catch (error) {
+      console.warn('No se pudo guardar el estado del Libro Bingo.', error);
+    }
+  }
+
+  function loadBingoState() {
+    try {
+      const raw = localStorage.getItem(BINGO_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') return;
+
+      const offeredRanks = Array.isArray(parsed.offeredRanks)
+        ? parsed.offeredRanks.filter((rank) => missionRanks.includes(rank)).slice(0, 2)
+        : [];
+      missionState.bingo.offeredRanks = offeredRanks;
+      missionState.bingo.selectedRank = missionRanks.includes(parsed.selectedRank) ? parsed.selectedRank : null;
+      missionState.bingo.enemies = sanitizeBingoEnemies(parsed.enemies);
+      missionState.bingo.cooldownEndsAt = Math.max(0, Number(parsed.cooldownEndsAt) || 0);
+    } catch (error) {
+      console.warn('No se pudo recuperar el estado del Libro Bingo.', error);
+    }
+  }
 
   function spawnParticles(x, y, type = 'chakra') {
     const container = document.getElementById('particleContainer');
@@ -142,7 +192,17 @@
   }
 
   function bindNavigation(state, sections) {
-    document.querySelectorAll('.nav-btn').forEach(btn => {
+    const navButtons = [...document.querySelectorAll('.nav-btn')];
+    const activeButtons = new Set(navButtons);
+
+    navClickHandlers.forEach((handler, button) => {
+      if (!activeButtons.has(button)) {
+        button.removeEventListener('click', handler);
+        navClickHandlers.delete(button);
+      }
+    });
+
+    navButtons.forEach(btn => {
       const previousHandler = navClickHandlers.get(btn);
       if (previousHandler) {
         btn.removeEventListener('click', previousHandler);
@@ -312,6 +372,10 @@
   }
 
   function ensureBingoCycle() {
+    if (!missionState.bingo.offeredRanks.length && !missionState.bingo.selectedRank && !missionState.bingo.enemies.length) {
+      loadBingoState();
+    }
+
     const now = Date.now();
     const bingo = missionState.bingo;
     if (bingo.cooldownEndsAt && now >= bingo.cooldownEndsAt) {
@@ -319,10 +383,12 @@
       bingo.selectedRank = null;
       bingo.enemies = [];
       bingo.offeredRanks = [];
+      saveBingoState();
     }
 
     if (!bingo.offeredRanks.length) {
       bingo.offeredRanks = chooseRandomRanks();
+      saveBingoState();
     }
   }
 
@@ -537,6 +603,7 @@
         missionState.bingo.selectedRank = trigger.dataset.rank;
         missionState.bingo.enemies = buildBingoEnemies(trigger.dataset.rank);
         missionState.bingo.cooldownEndsAt = Date.now() + BINGO_COOLDOWN_MS;
+        saveBingoState();
         return renderBingoEnemyList();
       }
       if (action === 'back-bingo-ranks') return renderBingoRankSelection();
@@ -606,6 +673,7 @@
             state.gold += activeEnemy.gold;
             if (window.gameEngine?.addExperience) window.gameEngine.addExperience(activeEnemy.xp);
             if (window.updateUI) window.updateUI();
+            saveBingoState();
             addBattleLog(`🏆 Victoria: +${activeEnemy.xp} XP, +${activeEnemy.gold} oro.`);
             stopMissionBattle();
             renderBingoEnemyList();

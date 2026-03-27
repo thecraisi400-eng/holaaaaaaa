@@ -57,8 +57,9 @@
     battleInterval: null,
     battleActive: false,
   };
-  let missionDelegatedBound = false;
-  let navigationBound = false;
+  const navClickHandlers = new Map();
+  let overlayCloseHandler = null;
+  let missionDelegatedHandler = null;
 
   function spawnParticles(x, y, type = 'chakra') {
     const container = document.getElementById('particleContainer');
@@ -126,11 +127,13 @@
   }
 
   function bindNavigation(state, sections) {
-    if (navigationBound) return;
-    navigationBound = true;
-
     document.querySelectorAll('.nav-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
+      const previousHandler = navClickHandlers.get(btn);
+      if (previousHandler) {
+        btn.removeEventListener('click', previousHandler);
+      }
+
+      const handler = () => {
         const rect = btn.getBoundingClientRect();
         const cx = rect.left + rect.width / 2;
         const cy = rect.top + rect.height / 2;
@@ -181,15 +184,22 @@
           overlayDesc.textContent = info.desc;
           overlay.classList.add('visible');
         }
-      });
+      };
+
+      btn.addEventListener('click', handler);
+      navClickHandlers.set(btn, handler);
     });
 
-    overlayClose.addEventListener('click', () => {
+    if (overlayCloseHandler) {
+      overlayClose.removeEventListener('click', overlayCloseHandler);
+    }
+    overlayCloseHandler = () => {
       overlay.classList.remove('visible');
       const cx = window.innerWidth / 2;
       const cy = window.innerHeight / 2;
       spawnParticles(cx, cy, 'amber-spark');
-    });
+    };
+    overlayClose.addEventListener('click', overlayCloseHandler);
   }
 
   function clearCenterPanel() {
@@ -358,9 +368,8 @@
             window.gameEngine.addExperience(missionState.enemy.xp);
           }
           if (window.updateUI) window.updateUI();
-          missionState.enemyIndex = (missionState.enemyIndex + 1) % missionState.missionList.length;
           loadMissionEnemy();
-          addBattleLog(`⚔️ Nuevo enemigo: ${missionState.enemy.name}`);
+          addBattleLog(`🔁 Reinicio de entrenamiento contra ${missionState.enemy.name}.`);
         }
       }
 
@@ -380,10 +389,13 @@
   }
 
   function bindMissionDelegation(state) {
-    if (!centerDefault || missionDelegatedBound) return;
-    missionDelegatedBound = true;
+    if (!centerDefault) return;
 
-    centerDefault.addEventListener('click', (event) => {
+    if (missionDelegatedHandler) {
+      centerDefault.removeEventListener('click', missionDelegatedHandler);
+    }
+
+    missionDelegatedHandler = (event) => {
       const trigger = event.target.closest('[data-mission-action]');
       if (!trigger) return;
       const action = trigger.dataset.missionAction;
@@ -398,7 +410,9 @@
         const index = Number(trigger.dataset.index || 0);
         renderMissionBattle(state, rank, index);
       }
-    });
+    };
+
+    centerDefault.addEventListener('click', missionDelegatedHandler);
   }
 
   window.gameUI = {
@@ -408,5 +422,6 @@
     updateBars,
     bindMissionDelegation,
     stopMissionBattle,
+    isMissionBattleActive: () => missionState.battleActive,
   };
 })();

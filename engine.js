@@ -3,6 +3,7 @@
   const state = { ...initialState };
   const player = state;
   let started = false;
+  let regenInterval = null;
 
   function updateUI() {
     if (window.gameUI) window.gameUI.updateBars(player);
@@ -19,8 +20,41 @@
     player.mpMax = Math.round(equippedStats.MP || player.mpMax || 0);
     player.atk = Number((equippedStats.ATK ?? player.atk).toFixed(1));
     player.def = Number((equippedStats.DEF ?? player.def).toFixed(1));
+    player.regen = Number((equippedStats.REGEN ?? player.regen ?? 0).toFixed(2));
     player.hp = Math.min(player.hpMax, Math.max(0, player.hp));
     player.mp = Math.min(player.mpMax, Math.max(0, player.mp));
+  }
+
+  function isInBattle() {
+    return Boolean(window.gameUI && window.gameUI.isMissionBattleActive && window.gameUI.isMissionBattleActive());
+  }
+
+  function tickRegeneration() {
+    if (player.hp <= 0) return;
+
+    const battle = isInBattle();
+    const regenRate = battle
+      ? Math.max(0, Number(player.regen) || 0) / 100
+      : 0.02;
+    if (regenRate <= 0) return;
+
+    const hpGain = player.hp < player.hpMax
+      ? Math.max(1, Math.round(player.hpMax * regenRate))
+      : 0;
+    const mpGain = player.mp < player.mpMax
+      ? Math.max(1, Math.round(player.mpMax * regenRate))
+      : 0;
+
+    if (!hpGain && !mpGain) return;
+
+    player.hp = Math.min(player.hpMax, player.hp + hpGain);
+    player.mp = Math.min(player.mpMax, player.mp + mpGain);
+    updateUI();
+  }
+
+  function startRegenerationLoop() {
+    if (regenInterval) clearInterval(regenInterval);
+    regenInterval = setInterval(tickRegeneration, 1000);
   }
 
   function nextExpRequirement(level) {
@@ -65,6 +99,7 @@
       player.mpMax = player.baseStats.MP;
       player.atk = player.baseStats.ATK;
       player.def = player.baseStats.DEF;
+      player.regen = Number(profile.stats.REGEN) || 0;
       player.exp = 0;
       player.level = 1;
       player.expMax = nextExpRequirement(2);
@@ -96,6 +131,7 @@
     syncStatsWithEquipment();
     window.gameUI.bindMissionDelegation(player);
     window.gameUI.bindNavigation(player, sections);
+    startRegenerationLoop();
     updateUI();
   }
 

@@ -17,6 +17,81 @@
   let wasFighting = false;
   let regenCheckerInterval = null;
   let autoSaveInterval = null;
+  let beforeUnloadHandler = null;
+
+  const persistence = (() => {
+    function buildSnapshot() {
+      ensurePlayerInternals();
+      return {
+        version: 1,
+        savedAt: Date.now(),
+        player: {
+          hp: player.hp,
+          hpMax: player.hpMax,
+          mp: player.mp,
+          mpMax: player.mpMax,
+          exp: player.exp,
+          expMax: player.expMax,
+          gold: player.gold,
+          atk: player.atk,
+          def: player.def,
+          level: player.level,
+          activeSection: player.activeSection,
+          regen: player.regen,
+          baseStats: player.baseStats,
+          levelGains: player.levelGains,
+        },
+        identity: {
+          avatar: document.querySelector('#avatarFrame .avatar-placeholder')?.textContent || '',
+          charName: document.getElementById('charName')?.textContent || '',
+          rank: document.getElementById('charRank')?.textContent || '',
+        },
+        equipmentLevels: window.equipLogic?.levels ? { ...window.equipLogic.levels } : null,
+      };
+    }
+
+    function save() {
+      try {
+        const payload = buildSnapshot();
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        return true;
+      } catch (error) {
+        console.warn('No se pudo guardar la partida.', error);
+        return false;
+      }
+    }
+
+    function loadRaw() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === 'object' ? parsed : null;
+      } catch (error) {
+        console.warn('No se pudo cargar la partida guardada.', error);
+        return null;
+      }
+    }
+
+    function clear() {
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch (error) {
+        console.warn('No se pudo limpiar la partida guardada.', error);
+      }
+    }
+
+    function hasSave() {
+      return Boolean(loadRaw());
+    }
+
+    return {
+      save,
+      loadRaw,
+      clear,
+      hasSave,
+    };
+  })();
 
   function updateUI() {
     if (window.gameUI) window.gameUI.updateBars(player);
@@ -218,57 +293,12 @@
     ensurePlayerInternals();
   }
 
-  function buildSaveSnapshot() {
-    ensurePlayerInternals();
-    return {
-      version: 1,
-      savedAt: Date.now(),
-      player: {
-        hp: player.hp,
-        hpMax: player.hpMax,
-        mp: player.mp,
-        mpMax: player.mpMax,
-        exp: player.exp,
-        expMax: player.expMax,
-        gold: player.gold,
-        atk: player.atk,
-        def: player.def,
-        level: player.level,
-        activeSection: player.activeSection,
-        regen: player.regen,
-        baseStats: player.baseStats,
-        levelGains: player.levelGains,
-      },
-      identity: {
-        avatar: document.querySelector('#avatarFrame .avatar-placeholder')?.textContent || '',
-        charName: document.getElementById('charName')?.textContent || '',
-        rank: document.getElementById('charRank')?.textContent || '',
-      },
-      equipmentLevels: window.equipLogic?.levels ? { ...window.equipLogic.levels } : null,
-    };
-  }
-
   function saveGame() {
-    try {
-      const payload = buildSaveSnapshot();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-      return true;
-    } catch (error) {
-      console.warn('No se pudo guardar la partida.', error);
-      return false;
-    }
+    return persistence.save();
   }
 
   function loadGameData() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      return parsed && typeof parsed === 'object' ? parsed : null;
-    } catch (error) {
-      console.warn('No se pudo cargar la partida guardada.', error);
-      return null;
-    }
+    return persistence.loadRaw();
   }
 
   function applySaveSnapshot(snapshot) {
@@ -303,12 +333,15 @@
     }
 
     syncStatsWithEquipment();
+    if (window.equipUI && window.equipUI.refresh) {
+      window.equipUI.refresh();
+    }
     updateUI();
     return true;
   }
 
   function hasSaveGame() {
-    return Boolean(loadGameData());
+    return persistence.hasSave();
   }
 
   function loadGame() {
@@ -320,7 +353,23 @@
     autoSaveInterval = setInterval(saveGame, AUTO_SAVE_MS);
   }
 
-  function init(profile) {
+  function bindLifecyclePersistence() {
+    if (beforeUnloadHandler) return;
+    beforeUnloadHandler = () => {
+      saveGame();
+    };
+    window.addEventListener('beforeunload', beforeUnloadHandler);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') saveGame();
+    });
+  }
+
+  function init(config = {}) {
+    const options = (config && typeof config === 'object' && !('stats' in config))
+      ? config
+      : { profile: config };
+    const { profile = null, forceNewGame = false } = options;
+
     if (started) return;
     started = true;
 
@@ -340,10 +389,18 @@
       window.equipUI.showHeroSection(player.activeSection === 'heroe');
     }
 
-    applyProfile(profile);
+    if (forceNewGame) {
+      persistence.clear();
+    } else if (!profile && hasSaveGame()) {
+      loadGame();
+    } else {
+      applyProfile(profile);
+    }
+
     syncStatsWithEquipment();
     window.gameUI.bindMissionDelegation(player);
     window.gameUI.bindNavigation(player, sections);
+    bindLifecyclePersistence();
     handleRegeneration();
     if (regenCheckerInterval) clearInterval(regenCheckerInterval);
     regenCheckerInterval = setInterval(handleRegeneration, 250);
@@ -363,6 +420,7 @@
     saveGame,
     loadGame,
     hasSaveGame,
+    clearSaveGame: persistence.clear,
   };
   window.player = player;
 })();

@@ -141,5 +141,10 @@
   window.equipUI = {
     init,
     showHeroSection,
+    refresh: () => {
+      renderStats();
+      renderEquipment();
+      if (currentUpgradeKey) renderUpgradeCard(currentUpgradeKey);
+    },
   };
 })();

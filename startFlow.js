@@ -9,6 +9,16 @@
   const selectedInfo = document.getElementById('start-selected-info');
 
   let selectedOption = null;
+  const startHandlers = new Map();
+
+  function bindStartAction(id, fn) {
+    const node = document.getElementById(id);
+    if (!node) return;
+    const prev = startHandlers.get(node);
+    if (prev) node.removeEventListener('click', prev);
+    node.addEventListener('click', fn);
+    startHandlers.set(node, fn);
+  }
 
   function showStep(step) {
     [stepMenu, stepStats, stepChars].forEach((el) => el.classList.remove('active'));
@@ -73,22 +83,25 @@
   function startGame(member) {
     const stats = selectedOption.formula(1);
     window.gameEngine.init({
-      avatar: member.emoji,
-      charName: member.name,
-      rank: selectedOption.name,
-      stats,
-      levelGains: computeLevelGains(selectedOption),
-      gold: 500,
+      profile: {
+        avatar: member.emoji,
+        charName: member.name,
+        rank: selectedOption.name,
+        stats,
+        levelGains: computeLevelGains(selectedOption),
+        gold: 500,
+      },
+      forceNewGame: true,
     });
     overlay.classList.add('hidden');
   }
 
-  document.getElementById('btn-new-run').addEventListener('click', () => {
+  bindStartAction('btn-new-run', () => {
     renderOptions();
     showStep(stepStats);
   });
 
-  document.getElementById('btn-load-run').addEventListener('click', () => {
+  bindStartAction('btn-load-run', () => {
     const msg = document.getElementById('start-load-msg');
     if (!window.gameEngine || !window.gameEngine.hasSaveGame || !window.gameEngine.hasSaveGame()) {
       msg.textContent = 'No se encontró ninguna partida guardada.';
@@ -96,8 +109,7 @@
     }
 
     window.gameEngine.init();
-    const loaded = window.gameEngine.loadGame && window.gameEngine.loadGame();
-    if (!loaded) {
+    if (window.gameEngine.loadGame && !window.gameEngine.loadGame()) {
       msg.textContent = 'No se pudo cargar la partida guardada.';
       return;
     }
@@ -106,8 +118,13 @@
     msg.textContent = '';
   });
 
-  document.getElementById('btn-back-menu').addEventListener('click', () => showStep(stepMenu));
-  document.getElementById('btn-back-stats').addEventListener('click', () => showStep(stepStats));
+  bindStartAction('btn-back-menu', () => showStep(stepMenu));
+  bindStartAction('btn-back-stats', () => showStep(stepStats));
 
   showStep(stepMenu);
+
+  if (window.gameEngine && window.gameEngine.hasSaveGame && window.gameEngine.hasSaveGame()) {
+    window.gameEngine.init();
+    overlay.classList.add('hidden');
+  }
 })();

@@ -48,6 +48,14 @@
     ],
   };
   const missionRanks = ['D', 'C', 'B', 'A', 'S'];
+  const BINGO_COOLDOWN_MS = 6 * 60 * 60 * 1000;
+  const bingoRankEnemies = {
+    D: ['Naruto Uzumaki', 'Sakura Haruno', 'Shikamaru Nara', 'Hinata Hyūga', 'Rock Lee', 'Neji Hyūga', 'Tenten'],
+    C: ['Sai Yamanaka', 'Yamato', 'Rin Nohara', 'Shizune', 'Ibiki Morino', 'Zabuza Momochi', 'Haku'],
+    B: ['Might Guy', 'Kakashi Hatake', 'Jiraiya', 'Tsunade', 'Orochimaru', 'Killer Bee', 'Anko Mitarashi'],
+    A: ['Hashirama Senju', 'Tobirama Senju', 'Minato Namikaze', 'Madara Uchiha', 'Itachi Uchiha', 'Pain', 'Konan'],
+    S: ['Hagoromo Ōtsutsuki', 'Kaguya Ōtsutsuki', 'Isshiki Ōtsutsuki', 'Momoshiki Ōtsutsuki', 'Toneri Ōtsutsuki', 'Madara Seis Caminos'],
+  };
   const missionState = {
     step: 'root',
     currentRank: null,
@@ -56,6 +64,13 @@
     enemy: null,
     battleInterval: null,
     battleActive: false,
+    battleMode: 'mission',
+    bingo: {
+      offeredRanks: [],
+      selectedRank: null,
+      enemies: [],
+      cooldownEndsAt: 0,
+    },
   };
   const navClickHandlers = new Map();
   let overlayCloseHandler = null;
@@ -278,6 +293,113 @@
     centerDefault.innerHTML = `
       <div class="missions-panel">
         <button class="missions-menu-btn" data-mission-action="open-ranks">⚔️ MISIONES RANGO ⚔️</button>
+        <button class="missions-menu-btn" data-mission-action="open-bingo">📘 LIBRO BINGO</button>
+      </div>
+    `;
+  }
+
+  function formatCooldown(endsAt) {
+    const remaining = Math.max(0, Math.floor((endsAt - Date.now()) / 1000));
+    const h = String(Math.floor(remaining / 3600)).padStart(2, '0');
+    const m = String(Math.floor((remaining % 3600) / 60)).padStart(2, '0');
+    const s = String(remaining % 60).padStart(2, '0');
+    return `${h}:${m}:${s}`;
+  }
+
+  function chooseRandomRanks() {
+    const list = [...missionRanks].sort(() => Math.random() - 0.5);
+    return list.slice(0, 2);
+  }
+
+  function ensureBingoCycle() {
+    const now = Date.now();
+    const bingo = missionState.bingo;
+    if (bingo.cooldownEndsAt && now >= bingo.cooldownEndsAt) {
+      bingo.cooldownEndsAt = 0;
+      bingo.selectedRank = null;
+      bingo.enemies = [];
+      bingo.offeredRanks = [];
+    }
+
+    if (!bingo.offeredRanks.length) {
+      bingo.offeredRanks = chooseRandomRanks();
+    }
+  }
+
+  function buildBingoEnemies(rank) {
+    const base = bingoRankEnemies[rank] || [];
+    return [...base]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 5)
+      .map((name, index) => {
+        const hp = 120 + (index * 45) + Math.floor(Math.random() * 40);
+        return {
+          name,
+          hp,
+          maxHp: hp,
+          atk: 40 + (index * 8) + Math.floor(Math.random() * 8),
+          def: 30 + (index * 6) + Math.floor(Math.random() * 8),
+          xp: 14 + (index * 3),
+          gold: 20 + (index * 6),
+          defeated: false,
+        };
+      });
+  }
+
+  function renderBingoRankSelection() {
+    missionState.step = 'bingo-ranks';
+    stopMissionBattle();
+    ensureBingoCycle();
+
+    const bingo = missionState.bingo;
+    const cooldownActive = bingo.cooldownEndsAt > Date.now();
+    const timerText = cooldownActive
+      ? `⏳ Reinicio automático en ${formatCooldown(bingo.cooldownEndsAt)}`
+      : '✨ Disponible ahora';
+
+    centerDefault.innerHTML = `
+      <div class="missions-panel">
+        <div class="missions-title">LIBRO BINGO</div>
+        <div class="missions-subtitle">${timerText}</div>
+        ${bingo.offeredRanks.map((rank) => `
+          <button class="missions-menu-btn rank-${rank.toLowerCase()}" data-mission-action="select-bingo-rank" data-rank="${rank}">
+            RANGO ${rank}
+          </button>
+        `).join('')}
+        <button class="missions-back-btn" data-mission-action="back-root">⬅️ Volver</button>
+      </div>
+    `;
+  }
+
+  function renderBingoEnemyList() {
+    missionState.step = 'bingo-enemies';
+    stopMissionBattle();
+    ensureBingoCycle();
+    const bingo = missionState.bingo;
+
+    if (!bingo.selectedRank || !bingo.enemies.length) {
+      renderBingoRankSelection();
+      return;
+    }
+
+    const finished = bingo.enemies.every((enemy) => enemy.defeated);
+    const timerText = bingo.cooldownEndsAt > Date.now()
+      ? `⏳ Reinicio en ${formatCooldown(bingo.cooldownEndsAt)}`
+      : '✨ Reinicio disponible';
+
+    centerDefault.innerHTML = `
+      <div class="missions-panel">
+        <div class="missions-title">LIBRO BINGO · RANGO ${bingo.selectedRank}</div>
+        <div class="missions-subtitle">${timerText}</div>
+        ${bingo.enemies.map((enemy, index) => `
+          <button class="mission-row mission-rank-${bingo.selectedRank.toLowerCase()} ${enemy.defeated ? 'locked' : ''}" data-mission-action="start-bingo-battle" data-index="${index}" ${enemy.defeated ? 'disabled' : ''}>
+            <span class="mission-row-title">${enemy.defeated ? '✅' : '⚔️'} ${enemy.name}</span>
+            <span class="mission-row-meta">HP ${enemy.maxHp} • ATK ${enemy.atk} • DEF ${enemy.def}</span>
+            <span class="mission-row-meta">XP ${enemy.xp} • Oro ${enemy.gold}</span>
+          </button>
+        `).join('')}
+        ${finished ? '<div class="missions-subtitle">🏆 Todos los enemigos del Libro Bingo fueron derrotados.</div>' : ''}
+        <button class="missions-back-btn" data-mission-action="back-bingo-ranks">⬅️ Cambiar vista</button>
       </div>
     `;
   }
@@ -324,6 +446,7 @@
     stopMissionBattle();
     missionState.step = 'battle';
     missionState.currentRank = rank;
+    missionState.battleMode = 'mission';
     missionState.missionList = missionsData[rank] || [];
     missionState.enemyIndex = missionIndex;
     loadMissionEnemy();
@@ -399,6 +522,24 @@
       const action = trigger.dataset.missionAction;
 
       if (action === 'open-ranks') return renderRankList();
+      if (action === 'open-bingo') {
+        ensureBingoCycle();
+        if (missionState.bingo.selectedRank && missionState.bingo.enemies.length) {
+          return renderBingoEnemyList();
+        }
+        return renderBingoRankSelection();
+      }
+      if (action === 'select-bingo-rank') {
+        ensureBingoCycle();
+        if (missionState.bingo.cooldownEndsAt && missionState.bingo.cooldownEndsAt > Date.now() && missionState.bingo.selectedRank) {
+          return renderBingoEnemyList();
+        }
+        missionState.bingo.selectedRank = trigger.dataset.rank;
+        missionState.bingo.enemies = buildBingoEnemies(trigger.dataset.rank);
+        missionState.bingo.cooldownEndsAt = Date.now() + BINGO_COOLDOWN_MS;
+        return renderBingoEnemyList();
+      }
+      if (action === 'back-bingo-ranks') return renderBingoRankSelection();
       if (action === 'back-root') return renderMissionRoot();
       if (action === 'open-rank') return renderMissionList(trigger.dataset.rank, state);
       if (action === 'back-ranks') return renderRankList();
@@ -408,6 +549,74 @@
         const index = Number(trigger.dataset.index || 0);
         renderMissionBattle(state, rank, index);
       }
+      if (action === 'start-bingo-battle') {
+        const bingo = missionState.bingo;
+        const index = Number(trigger.dataset.index || 0);
+        const enemy = bingo.enemies[index];
+        if (!enemy || enemy.defeated) return;
+
+        stopMissionBattle();
+        missionState.step = 'battle';
+        missionState.battleMode = 'bingo';
+        missionState.enemy = enemy;
+        clearCenterPanel();
+        centerDefault.innerHTML = `
+          <div class="missions-panel mission-battle">
+            <div class="mission-battle-head">
+              <div class="battle-card">
+                <div class="battle-emoji">🥷</div>
+                <div class="battle-name">Shinobi</div>
+                <div class="battle-hp-track"><div id="missionPlayerHp" class="battle-hp-fill"></div></div>
+              </div>
+              <div class="battle-card enemy">
+                <div class="battle-emoji">${missionEnemyEmoji(enemy.name)}</div>
+                <div class="battle-name">${enemy.name}</div>
+                <div class="battle-hp-track"><div id="missionEnemyHp" class="battle-hp-fill enemy"></div></div>
+              </div>
+            </div>
+            <div id="missionBattleLog" class="mission-battle-log"></div>
+            <button class="missions-stop-btn" data-mission-action="stop-bingo-battle">⏹️ DETENER</button>
+          </div>
+        `;
+
+        missionState.battleActive = true;
+        addBattleLog('📘 Inicia combate del Libro Bingo.');
+        updateBattleBars(state);
+
+        missionState.battleInterval = setInterval(() => {
+          if (!missionState.battleActive || !missionState.enemy) return;
+          const activeEnemy = missionState.enemy;
+          if (state.hp > 0 && activeEnemy.hp > 0) {
+            const dealt = Math.max(1, Math.floor(state.atk - (activeEnemy.def / 3) + (Math.random() * 8)));
+            activeEnemy.hp = Math.max(0, activeEnemy.hp - dealt);
+            addBattleLog(`🥷 Atacas y causas ${dealt} daño.`);
+            updateBattleBars(state);
+          }
+
+          if (state.hp > 0 && activeEnemy.hp > 0) {
+            const received = Math.max(1, Math.floor(activeEnemy.atk - (state.def / 3) + (Math.random() * 6)));
+            state.hp = Math.max(0, state.hp - received);
+            addBattleLog(`👹 ${activeEnemy.name} te golpea por ${received}.`);
+            if (window.updateUI) window.updateUI();
+            updateBattleBars(state);
+          }
+
+          if (activeEnemy.hp <= 0) {
+            activeEnemy.defeated = true;
+            state.gold += activeEnemy.gold;
+            if (window.gameEngine?.addExperience) window.gameEngine.addExperience(activeEnemy.xp);
+            if (window.updateUI) window.updateUI();
+            addBattleLog(`🏆 Victoria: +${activeEnemy.xp} XP, +${activeEnemy.gold} oro.`);
+            stopMissionBattle();
+            renderBingoEnemyList();
+          } else if (state.hp <= 0) {
+            addBattleLog('😵 Has sido derrotado.');
+            stopMissionBattle();
+            renderBingoEnemyList();
+          }
+        }, 700);
+      }
+      if (action === 'stop-bingo-battle') return renderBingoEnemyList();
     };
 
     centerDefault.addEventListener('click', missionDelegatedHandler);

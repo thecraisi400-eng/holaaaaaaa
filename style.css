@@ -352,6 +352,18 @@ html, body {
   color: var(--teal);
   letter-spacing: 1px;
 }
+.missions-subtitle {
+  width: 100%;
+  border-radius: 999px;
+  padding: 9px 10px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(8, 14, 26, .92);
+  color: var(--text-mid);
+  font-size: .58rem;
+  text-align: center;
+  font-family: var(--font-hud);
+  font-weight: 700;
+}
 .missions-menu-btn, .missions-back-btn, .missions-stop-btn, .mission-row {
   width: 100%;
   border-radius: 999px;

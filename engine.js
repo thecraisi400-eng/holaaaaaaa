@@ -32,7 +32,6 @@
   }
 
   function applyOutOfCombatRegen() {
-    if (player.hp <= 0) return;
     const regenRate = 0.02;
 
     const hpGain = player.hp < player.hpMax
@@ -70,7 +69,7 @@
 
   function handleRegeneration() {
     const isFighting = isInBattle();
-    const isOutsideMissionPanel = player.activeSection !== 'misiones';
+    const isInHeroSection = player.activeSection === 'heroe';
 
     if (isFighting) {
       wasFighting = true;
@@ -79,13 +78,19 @@
       return;
     }
 
-    if (regenInterval) return;
+    if (!isInHeroSection) {
+      wasFighting = false;
+      clearRegenDelay();
+      stopRegenerationLoop();
+      return;
+    }
 
     if (wasFighting) {
+      if (regenInterval) return;
       clearRegenDelay();
       regenTimeout = setTimeout(() => {
         regenTimeout = null;
-        if (!isInBattle()) {
+        if (!isInBattle() && player.activeSection === 'heroe') {
           wasFighting = false;
           startRegenerationLoop();
         }
@@ -93,7 +98,7 @@
       return;
     }
 
-    if (isOutsideMissionPanel || !isFighting) {
+    if (!regenInterval) {
       startRegenerationLoop();
     }
   }

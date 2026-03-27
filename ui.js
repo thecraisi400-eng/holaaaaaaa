@@ -326,8 +326,6 @@
     missionState.currentRank = rank;
     missionState.missionList = missionsData[rank] || [];
     missionState.enemyIndex = missionIndex;
-    state.hp = state.hpMax;
-    state.mp = state.mpMax;
     loadMissionEnemy();
     clearCenterPanel();
     centerDefault.innerHTML = `

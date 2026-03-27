@@ -21,6 +21,19 @@
     return 'is-mid';
   }
 
+  function computeLevelGains(option) {
+    if (!option || typeof option.formula !== 'function') return {};
+    const lv1 = option.formula(1) || {};
+    const lv2 = option.formula(2) || {};
+    const stats = ['HP', 'MP', 'ATK', 'DEF'];
+
+    return stats.reduce((acc, key) => {
+      const gain = (Number(lv2[key]) || 0) - (Number(lv1[key]) || 0);
+      if (gain !== 0) acc[key] = gain;
+      return acc;
+    }, {});
+  }
+
   function renderOptions() {
     statsGrid.innerHTML = '';
     options.forEach((opt) => {
@@ -64,6 +77,7 @@
       charName: member.name,
       rank: selectedOption.name,
       stats,
+      levelGains: computeLevelGains(selectedOption),
       gold: 500,
     });
     overlay.classList.add('hidden');
@@ -76,7 +90,20 @@
 
   document.getElementById('btn-load-run').addEventListener('click', () => {
     const msg = document.getElementById('start-load-msg');
-    msg.textContent = 'No se encontró ninguna partida guardada.';
+    if (!window.gameEngine || !window.gameEngine.hasSaveGame || !window.gameEngine.hasSaveGame()) {
+      msg.textContent = 'No se encontró ninguna partida guardada.';
+      return;
+    }
+
+    window.gameEngine.init();
+    const loaded = window.gameEngine.loadGame && window.gameEngine.loadGame();
+    if (!loaded) {
+      msg.textContent = 'No se pudo cargar la partida guardada.';
+      return;
+    }
+
+    overlay.classList.add('hidden');
+    msg.textContent = '';
   });
 
   document.getElementById('btn-back-menu').addEventListener('click', () => showStep(stepMenu));

@@ -2,10 +2,21 @@
   const { initialState, sections } = window.gameData;
   const state = { ...initialState };
   const player = state;
+  const STORAGE_KEY = 'naruto-idle-rpg-save-v1';
+  const AUTO_SAVE_MS = 1000;
+  const DEFAULT_LEVEL_GAINS = {
+    HP: 12,
+    MP: 8,
+    ATK: 3,
+    DEF: 3,
+  };
+
   let started = false;
   let regenInterval = null;
   let regenTimeout = null;
   let wasFighting = false;
+  let regenCheckerInterval = null;
+  let autoSaveInterval = null;
 
   function updateUI() {
     if (window.gameUI) window.gameUI.updateBars(player);
@@ -13,6 +24,39 @@
     const defNode = document.getElementById('statDef');
     if (atkNode) atkNode.textContent = Math.round(player.atk).toLocaleString();
     if (defNode) defNode.textContent = Math.round(player.def).toLocaleString();
+  }
+
+  function sanitizeNumericMap(map) {
+    if (!map || typeof map !== 'object') return {};
+    return Object.entries(map).reduce((acc, [key, value]) => {
+      const num = Number(value);
+      if (Number.isFinite(num)) acc[key] = num;
+      return acc;
+    }, {});
+  }
+
+  function ensurePlayerInternals() {
+    if (!player.baseStats || typeof player.baseStats !== 'object') {
+      player.baseStats = {
+        HP: Number(player.hpMax) || 0,
+        MP: Number(player.mpMax) || 0,
+        ATK: Number(player.atk) || 0,
+        DEF: Number(player.def) || 0,
+      };
+    }
+    player.baseStats = sanitizeNumericMap(player.baseStats);
+
+    const gains = sanitizeNumericMap(player.levelGains);
+    player.levelGains = {
+      ...DEFAULT_LEVEL_GAINS,
+      ...gains,
+    };
+
+    if (!Number.isFinite(player.level) || player.level < 1) player.level = 1;
+    if (!Number.isFinite(player.exp) || player.exp < 0) player.exp = 0;
+    if (!Number.isFinite(player.expMax) || player.expMax < 1) {
+      player.expMax = nextExpRequirement(player.level + 1);
+    }
   }
 
   function syncStatsWithEquipment() {
@@ -107,13 +151,29 @@
     return Math.max(1, Math.round(120 * Math.pow(level, 1.3)));
   }
 
+  function applyLevelUpStats() {
+    ensurePlayerInternals();
+    for (const [stat, amount] of Object.entries(player.levelGains || {})) {
+      const gain = Number(amount) || 0;
+      if (!gain) continue;
+      player.baseStats[stat] = Math.max(0, (Number(player.baseStats[stat]) || 0) + gain);
+    }
+
+    syncStatsWithEquipment();
+    player.hp = player.hpMax;
+    player.mp = player.mpMax;
+  }
+
   function addExperience(amount) {
     const gain = Math.max(0, Math.floor(Number(amount) || 0));
     if (!gain) return;
+    ensurePlayerInternals();
+
     player.exp += gain;
     while (player.exp >= player.expMax) {
       player.exp -= player.expMax;
       player.level += 1;
+      applyLevelUpStats();
       player.expMax = nextExpRequirement(player.level + 1);
     }
     updateUI();
@@ -139,6 +199,10 @@
         ATK: Number(profile.stats.ATK) || 0,
         DEF: Number(profile.stats.DEF) || 0,
       };
+      player.levelGains = {
+        ...DEFAULT_LEVEL_GAINS,
+        ...sanitizeNumericMap(profile.levelGains),
+      };
       player.hp = player.baseStats.HP;
       player.hpMax = player.baseStats.HP;
       player.mp = player.baseStats.MP;
@@ -151,6 +215,109 @@
       player.expMax = nextExpRequirement(2);
       player.gold = profile.gold ?? 0;
     }
+    ensurePlayerInternals();
+  }
+
+  function buildSaveSnapshot() {
+    ensurePlayerInternals();
+    return {
+      version: 1,
+      savedAt: Date.now(),
+      player: {
+        hp: player.hp,
+        hpMax: player.hpMax,
+        mp: player.mp,
+        mpMax: player.mpMax,
+        exp: player.exp,
+        expMax: player.expMax,
+        gold: player.gold,
+        atk: player.atk,
+        def: player.def,
+        level: player.level,
+        activeSection: player.activeSection,
+        regen: player.regen,
+        baseStats: player.baseStats,
+        levelGains: player.levelGains,
+      },
+      identity: {
+        avatar: document.querySelector('#avatarFrame .avatar-placeholder')?.textContent || '',
+        charName: document.getElementById('charName')?.textContent || '',
+        rank: document.getElementById('charRank')?.textContent || '',
+      },
+      equipmentLevels: window.equipLogic?.levels ? { ...window.equipLogic.levels } : null,
+    };
+  }
+
+  function saveGame() {
+    try {
+      const payload = buildSaveSnapshot();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      return true;
+    } catch (error) {
+      console.warn('No se pudo guardar la partida.', error);
+      return false;
+    }
+  }
+
+  function loadGameData() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch (error) {
+      console.warn('No se pudo cargar la partida guardada.', error);
+      return null;
+    }
+  }
+
+  function applySaveSnapshot(snapshot) {
+    if (!snapshot || typeof snapshot !== 'object') return false;
+    const savedPlayer = snapshot.player;
+    if (!savedPlayer || typeof savedPlayer !== 'object') return false;
+
+    Object.assign(player, savedPlayer);
+    ensurePlayerInternals();
+
+    if (window.equipLogic?.levels && snapshot.equipmentLevels && typeof snapshot.equipmentLevels === 'object') {
+      for (const key of Object.keys(window.equipLogic.levels)) {
+        const lv = Number(snapshot.equipmentLevels[key]);
+        if (Number.isFinite(lv) && lv >= 1) {
+          window.equipLogic.levels[key] = Math.floor(lv);
+        }
+      }
+    }
+
+    const identity = snapshot.identity || {};
+    if (identity.avatar) {
+      const avatarNode = document.querySelector('#avatarFrame .avatar-placeholder');
+      if (avatarNode) avatarNode.textContent = identity.avatar;
+    }
+    if (identity.charName) {
+      const nameNode = document.getElementById('charName');
+      if (nameNode) nameNode.textContent = String(identity.charName).toUpperCase();
+    }
+    if (identity.rank) {
+      const rankNode = document.getElementById('charRank');
+      if (rankNode) rankNode.textContent = String(identity.rank).toUpperCase();
+    }
+
+    syncStatsWithEquipment();
+    updateUI();
+    return true;
+  }
+
+  function hasSaveGame() {
+    return Boolean(loadGameData());
+  }
+
+  function loadGame() {
+    return applySaveSnapshot(loadGameData());
+  }
+
+  function startAutoSave() {
+    if (autoSaveInterval) clearInterval(autoSaveInterval);
+    autoSaveInterval = setInterval(saveGame, AUTO_SAVE_MS);
   }
 
   function init(profile) {
@@ -178,7 +345,10 @@
     window.gameUI.bindMissionDelegation(player);
     window.gameUI.bindNavigation(player, sections);
     handleRegeneration();
-    setInterval(handleRegeneration, 250);
+    if (regenCheckerInterval) clearInterval(regenCheckerInterval);
+    regenCheckerInterval = setInterval(handleRegeneration, 250);
+    startAutoSave();
+    saveGame();
     updateUI();
   }
 
@@ -190,6 +360,9 @@
     addExperience,
     syncStatsWithEquipment,
     handleRegeneration,
+    saveGame,
+    loadGame,
+    hasSaveGame,
   };
   window.player = player;
 })();

@@ -4,6 +4,8 @@
   const player = state;
   let started = false;
   let regenInterval = null;
+  let regenTimeout = null;
+  let wasFighting = false;
 
   function updateUI() {
     if (window.gameUI) window.gameUI.updateBars(player);
@@ -29,14 +31,9 @@
     return Boolean(window.gameUI && window.gameUI.isMissionBattleActive && window.gameUI.isMissionBattleActive());
   }
 
-  function tickRegeneration() {
+  function applyOutOfCombatRegen() {
     if (player.hp <= 0) return;
-
-    const battle = isInBattle();
-    const regenRate = battle
-      ? Math.max(0, Number(player.regen) || 0) / 100
-      : 0.02;
-    if (regenRate <= 0) return;
+    const regenRate = 0.02;
 
     const hpGain = player.hp < player.hpMax
       ? Math.max(1, Math.round(player.hpMax * regenRate))
@@ -52,9 +49,53 @@
     updateUI();
   }
 
+  function stopRegenerationLoop() {
+    if (regenInterval) {
+      clearInterval(regenInterval);
+      regenInterval = null;
+    }
+  }
+
   function startRegenerationLoop() {
-    if (regenInterval) clearInterval(regenInterval);
-    regenInterval = setInterval(tickRegeneration, 1000);
+    stopRegenerationLoop();
+    regenInterval = setInterval(applyOutOfCombatRegen, 1000);
+  }
+
+  function clearRegenDelay() {
+    if (regenTimeout) {
+      clearTimeout(regenTimeout);
+      regenTimeout = null;
+    }
+  }
+
+  function handleRegeneration() {
+    const isFighting = isInBattle();
+    const isOutsideMissionPanel = player.activeSection !== 'misiones';
+
+    if (isFighting) {
+      wasFighting = true;
+      clearRegenDelay();
+      stopRegenerationLoop();
+      return;
+    }
+
+    if (regenInterval) return;
+
+    if (wasFighting) {
+      clearRegenDelay();
+      regenTimeout = setTimeout(() => {
+        regenTimeout = null;
+        if (!isInBattle()) {
+          wasFighting = false;
+          startRegenerationLoop();
+        }
+      }, 2000);
+      return;
+    }
+
+    if (isOutsideMissionPanel || !isFighting) {
+      startRegenerationLoop();
+    }
   }
 
   function nextExpRequirement(level) {
@@ -131,7 +172,8 @@
     syncStatsWithEquipment();
     window.gameUI.bindMissionDelegation(player);
     window.gameUI.bindNavigation(player, sections);
-    startRegenerationLoop();
+    handleRegeneration();
+    setInterval(handleRegeneration, 250);
     updateUI();
   }
 
@@ -142,6 +184,7 @@
     updateUI,
     addExperience,
     syncStatsWithEquipment,
+    handleRegeneration,
   };
   window.player = player;
 })();

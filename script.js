@@ -70,7 +70,7 @@
   const controller = new AbortController();
   const { signal } = controller;
   let barsIntervalId = null;
-  let heroCleanup = null;
+  let sectionCleanup = null;
   let selectedCharacter = null;
   let gameLaunched = false;
 
@@ -247,9 +247,9 @@
   }
 
   function cleanupCenter() {
-    if (typeof heroCleanup === 'function') {
-      heroCleanup();
-      heroCleanup = null;
+    if (typeof sectionCleanup === 'function') {
+      sectionCleanup();
+      sectionCleanup = null;
     }
     refs.center.replaceChildren();
   }
@@ -271,6 +271,7 @@
     const panel = document.createElement('div');
     panel.className = 'heroe-system';
     panel.innerHTML = `
+      <button class="hero-misiones-rango-btn" id="heroMissionesRangoBtn">⚔️ MISIONES RANGO ⚔️</button>
       <div class="section-label">── ESTADÍSTICAS ──</div>
       <div class="stats-panel">
         <div class="stats-grid" id="statsGrid"></div>
@@ -459,10 +460,19 @@
       if (e.target === heroRefs.overlay) closeUpgrade();
     });
 
+    const misionesBtn = panel.querySelector('#heroMissionesRangoBtn');
+    if (misionesBtn) {
+      on(misionesBtn, 'click', () => {
+        const navMisionesBtn = document.getElementById('btn-misiones');
+        if (!navMisionesBtn) return;
+        openSection('misiones', navMisionesBtn, { autoOpenRango: true });
+      });
+    }
+
     renderStats();
     renderEquipment();
 
-    heroCleanup = () => {
+    sectionCleanup = () => {
       listeners.forEach((off) => off());
       listeners.length = 0;
       currentUpgradeKey = null;
@@ -471,7 +481,21 @@
     };
   }
 
-  function openSection(sectionKey, buttonEl) {
+  function renderMisionesSection(options = {}) {
+    cleanupCenter();
+    refs.overlay.classList.remove('visible');
+
+    sectionCleanup = window.uiMisiones.mountMisionesSection({
+      mountNode: refs.center,
+      autoOpenRango: Boolean(options.autoOpenRango),
+      onBackToHero: () => {
+        const heroBtn = document.getElementById('btn-heroe');
+        if (heroBtn) openSection('heroe', heroBtn);
+      }
+    });
+  }
+
+  function openSection(sectionKey, buttonEl, options = {}) {
     const info = sections[sectionKey];
     if (!info) return;
 
@@ -489,6 +513,11 @@
     if (sectionKey === 'heroe') {
       refs.overlay.classList.remove('visible');
       renderHeroSection();
+      return;
+    }
+
+    if (sectionKey === 'misiones') {
+      renderMisionesSection(options);
       return;
     }
 

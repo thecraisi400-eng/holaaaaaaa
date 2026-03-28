@@ -13,7 +13,7 @@
     gold: 4320,
     atk: 1240,
     def: 880,
-    level: 23,
+    level: 1,
     activeSection: 'heroe'
   };
 
@@ -42,6 +42,7 @@
   };
 
   const refs = {
+    app: document.getElementById('app'),
     nav: document.getElementById('hud-bottom'),
     center: document.getElementById('hud-center-content'),
     overlay: document.getElementById('section-overlay'),
@@ -52,19 +53,25 @@
     mpFill: document.getElementById('mpFill'),
     expFill: document.getElementById('expFill'),
     hpCur: document.getElementById('hpCur'),
+    hpMax: document.getElementById('hpMax'),
     hpPct: document.getElementById('hpPct'),
     mpCur: document.getElementById('mpCur'),
+    mpMax: document.getElementById('mpMax'),
     mpPct: document.getElementById('mpPct'),
     expNext: document.getElementById('expNext'),
     statAtk: document.getElementById('statAtk'),
     statDef: document.getElementById('statDef'),
-    statGold: document.getElementById('statGold')
+    statGold: document.getElementById('statGold'),
+    charName: document.getElementById('charName'),
+    charRank: document.getElementById('charRank'),
+    avatarFrame: document.getElementById('avatarFrame')
   };
 
   const controller = new AbortController();
   const { signal } = controller;
   let barsIntervalId = null;
   let heroCleanup = null;
+  let selectedCharacter = null;
 
   const baseCharacter = {
     gold: state.gold,
@@ -81,6 +88,63 @@
       return true;
     }
   });
+
+  function ensureCharacterScript() {
+    if (Array.isArray(window.PERSONAJES_DATA)) return Promise.resolve();
+
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'personajes.js';
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('No se pudo cargar personajes.js'));
+      document.head.appendChild(script);
+    });
+  }
+
+  function hideMainHud() {
+    refs.app.style.display = 'none';
+    refs.overlay.style.display = 'none';
+    refs.particleContainer.style.display = 'none';
+  }
+
+  function showMainHud() {
+    refs.app.style.display = '';
+    refs.overlay.style.display = '';
+    refs.particleContainer.style.display = '';
+  }
+
+  function applyCharacterToGame(char) {
+    selectedCharacter = char;
+    const baseStats = char.formula(1);
+
+    window.BASE_STATS = {
+      HP: baseStats.HP,
+      MP: baseStats.MP,
+      ATK: baseStats.ATK,
+      DEF: baseStats.DEF,
+      VEL: baseStats.VEL,
+      CTR: baseStats.CTR,
+      EVA: baseStats.EVA,
+      RES: baseStats.RES,
+      REGEN: baseStats.REGEN,
+      ASPD: baseStats.ASPD,
+      CDMG: baseStats.CDMG
+    };
+
+    state.level = 1;
+    state.hp = baseStats.HP;
+    state.hpMax = baseStats.HP;
+    state.mp = baseStats.MP;
+    state.mpMax = baseStats.MP;
+    state.exp = 0;
+    state.expMax = baseStats.XP;
+
+    refs.charName.textContent = char.name.toUpperCase();
+    refs.charRank.textContent = char.rank;
+
+    const avatar = refs.avatarFrame.querySelector('.avatar-placeholder');
+    if (avatar) avatar.textContent = char.emoji;
+  }
 
   function syncTopStats() {
     const stats = window.heroEngine.computeStats(window.gameCharacter);
@@ -105,8 +169,10 @@
     refs.expFill.style.width = `${expPct}%`;
 
     refs.hpCur.textContent = state.hp;
+    refs.hpMax.textContent = state.hpMax;
     refs.hpPct.textContent = `${hpPct}%`;
     refs.mpCur.textContent = state.mp;
+    refs.mpMax.textContent = state.mpMax;
     refs.mpPct.textContent = `${mpPct}%`;
     refs.expNext.textContent = `${state.exp.toLocaleString()} / ${state.expMax.toLocaleString()} EXP — Próx. nivel: ${(state.expMax - state.exp).toLocaleString()}`;
     syncTopStats();
@@ -432,7 +498,125 @@
     }
   }
 
-  function start() {
+  function mountStartMenu(onChooseCharacter) {
+    if (document.getElementById('ninja-start-root')) return;
+
+    const style = document.createElement('style');
+    style.id = 'ninja-start-style';
+    style.textContent = `
+      #ninja-start-root{position:fixed;inset:0;background:#050810;display:flex;justify-content:center;align-items:center;z-index:9999;font-family:'Exo 2',sans-serif;}
+      #ninja-start-root #game{width:355px;height:500px;background:#fff;border-radius:4px;overflow:hidden;position:relative}
+      #ninja-start-root .screen{width:355px;height:500px;background:#0d1117;position:absolute;top:0;left:0;display:none;flex-direction:column;overflow:hidden}
+      #ninja-start-root .screen.active{display:flex}
+      #ninja-start-root .menu-bg{position:absolute;inset:0;background:radial-gradient(ellipse 60% 40% at 50% 30%,rgba(232,160,32,.08) 0%,transparent 70%),radial-gradient(ellipse 80% 60% at 50% 80%,rgba(77,184,255,.06) 0%,transparent 70%),#0d1117}
+      #ninja-start-root .menu-inner{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;width:100%;padding:0 24px}
+      #ninja-start-root #s-menu{justify-content:center;align-items:center}
+      #ninja-start-root .logo-wrap{display:flex;flex-direction:column;align-items:center;margin-bottom:28px}
+      #ninja-start-root .logo-kanji{font-size:48px;line-height:1;margin-bottom:4px;filter:drop-shadow(0 0 12px rgba(232,160,32,.6))}
+      #ninja-start-root .logo-title{font-family:'Cinzel',serif;font-size:22px;font-weight:900;color:#f0c040;letter-spacing:4px;text-shadow:0 0 20px rgba(240,192,64,.5);text-transform:uppercase}
+      #ninja-start-root .logo-sub{font-size:9px;color:#6a82a0;letter-spacing:5px;text-transform:uppercase;margin-top:4px}
+      #ninja-start-root .divider-line{width:160px;height:1px;background:linear-gradient(90deg,transparent,#e8a020,transparent);margin:20px 0}
+      #ninja-start-root .menu-btn{width:100%;max-width:240px;padding:12px 0;margin-bottom:10px;border-radius:3px;cursor:pointer;font-family:'Cinzel',serif;font-size:13px;font-weight:600;letter-spacing:2px;border:none}
+      #ninja-start-root .btn-primary{background:linear-gradient(135deg,#1e3060 0%,#162440 100%);color:#f0c040;border:1px solid rgba(240,192,64,.35)}
+      #ninja-start-root .btn-secondary{background:#162035;color:#6a82a0;border:1px solid rgba(77,184,255,.18)}
+      #ninja-start-root .menu-version{font-size:9px;color:#6a82a0;letter-spacing:2px;margin-top:20px;opacity:.5}
+      #ninja-start-root .hdr{background:#131a26;border-bottom:1px solid rgba(77,184,255,.18);padding:6px 12px;display:flex;align-items:center;gap:8px;flex-shrink:0}
+      #ninja-start-root .hdr-title{font-family:'Cinzel',serif;font-size:11px;color:#e8a020;letter-spacing:2px;text-transform:uppercase}
+      #ninja-start-root .hdr-back{background:#162035;border:1px solid rgba(77,184,255,.18);color:#4db8ff;font-size:10px;padding:2px 8px;border-radius:2px;cursor:pointer}
+      #ninja-start-root .char-scroll{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:10px}
+      #ninja-start-root .char-sel-card{background:#131a26;border:1px solid rgba(77,184,255,.18);border-radius:4px;padding:10px 12px;cursor:pointer;display:flex;gap:12px;align-items:flex-start}
+      #ninja-start-root .char-sel-ava{width:44px;height:44px;border-radius:50%;background:#1c2740;border:2px solid #e8a020;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+      #ninja-start-root .char-sel-name{font-family:'Cinzel',serif;font-size:11px;color:#c8d8f0;font-weight:600;letter-spacing:.5px;margin-bottom:2px}
+      #ninja-start-root .char-sel-role{font-size:8px;color:#6a82a0;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px}
+      #ninja-start-root .char-sel-bars{display:grid;grid-template-columns:1fr 1fr;gap:2px 10px}
+      #ninja-start-root .cbar-row{font-size:8px;color:#6a82a0;display:flex;justify-content:space-between;line-height:1.5}
+      #ninja-start-root .s-muy-alto{color:#4dffb0!important} #ninja-start-root .s-alto{color:#4db8ff!important} #ninja-start-root .s-medio{color:#c8d8f0!important} #ninja-start-root .s-bajo{color:#e87040!important} #ninja-start-root .s-muyBajo{color:#e84040!important}
+      #ninja-start-root #s-load{justify-content:center;align-items:center}
+      #ninja-start-root .load-msg{font-family:'Cinzel',serif;font-size:13px;color:#6a82a0;text-align:center;letter-spacing:2px;padding:0 32px;line-height:1.8}
+      #ninja-start-root .load-msg span{display:block;font-size:32px;margin-bottom:12px}
+      #ninja-start-root .load-back-btn{margin-top:24px;background:#162035;border:1px solid rgba(77,184,255,.18);color:#6a82a0;padding:8px 24px;border-radius:3px;cursor:pointer;font-family:'Cinzel',serif;font-size:11px;letter-spacing:2px}
+    `;
+
+    const root = document.createElement('div');
+    root.id = 'ninja-start-root';
+    root.innerHTML = `
+      <div id="game">
+        <div id="s-menu" class="screen active">
+          <div class="menu-bg"></div>
+          <div class="menu-inner">
+            <div class="logo-wrap">
+              <div class="logo-kanji">忍</div>
+              <div class="logo-title">NARUTO</div>
+              <div class="logo-sub">Idle RPG</div>
+            </div>
+            <div class="divider-line"></div>
+            <button class="menu-btn btn-primary" data-action="new-game">⚔ NUEVA PARTIDA</button>
+            <button class="menu-btn btn-secondary" data-action="load-game">◈ CARGAR PARTIDA</button>
+            <div class="menu-version">VER 0.1.0 · ALPHA</div>
+          </div>
+        </div>
+        <div id="s-load" class="screen">
+          <div class="load-msg"><span>📂</span>No se encontró ninguna partida guardada.</div>
+          <button class="load-back-btn" data-action="back-menu">← VOLVER</button>
+        </div>
+        <div id="s-char" class="screen">
+          <div class="hdr"><button class="hdr-back" data-action="back-menu">← Atrás</button><div class="hdr-title">Elige tu Personaje</div></div>
+          <div class="char-scroll" id="char-grid"></div>
+        </div>
+      </div>`;
+
+    document.head.appendChild(style);
+    document.body.appendChild(root);
+
+    const summaryIcons = { HP: '❤️', MP: '💙', ATK: '⚔️', DEF: '🛡️', Vel: '⚡', REGEN: '🌿' };
+    const summaryClass = (val) => ({ 'Muy Alto': 's-muy-alto', Alto: 's-alto', Medio: 's-medio', Bajo: 's-bajo', 'Muy Bajo': 's-muyBajo' }[val] || 's-medio');
+    const showScreen = (id) => {
+      root.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
+      root.querySelector(`#${id}`)?.classList.add('active');
+    };
+
+    const charGrid = root.querySelector('#char-grid');
+    for (const char of window.PERSONAJES_DATA) {
+      const card = document.createElement('div');
+      card.className = 'char-sel-card';
+      const keyStats = ['HP', 'MP', 'ATK', 'DEF', 'Vel', 'REGEN'];
+      const barsHtml = keyStats.map((k) => {
+        const value = char.summary[k];
+        return `<div class="cbar-row"><span>${summaryIcons[k]} ${k}</span><span class="${summaryClass(value)}">${value}</span></div>`;
+      }).join('');
+
+      card.innerHTML = `
+        <div class="char-sel-ava" style="border-color:${char.color}">${char.emoji}</div>
+        <div class="char-sel-info">
+          <div class="char-sel-name">${char.name}</div>
+          <div class="char-sel-role">${char.role}</div>
+          <div class="char-sel-bars">${barsHtml}</div>
+        </div>`;
+
+      card.addEventListener('click', () => onChooseCharacter(char), { once: true });
+      charGrid.appendChild(card);
+    }
+
+    root.addEventListener('click', (event) => {
+      const target = event.target.closest('[data-action]');
+      if (!target) return;
+      const action = target.getAttribute('data-action');
+      if (action === 'new-game') showScreen('s-char');
+      if (action === 'load-game') showScreen('s-load');
+      if (action === 'back-menu') showScreen('s-menu');
+    }, { signal });
+  }
+
+  function unmountStartMenu() {
+    document.getElementById('ninja-start-root')?.remove();
+    document.getElementById('ninja-start-style')?.remove();
+  }
+
+  function launchGame(char) {
+    applyCharacterToGame(char);
+    unmountStartMenu();
+    showMainHud();
+
     refs.nav.addEventListener('click', handleNavClick, { signal });
     refs.overlay.addEventListener('click', handleOverlayClick, { signal });
     document.addEventListener('keydown', handleKeyDown, { signal });
@@ -446,15 +630,24 @@
     }
   }
 
+  async function start() {
+    hideMainHud();
+    await ensureCharacterScript();
+    mountStartMenu((char) => {
+      launchGame(char);
+    });
+  }
+
   function destroy() {
     controller.abort();
     cleanupCenter();
+    unmountStartMenu();
     if (barsIntervalId !== null) {
       window.clearInterval(barsIntervalId);
       barsIntervalId = null;
     }
   }
 
-  window.__ninjaHud = { destroy };
+  window.__ninjaHud = { destroy, selectedCharacter: () => selectedCharacter };
   start();
 })();

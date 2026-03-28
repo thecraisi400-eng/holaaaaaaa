@@ -17,6 +17,13 @@
     activeSection: 'heroe'
   };
 
+  const gameFlow = {
+    current: 'boot',
+    selectedCharacterId: null
+  };
+
+  const STORAGE_KEY = 'narutoIdleRpgSaveV1';
+
   const sections = {
     heroe: { icon: '🥷', title: 'HÉROE', desc: 'Consulta y mejora el equipo de tu shinobi. Cambia armadura, armas y accesorios para maximizar tu poder de combate.' },
     misiones: { icon: '📜', title: 'MISIONES', desc: '' },
@@ -42,6 +49,7 @@
   };
 
   const refs = {
+    app: document.getElementById('app'),
     nav: document.getElementById('hud-bottom'),
     center: document.getElementById('hud-center-content'),
     overlay: document.getElementById('section-overlay'),
@@ -52,19 +60,25 @@
     mpFill: document.getElementById('mpFill'),
     expFill: document.getElementById('expFill'),
     hpCur: document.getElementById('hpCur'),
+    hpMax: document.getElementById('hpMax'),
     hpPct: document.getElementById('hpPct'),
     mpCur: document.getElementById('mpCur'),
+    mpMax: document.getElementById('mpMax'),
     mpPct: document.getElementById('mpPct'),
     expNext: document.getElementById('expNext'),
     statAtk: document.getElementById('statAtk'),
     statDef: document.getElementById('statDef'),
-    statGold: document.getElementById('statGold')
+    statGold: document.getElementById('statGold'),
+    charName: document.getElementById('charName'),
+    charRank: document.getElementById('charRank'),
+    avatarFrame: document.getElementById('avatarFrame')
   };
 
   const controller = new AbortController();
   const { signal } = controller;
   let barsIntervalId = null;
   let heroCleanup = null;
+  let menuCleanup = null;
 
   const baseCharacter = {
     gold: state.gold,
@@ -81,6 +95,97 @@
       return true;
     }
   });
+
+  function ensurePersonajesData() {
+    if (Array.isArray(window.PERSONAJES) && window.PERSONAJES.length > 0) {
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve, reject) => {
+      const tag = document.createElement('script');
+      tag.src = 'personajes.js';
+      tag.defer = true;
+      tag.onload = () => resolve();
+      tag.onerror = () => reject(new Error('No se pudo cargar personajes.js'));
+      document.head.appendChild(tag);
+    });
+  }
+
+  function getCharacterById(id) {
+    return (window.PERSONAJES || []).find((p) => p.id === id) || null;
+  }
+
+  function calculateCharacterBaseStats(character, level) {
+    const lv = Math.max(1, Number(level || 1));
+    const growthSteps = lv - (character.baseLevel || 1);
+    const nextBase = {};
+    for (const [key, baseVal] of Object.entries(character.baseStats || {})) {
+      const growthVal = Number(character.growth?.[key] || 0);
+      const amount = Number(baseVal) + growthVal * growthSteps;
+      nextBase[key] = Number.isInteger(baseVal) ? Math.round(amount) : parseFloat(amount.toFixed(2));
+    }
+    return nextBase;
+  }
+
+  function syncHeroIdentity(character) {
+    if (!character) return;
+    if (refs.charName) refs.charName.textContent = character.nombre.toUpperCase();
+    if (refs.charRank) refs.charRank.textContent = character.rango;
+    if (refs.avatarFrame) refs.avatarFrame.innerHTML = `<div class="avatar-placeholder">${character.emoji}</div><div class="avatar-corner"></div>`;
+  }
+
+  function applyCharacter(character, fromLoad = false) {
+    if (!character) return;
+
+    const level = Number(window.gameCharacter.level || character.baseLevel || 1);
+    const baseStats = calculateCharacterBaseStats(character, level);
+    window.BASE_STATS = { ...window.BASE_STATS, ...baseStats };
+
+    state.level = level;
+    state.hpMax = Number(baseStats.HP || state.hpMax);
+    state.mpMax = Number(baseStats.MP || state.mpMax);
+    state.hp = Math.min(state.hp, state.hpMax);
+    state.mp = Math.min(state.mp, state.mpMax);
+    state.exp = Number(window.gameCharacter.exp || state.exp);
+    state.expMax = Number(character.xpFormula(level) || state.expMax);
+
+    if (!fromLoad) {
+      window.gameCharacter.level = level;
+      window.gameCharacter.exp = 0;
+      state.exp = 0;
+    }
+
+    if (refs.hpMax) refs.hpMax.textContent = state.hpMax;
+    if (refs.mpMax) refs.mpMax.textContent = state.mpMax;
+
+    gameFlow.selectedCharacterId = character.id;
+    syncHeroIdentity(character);
+    syncTopStats();
+  }
+
+  function saveGame() {
+    if (!gameFlow.selectedCharacterId) return;
+    const payload = {
+      selectedCharacterId: gameFlow.selectedCharacterId,
+      gameCharacter: {
+        gold: window.gameCharacter.gold,
+        levels: { ...window.gameCharacter.levels },
+        level: window.gameCharacter.level || 1,
+        exp: state.exp
+      }
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  }
+
+  function loadGame() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch (error) {
+      return null;
+    }
+  }
 
   function syncTopStats() {
     const stats = window.heroEngine.computeStats(window.gameCharacter);
@@ -110,6 +215,7 @@
     refs.mpPct.textContent = `${mpPct}%`;
     refs.expNext.textContent = `${state.exp.toLocaleString()} / ${state.expMax.toLocaleString()} EXP — Próx. nivel: ${(state.expMax - state.exp).toLocaleString()}`;
     syncTopStats();
+    saveGame();
   }
 
   function spawnParticles(x, y, type = 'chakra') {
@@ -433,6 +539,10 @@
   }
 
   function start() {
+    if (barsIntervalId !== null) {
+      window.clearInterval(barsIntervalId);
+      barsIntervalId = null;
+    }
     refs.nav.addEventListener('click', handleNavClick, { signal });
     refs.overlay.addEventListener('click', handleOverlayClick, { signal });
     document.addEventListener('keydown', handleKeyDown, { signal });
@@ -455,6 +565,110 @@
     }
   }
 
+  function closeMainMenu() {
+    if (typeof menuCleanup === 'function') {
+      menuCleanup();
+      menuCleanup = null;
+    }
+    const panel = document.getElementById('boot-panel');
+    if (panel) panel.remove();
+    gameFlow.current = 'game';
+  }
+
+  function openGameFromCharacter(character, fromLoad = false) {
+    applyCharacter(character, fromLoad);
+    closeMainMenu();
+    const heroBtn = document.getElementById('btn-heroe');
+    if (heroBtn) openSection('heroe', heroBtn);
+    saveGame();
+  }
+
+  function renderMainMenu() {
+    closeMainMenu();
+    gameFlow.current = 'menu';
+
+    const boot = document.createElement('section');
+    boot.id = 'boot-panel';
+    boot.style.cssText = [
+      'position:fixed', 'inset:0', 'z-index:9999', 'background:rgba(5,8,16,0.98)',
+      'display:flex', 'align-items:center', 'justify-content:center', 'font-family:Rajdhani,sans-serif',
+      'color:#d8e6ff'
+    ].join(';');
+
+    boot.innerHTML = `
+      <div style="width:min(96vw,420px);background:#111a2b;border:1px solid rgba(78,143,255,.35);padding:18px;border-radius:8px;">
+        <h2 style="text-align:center;letter-spacing:2px;color:#f7b443;margin-bottom:10px;">NARUTO IDLE RPG</h2>
+        <div id="boot-menu-view">
+          <button id="btn-new-game" style="width:100%;padding:10px;margin-bottom:8px;background:#1f3255;border:1px solid #f7b443;color:#f7b443;font-weight:700;cursor:pointer;">⚔ NUEVA PARTIDA</button>
+          <button id="btn-continue-game" style="width:100%;padding:10px;background:#182338;border:1px solid rgba(110,160,255,.4);color:#c8d8f0;font-weight:700;cursor:pointer;">◈ CONTINUAR</button>
+        </div>
+        <div id="boot-char-view" style="display:none;">
+          <div style="font-size:12px;letter-spacing:1px;color:#8caad1;margin-bottom:8px;">SELECCIÓN DE PERSONAJE</div>
+          <div id="boot-char-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+          <button id="btn-back-menu" style="width:100%;margin-top:10px;padding:8px;background:#121d30;border:1px solid rgba(110,160,255,.3);color:#9db6da;cursor:pointer;">← VOLVER</button>
+        </div>
+      </div>`;
+
+    document.body.appendChild(boot);
+
+    const localController = new AbortController();
+    const bind = (el, eventName, handler) => el.addEventListener(eventName, handler, { signal: localController.signal });
+    const menuView = boot.querySelector('#boot-menu-view');
+    const charView = boot.querySelector('#boot-char-view');
+    const btnNew = boot.querySelector('#btn-new-game');
+    const btnContinue = boot.querySelector('#btn-continue-game');
+    const btnBack = boot.querySelector('#btn-back-menu');
+    const charList = boot.querySelector('#boot-char-list');
+
+    const showCharacterList = () => {
+      menuView.style.display = 'none';
+      charView.style.display = 'block';
+      gameFlow.current = 'characterSelect';
+    };
+    const showMenu = () => {
+      charView.style.display = 'none';
+      menuView.style.display = 'block';
+      gameFlow.current = 'menu';
+    };
+
+    charList.innerHTML = '';
+    (window.PERSONAJES || []).forEach((character) => {
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.style.cssText = `text-align:left;padding:10px;border-radius:6px;border:1px solid ${character.color}55;background:#162035;color:#dce8ff;cursor:pointer;`;
+      card.innerHTML = `<strong>${character.emoji} ${character.nombre}</strong><br><span style="font-size:11px;color:#92adcf">${character.clan}</span>`;
+      bind(card, 'click', () => openGameFromCharacter(character));
+      charList.appendChild(card);
+    });
+
+    bind(btnNew, 'click', showCharacterList);
+    bind(btnBack, 'click', showMenu);
+    bind(btnContinue, 'click', () => {
+      const save = loadGame();
+      if (!save) {
+        btnContinue.textContent = '◈ SIN PARTIDA GUARDADA';
+        return;
+      }
+      Object.assign(window.gameCharacter, {
+        gold: Number(save.gameCharacter?.gold || baseCharacter.gold),
+        levels: { ...baseCharacter.levels, ...(save.gameCharacter?.levels || {}) },
+        level: Number(save.gameCharacter?.level || 1),
+        exp: Number(save.gameCharacter?.exp || 0)
+      });
+      state.gold = window.gameCharacter.gold;
+      const loadedCharacter = getCharacterById(save.selectedCharacterId) || (window.PERSONAJES || [])[0];
+      openGameFromCharacter(loadedCharacter, true);
+    });
+
+    menuCleanup = () => localController.abort();
+  }
+
+  async function init() {
+    await ensurePersonajesData();
+    start();
+    renderMainMenu();
+  }
+
   window.__ninjaHud = { destroy };
-  start();
+  init();
 })();

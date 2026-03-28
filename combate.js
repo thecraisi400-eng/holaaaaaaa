@@ -61,9 +61,8 @@
             const rewards = currentMissionList[enemyIndex];
             onLog(`💀 ¡Enemigo derrotado! +${rewards.xp} XP y +${rewards.gold} Oro.`);
             onRewards(rewards);
-            enemyIndex = (enemyIndex + 1) % currentMissionList.length;
             loadEnemy(enemyIndex);
-            onLog(`⚔️ Nuevo enemigo: ${currentEnemy.name}`);
+            onLog(`🔁 ${currentEnemy.name} reaparece. Auto-Battle continúa.`);
           }
         }
 

@@ -33,16 +33,16 @@
     root.className = 'misiones-rango';
     root.innerHTML = `
       <div id="missions-menu-screen" class="screen">
-        <button id="open-rank-list" class="menu-button">⚔️ MISION RANGO ⚔️</button>
+        <button id="open-rank-list" class="menu-button">⚔️ MISIONES RANGO ⚔️</button>
         <button id="open-libro-bingo" class="menu-button">📘 LIBRO BINGO</button>
         <button id="back-to-main-from-missions-menu" class="back-button">⬅️ Volver</button>
       </div>
       <div id="rank-list-screen" class="screen hidden">
-        <button id="rank-D" class="rank-button rank-d">📜 MISION RANGO D</button>
-        <button id="rank-C" class="rank-button rank-c">🔥 MISION RANGO C</button>
-        <button id="rank-B" class="rank-button rank-b">🌪️ MISION RANGO B</button>
-        <button id="rank-A" class="rank-button rank-a">💀 MISION RANGO A</button>
-        <button id="rank-S" class="rank-button rank-s">👑 MISION RANGO S</button>
+        <button id="rank-D" class="rank-button rank-d">📜 MISIONES RANGO D</button>
+        <button id="rank-C" class="rank-button rank-c">🔥 MISIONES RANGO C</button>
+        <button id="rank-B" class="rank-button rank-b">🌪️ MISIONES RANGO B</button>
+        <button id="rank-A" class="rank-button rank-a">💀 MISIONES RANGO A</button>
+        <button id="rank-S" class="rank-button rank-s">👑 MISIONES RANGO S</button>
         <button id="back-to-main-from-ranks" class="back-button">⬅️ Volver</button>
       </div>
       <div id="missions-screen" class="screen hidden">

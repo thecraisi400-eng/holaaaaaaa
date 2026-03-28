@@ -94,6 +94,10 @@
       getState() {
         return getFreshState();
       },
+      hasSelectedRank() {
+        const state = getFreshState();
+        return Boolean(state.selectedRank);
+      },
       getTimeLeftMs() {
         const state = getFreshState();
         return Math.max(0, state.expiresAt - Date.now());
@@ -112,6 +116,13 @@
         const enemies = ensureRankEnemies(state, state.selectedRank);
         saveState(state);
         return enemies;
+      },
+      isSelectedRankCompleted() {
+        const state = getFreshState();
+        if (!state.selectedRank) return false;
+        const enemies = ensureRankEnemies(state, state.selectedRank);
+        saveState(state);
+        return enemies.length > 0 && enemies.every((enemy) => enemy.defeated);
       },
       markEnemyResult(enemyId, won) {
         const state = getFreshState();

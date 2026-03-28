@@ -64,14 +64,28 @@
     function startTimer() {
       if (timerInterval) window.clearInterval(timerInterval);
       refreshTimer();
-      timerInterval = window.setInterval(refreshTimer, 1000);
+      timerInterval = window.setInterval(() => {
+        refreshTimer();
+        if (refs.rankA.classList.contains('hidden') && !logic.hasSelectedRank()) {
+          renderRankOptions();
+        }
+      }, 1000);
     }
 
     function renderRankOptions() {
       const state = logic.getState();
       paintRankButton(refs.rankA, state.rankOptions[0]);
       paintRankButton(refs.rankB, state.rankOptions[1]);
+      refs.rankA.classList.remove('hidden');
+      refs.rankB.classList.remove('hidden');
       refreshTimer();
+    }
+
+    function renderCooldownOnly() {
+      refs.rankA.classList.add('hidden');
+      refs.rankB.classList.add('hidden');
+      refreshTimer();
+      showScreen('bingo-ranks');
     }
 
     function renderEnemyList() {
@@ -116,16 +130,14 @@
                 onRewards(rewards);
                 currentEnemyBattleId = null;
                 if (typeof setBattleMode === 'function') setBattleMode('rank');
-                renderEnemyList();
-                showScreen('bingo-enemies');
+                openBingoByState();
                 onCombatStateChange(false);
               },
               onDefeat: () => {
                 logic.markEnemyResult(currentEnemyBattleId, false);
                 currentEnemyBattleId = null;
                 if (typeof setBattleMode === 'function') setBattleMode('rank');
-                renderEnemyList();
-                showScreen('bingo-enemies');
+                openBingoByState();
                 onCombatStateChange(false);
               }
             });
@@ -138,10 +150,27 @@
       });
     }
 
+    function openBingoByState() {
+      if (!logic.hasSelectedRank()) {
+        clearEnemyListeners();
+        renderRankOptions();
+        showScreen('bingo-ranks');
+        return;
+      }
+
+      if (logic.isSelectedRankCompleted()) {
+        clearEnemyListeners();
+        refs.enemyList.replaceChildren();
+        renderCooldownOnly();
+        return;
+      }
+
+      renderEnemyList();
+      showScreen('bingo-enemies');
+    }
+
     on(refs.openBtn, 'click', () => {
-      clearEnemyListeners();
-      renderRankOptions();
-      showScreen('bingo-ranks');
+      openBingoByState();
     });
 
     const handleRankSelection = (event) => {
@@ -181,8 +210,7 @@
       backFromBattle() {
         this.stopCombatIfAny();
         if (typeof setBattleMode === 'function') setBattleMode('rank');
-        renderEnemyList();
-        showScreen('bingo-enemies');
+        openBingoByState();
         onCombatStateChange(false);
       },
       isBingoBattleActive() {

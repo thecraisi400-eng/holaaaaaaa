@@ -60,8 +60,14 @@
       refs.timer.textContent = fmtTime(logic.getTimeLeftMs());
     }
 
+    function stopTimer() {
+      if (!timerInterval) return;
+      window.clearInterval(timerInterval);
+      timerInterval = null;
+    }
+
     function startTimer() {
-      if (timerInterval) window.clearInterval(timerInterval);
+      stopTimer();
       refreshTimer();
       timerInterval = window.setInterval(() => {
         refreshTimer();
@@ -89,6 +95,8 @@
 
     function renderEnemyList() {
       clearEnemyListeners();
+      const legacyBackButton = refs.enemyScreen.querySelector('#back-to-bingo-ranks');
+      if (legacyBackButton) legacyBackButton.remove();
       const state = logic.getState();
       const selectedRank = state.selectedRank;
       const meta = selectedRank ? window.BINGO_RANK_META[selectedRank] : null;
@@ -169,6 +177,7 @@
     }
 
     on(refs.openBtn, 'click', () => {
+      startTimer();
       openBingoByState();
     });
 
@@ -183,20 +192,18 @@
     on(refs.rankA, 'click', handleRankSelection);
     on(refs.rankB, 'click', handleRankSelection);
 
-
-    startTimer();
-
     return {
+      pause() {
+        stopTimer();
+        clearEnemyListeners();
+      },
       stopCombatIfAny() {
         combat.stop();
         currentEnemyBattleId = null;
         if (typeof setBattleMode === 'function') setBattleMode('rank');
       },
       destroy() {
-        if (timerInterval) {
-          window.clearInterval(timerInterval);
-          timerInterval = null;
-        }
+        stopTimer();
         clearEnemyListeners();
         listeners.forEach((off) => off());
         listeners.length = 0;

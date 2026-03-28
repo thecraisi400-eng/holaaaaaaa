@@ -29,11 +29,14 @@
     } = config;
 
     let battleInterval = null;
+    let enemyRespawnTimeout = null;
     let battleActive = false;
+    let enemyTransitionPending = false;
     let currentEnemy = null;
     let enemyIndex = 0;
     let currentMissionList = [];
     let battleLoopCount = 0;
+    const ENEMY_DEFEAT_VISUAL_DELAY_MS = 320;
 
     function loadEnemy(index) {
       const mission = currentMissionList[index];
@@ -53,12 +56,14 @@
       currentMissionList = missions;
       enemyIndex = missionIndex;
       battleLoopCount = 0;
+      enemyTransitionPending = false;
       loadEnemy(enemyIndex);
       onLog(`⚔️ Auto-Battle iniciado contra: ${currentEnemy.name}`);
 
       battleActive = true;
       battleInterval = window.setInterval(() => {
         if (!battleActive) return;
+        if (enemyTransitionPending) return;
         const playerStats = getPlayerStats();
 
         if (playerStats.hp > 0 && currentEnemy.hp > 0) {
@@ -83,8 +88,15 @@
             }
 
             battleLoopCount += 1;
-            loadEnemy(enemyIndex);
-            onLog(`🔁 Iteración ${battleLoopCount}: ${currentEnemy.name} reaparece para continuar el Auto-Battle.`);
+            enemyTransitionPending = true;
+            enemyRespawnTimeout = window.setTimeout(() => {
+              enemyRespawnTimeout = null;
+              if (!battleActive) return;
+              loadEnemy(enemyIndex);
+              enemyTransitionPending = false;
+              onLog(`🔁 Iteración ${battleLoopCount}: ${currentEnemy.name} reaparece para continuar el Auto-Battle.`);
+            }, ENEMY_DEFEAT_VISUAL_DELAY_MS);
+            return;
           }
         }
 
@@ -108,10 +120,15 @@
     }
 
     function stop() {
+      if (enemyRespawnTimeout) {
+        window.clearTimeout(enemyRespawnTimeout);
+        enemyRespawnTimeout = null;
+      }
       if (battleInterval) {
         window.clearInterval(battleInterval);
         battleInterval = null;
       }
+      enemyTransitionPending = false;
       battleActive = false;
     }
 

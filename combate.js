@@ -32,6 +32,7 @@
     let currentEnemy = null;
     let enemyIndex = 0;
     let currentMissionList = [];
+    let battleLoopCount = 0;
 
     function loadEnemy(index) {
       const mission = currentMissionList[index];
@@ -44,7 +45,9 @@
       stop();
       currentMissionList = missions;
       enemyIndex = missionIndex;
+      battleLoopCount = 0;
       loadEnemy(enemyIndex);
+      onLog(`⚔️ Auto-Battle iniciado contra: ${currentEnemy.name}`);
 
       battleActive = true;
       battleInterval = window.setInterval(() => {
@@ -61,9 +64,9 @@
             const rewards = currentMissionList[enemyIndex];
             onLog(`💀 ¡Enemigo derrotado! +${rewards.xp} XP y +${rewards.gold} Oro.`);
             onRewards(rewards);
-            enemyIndex = (enemyIndex + 1) % currentMissionList.length;
+            battleLoopCount += 1;
             loadEnemy(enemyIndex);
-            onLog(`⚔️ Nuevo enemigo: ${currentEnemy.name}`);
+            onLog(`🔁 Iteración ${battleLoopCount}: ${currentEnemy.name} reaparece para continuar el Auto-Battle.`);
           }
         }
 

@@ -137,6 +137,7 @@
     function goMain() {
       combat.stop();
       bingoUI.stopCombatIfAny();
+      bingoUI.pause();
       showScreen('missions-menu');
       onCombatStateChange(false);
       activeBattleMode = 'rank';
@@ -144,6 +145,7 @@
 
     function showMissions(rank) {
       clearMissionScreenListeners();
+      bingoUI.pause();
       const player = getPlayerStats();
       currentMissionList = window.MISIONES_RANGO_DATA[rank] || [];
       const missionsScreen = root.querySelector('#missions-screen');
@@ -201,6 +203,7 @@
     }
 
     on(root.querySelector('#open-rank-list'), 'click', () => {
+      bingoUI.pause();
       showScreen('ranks');
     });
 

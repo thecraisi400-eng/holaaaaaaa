@@ -133,11 +133,6 @@
         target.defeated = true;
         target.won = Boolean(won);
         saveState(state);
-      },
-      clearSelection() {
-        const state = getFreshState();
-        state.selectedRank = null;
-        saveState(state);
       }
     };
   }

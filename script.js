@@ -71,6 +71,7 @@
   const { signal } = controller;
   let barsIntervalId = null;
   let heroCleanup = null;
+  let misionesCleanup = null;
   let selectedCharacter = null;
   let gameLaunched = false;
 
@@ -251,6 +252,10 @@
       heroCleanup();
       heroCleanup = null;
     }
+    if (typeof misionesCleanup === 'function') {
+      misionesCleanup();
+      misionesCleanup = null;
+    }
     refs.center.replaceChildren();
   }
 
@@ -263,6 +268,56 @@
     wrap.style.alignItems = 'center';
     wrap.innerHTML = `<div style="text-align:center;color:var(--text-mid)"><h3>${info.icon} ${info.title}</h3><p style="margin-top:6px;font-size:.8rem">${info.desc || 'Sin contenido por ahora.'}</p></div>`;
     refs.center.appendChild(wrap);
+  }
+
+
+  function renderMisionesSection() {
+    cleanupCenter();
+
+    const panel = document.createElement('div');
+    panel.className = 'heroe-system';
+    panel.style.padding = '0';
+    refs.center.appendChild(panel);
+
+    const playerStats = {
+      get hp() { return state.hp; },
+      set hp(value) { state.hp = Math.max(0, Math.round(value)); refreshResourceBars(); },
+      get maxHp() { return state.hpMax; },
+      get mp() { return state.mp; },
+      set mp(value) { state.mp = Math.max(0, Math.round(value)); refreshResourceBars(); },
+      get maxMp() { return state.mpMax; },
+      get atk() { return Math.max(1, Math.round(window.heroEngine.computeStats(window.gameCharacter).ATK || state.atk)); },
+      get def() { return Math.max(1, Math.round(window.heroEngine.computeStats(window.gameCharacter).DEF || state.def)); },
+      get level() { return state.level; }
+    };
+
+    const ui = window.createMisionesRangoUI({
+      container: panel,
+      getPlayerStats: () => playerStats,
+      onRewardGain: ({ xp, gold }) => {
+        state.exp = Math.min(state.expMax, state.exp + xp);
+        state.gold += gold;
+        window.gameCharacter.gold = state.gold;
+        refreshResourceBars();
+        syncTopStats();
+      },
+      onCombatStateChange: (active) => {
+        refs.overlay.classList.remove('visible');
+        refs.nav.style.pointerEvents = active ? 'none' : '';
+        refs.nav.style.opacity = active ? '0.4' : '';
+      },
+      onReturn: () => {
+        refs.nav.style.pointerEvents = '';
+        refs.nav.style.opacity = '';
+      }
+    });
+
+    misionesCleanup = () => {
+      ui.destroy();
+      panel.remove();
+      refs.nav.style.pointerEvents = '';
+      refs.nav.style.opacity = '';
+    };
   }
 
   function renderHeroSection() {
@@ -489,6 +544,12 @@
     if (sectionKey === 'heroe') {
       refs.overlay.classList.remove('visible');
       renderHeroSection();
+      return;
+    }
+
+    if (sectionKey === 'misiones') {
+      refs.overlay.classList.remove('visible');
+      renderMisionesSection();
       return;
     }
 

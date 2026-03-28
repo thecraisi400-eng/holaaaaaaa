@@ -25,18 +25,14 @@
       missionScreenListeners.length = 0;
     };
 
-    let currentScreen = 'main';
+    let currentScreen = 'missions-menu';
     let currentMissionList = [];
     let activeBattleMode = 'rank';
 
     const root = document.createElement('div');
     root.className = 'misiones-rango';
     root.innerHTML = `
-      <div id="main-menu-screen" class="screen">
-        <button id="open-misiones-menu" class="menu-button">📜 MISIONES</button>
-        <button class="menu-button menu-button-alt">📦 Próximamente</button>
-      </div>
-      <div id="missions-menu-screen" class="screen hidden">
+      <div id="missions-menu-screen" class="screen">
         <button id="open-rank-list" class="menu-button">⚔️ MISION RANGO ⚔️</button>
         <button id="open-libro-bingo" class="menu-button">📘 LIBRO BINGO</button>
         <button id="back-to-main-from-missions-menu" class="back-button">⬅️ Volver</button>
@@ -87,7 +83,6 @@
     container.replaceChildren(root);
 
     const screenMap = {
-      main: root.querySelector('#main-menu-screen'),
       'missions-menu': root.querySelector('#missions-menu-screen'),
       ranks: root.querySelector('#rank-list-screen'),
       missions: root.querySelector('#missions-screen'),
@@ -98,7 +93,7 @@
 
     function showScreen(screenKey) {
       Object.values(screenMap).forEach((node) => node.classList.add('hidden'));
-      const target = screenMap[screenKey] || screenMap.main;
+      const target = screenMap[screenKey] || screenMap['missions-menu'];
       target.classList.remove('hidden');
       currentScreen = screenKey;
     }
@@ -144,7 +139,7 @@
     function goMain() {
       combat.stop();
       bingoUI.stopCombatIfAny();
-      showScreen('main');
+      showScreen('missions-menu');
       onCombatStateChange(false);
       activeBattleMode = 'rank';
     }
@@ -206,10 +201,6 @@
 
       showScreen('missions');
     }
-
-    on(root.querySelector('#open-misiones-menu'), 'click', () => {
-      showScreen('missions-menu');
-    });
 
     on(root.querySelector('#open-rank-list'), 'click', () => {
       showScreen('ranks');

@@ -72,6 +72,7 @@
   let barsIntervalId = null;
   let heroCleanup = null;
   let selectedCharacter = null;
+  let gameLaunched = false;
 
   const baseCharacter = {
     gold: state.gold,
@@ -153,13 +154,7 @@
     refs.statDef.textContent = Number(stats.DEF || 0).toLocaleString('es-ES', { maximumFractionDigits: 1 });
   }
 
-  function updateBars() {
-    state.exp = Math.min(state.expMax, state.exp + Math.floor(Math.random() * 28 + 8));
-    if (state.activeSection !== 'heroe') {
-      state.gold += Math.floor(Math.random() * 12 + 3);
-      window.gameCharacter.gold = state.gold;
-    }
-
+  function refreshResourceBars() {
     const hpPct = Math.round((state.hp / state.hpMax) * 100);
     const mpPct = Math.round((state.mp / state.mpMax) * 100);
     const expPct = Math.round((state.exp / state.expMax) * 100);
@@ -175,6 +170,29 @@
     refs.mpMax.textContent = state.mpMax;
     refs.mpPct.textContent = `${mpPct}%`;
     refs.expNext.textContent = `${state.exp.toLocaleString()} / ${state.expMax.toLocaleString()} EXP — Próx. nivel: ${(state.expMax - state.exp).toLocaleString()}`;
+  }
+
+  function syncCombatResources() {
+    const stats = window.heroEngine.computeStats(window.gameCharacter);
+    const nextHpMax = Math.max(1, Math.round(stats.HP || state.hpMax));
+    const nextMpMax = Math.max(1, Math.round(stats.MP || state.mpMax));
+    const hpDelta = nextHpMax - state.hpMax;
+    const mpDelta = nextMpMax - state.mpMax;
+
+    state.hpMax = nextHpMax;
+    state.mpMax = nextMpMax;
+    state.hp = Math.max(0, Math.min(state.hpMax, state.hp + hpDelta));
+    state.mp = Math.max(0, Math.min(state.mpMax, state.mp + mpDelta));
+  }
+
+  function updateBars() {
+    state.exp = Math.min(state.expMax, state.exp + Math.floor(Math.random() * 28 + 8));
+    if (state.activeSection !== 'heroe') {
+      state.gold += Math.floor(Math.random() * 12 + 3);
+      window.gameCharacter.gold = state.gold;
+    }
+    syncCombatResources();
+    refreshResourceBars();
     syncTopStats();
   }
 
@@ -280,6 +298,7 @@
     let currentUpgradeKey = null;
 
     function renderStats() {
+      syncCombatResources();
       const stats = window.heroEngine.computeStats(window.gameCharacter);
       heroRefs.statsGrid.innerHTML = '';
       for (const meta of window.STAT_META) {
@@ -299,6 +318,7 @@
         }
         heroRefs.statsGrid.appendChild(chip);
       }
+      refreshResourceBars();
       syncTopStats();
     }
 
@@ -613,6 +633,9 @@
   }
 
   function launchGame(char) {
+    if (gameLaunched) return;
+    gameLaunched = true;
+
     applyCharacterToGame(char);
     unmountStartMenu();
     showMainHud();
@@ -639,6 +662,7 @@
   }
 
   function destroy() {
+    gameLaunched = false;
     controller.abort();
     cleanupCenter();
     unmountStartMenu();

@@ -32,8 +32,12 @@
     root.className = 'misiones-rango';
     root.innerHTML = `
       <div id="main-menu-screen" class="screen">
-        <button id="main-misiones" class="menu-button">⚔️ MISIONES RANGO ⚔️</button>
+        <button id="main-misiones" class="menu-button">⚔️ MISIONES ⚔️</button>
         <button class="menu-button menu-button-alt">📦 Próximamente</button>
+      </div>
+      <div id="missions-menu-screen" class="screen hidden">
+        <button id="missions-rango" class="menu-button">📜 MISION RANGO</button>
+        <button id="back-to-main-from-missions-menu" class="back-button">⬅️ Volver</button>
       </div>
       <div id="rank-list-screen" class="screen hidden">
         <button id="rank-D" class="rank-button rank-d">📜 MISION RANGO D</button>
@@ -68,6 +72,7 @@
     container.replaceChildren(root);
 
     const mainScreen = root.querySelector('#main-menu-screen');
+    const missionsMenuScreen = root.querySelector('#missions-menu-screen');
     const rankScreen = root.querySelector('#rank-list-screen');
     const missionsScreen = root.querySelector('#missions-screen');
     const battleScreen = root.querySelector('#battle-screen');
@@ -100,6 +105,7 @@
       battleScreen.classList.add('hidden');
       missionsScreen.classList.add('hidden');
       rankScreen.classList.add('hidden');
+      missionsMenuScreen.classList.add('hidden');
       mainScreen.classList.remove('hidden');
       currentScreen = 'main';
       onCombatStateChange(false);
@@ -132,12 +138,10 @@
 
         if (!locked) {
           onScreen(missionDiv, 'click', () => {
-            const current = getPlayerStats();
-            current.hp = current.maxHp;
-            current.mp = current.maxMp;
             root.querySelector('#combat-log').innerHTML = '';
             missionsScreen.classList.add('hidden');
             rankScreen.classList.add('hidden');
+            missionsMenuScreen.classList.add('hidden');
             mainScreen.classList.add('hidden');
             battleScreen.classList.remove('hidden');
             currentScreen = 'battle';
@@ -171,10 +175,17 @@
 
     on(root.querySelector('#main-misiones'), 'click', () => {
       mainScreen.classList.add('hidden');
+      missionsMenuScreen.classList.remove('hidden');
+      currentScreen = 'missions-menu';
+    });
+
+    on(root.querySelector('#missions-rango'), 'click', () => {
+      missionsMenuScreen.classList.add('hidden');
       rankScreen.classList.remove('hidden');
       currentScreen = 'ranks';
     });
 
+    on(root.querySelector('#back-to-main-from-missions-menu'), 'click', goMain);
     for (const rank of RANKS) {
       on(root.querySelector(`#rank-${rank}`), 'click', () => showMissions(rank));
     }

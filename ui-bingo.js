@@ -43,10 +43,7 @@
       rankB: root.querySelector('#bingo-rank-option-b'),
       title: root.querySelector('#bingo-rank-title'),
       enemyList: root.querySelector('#bingo-enemy-list'),
-      toMissions: root.querySelector('#back-to-missions-from-bingo-ranks'),
-      toMainFromRanks: root.querySelector('#back-to-main-from-bingo-ranks'),
-      toRanksFromEnemies: root.querySelector('#back-to-bingo-ranks-from-enemies'),
-      toMainFromEnemies: root.querySelector('#back-to-main-from-bingo-enemies')
+      toRanksFromEnemies: root.querySelector('#back-to-bingo-ranks-from-enemies')
     };
 
     let timerInterval = null;
@@ -85,7 +82,7 @@
       refs.title.textContent = meta ? `${meta.label} · Libro Bingo` : 'Libro Bingo';
       const player = getPlayerStats();
       const enemies = logic.getCurrentEnemies();
-      refs.enemyList.innerHTML = '';
+      refs.enemyList.replaceChildren();
 
       enemies.forEach((enemy) => {
         const btn = document.createElement('button');
@@ -142,6 +139,7 @@
     }
 
     on(refs.openBtn, 'click', () => {
+      clearEnemyListeners();
       renderRankOptions();
       showScreen('bingo-ranks');
     });
@@ -157,13 +155,11 @@
     on(refs.rankA, 'click', handleRankSelection);
     on(refs.rankB, 'click', handleRankSelection);
 
-    on(refs.toMissions, 'click', () => showScreen('missions-menu'));
-    on(refs.toMainFromRanks, 'click', () => showScreen('main'));
     on(refs.toRanksFromEnemies, 'click', () => {
+      clearEnemyListeners();
       renderRankOptions();
       showScreen('bingo-ranks');
     });
-    on(refs.toMainFromEnemies, 'click', () => showScreen('main'));
 
     startTimer();
 

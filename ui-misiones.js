@@ -52,14 +52,11 @@
         <div id="bingo-timer" class="menu-button menu-button-alt bingo-timer">⏳ 05:00:00</div>
         <button id="bingo-rank-option-a" class="rank-button rank-d">📘 Rango</button>
         <button id="bingo-rank-option-b" class="rank-button rank-c">📘 Rango</button>
-        <button id="back-to-missions-from-bingo-ranks" class="back-button">⬅️ Volver a Misiones</button>
-        <button id="back-to-main-from-bingo-ranks" class="back-button">⬅️ Volver al Inicio</button>
       </div>
       <div id="bingo-enemies-screen" class="screen hidden">
         <div id="bingo-rank-title" class="section-label">📘 Libro Bingo</div>
         <div id="bingo-enemy-list" class="bingo-enemy-list"></div>
         <button id="back-to-bingo-ranks-from-enemies" class="back-button">⬅️ Volver a Rangos Bingo</button>
-        <button id="back-to-main-from-bingo-enemies" class="back-button">⬅️ Volver al Inicio</button>
       </div>
       <div id="battle-screen" class="screen hidden">
         <button id="back-from-battle-to-main" class="back-button">⬅️ Abandonar misión</button>
@@ -92,6 +89,9 @@
     };
 
     function showScreen(screenKey) {
+      if (screenKey !== 'missions') {
+        clearMissionScreenListeners();
+      }
       Object.values(screenMap).forEach((node) => node.classList.add('hidden'));
       const target = screenMap[screenKey] || screenMap['missions-menu'];
       target.classList.remove('hidden');
@@ -149,7 +149,7 @@
       const player = getPlayerStats();
       currentMissionList = window.MISIONES_RANGO_DATA[rank] || [];
       const missionsScreen = root.querySelector('#missions-screen');
-      missionsScreen.innerHTML = '';
+      missionsScreen.replaceChildren();
 
       currentMissionList.forEach((mission, index) => {
         const locked = player.level < mission.lvl;

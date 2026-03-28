@@ -623,3 +623,103 @@ html, body {
   100% { transform: scale(1); }
 }
 .heroe-system .gold-pulse { animation: goldPulse 0.35s ease-out; }
+
+/* Misiones rango */
+.misiones-rango {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  position: relative;
+  padding: 8px;
+}
+
+.misiones-rango .screen {
+  position: absolute;
+  inset: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.misiones-rango .hidden {
+  display: none !important;
+}
+
+.misiones-rango .menu-button,
+.misiones-rango .rank-button,
+.misiones-rango .back-button,
+.misiones-rango .stop-button {
+  border-radius: 20px;
+  padding: 10px 8px;
+  text-align: center;
+  font-weight: 700;
+  font-size: .9rem;
+  width: 100%;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  background: var(--btn-bg);
+  color: var(--text-hi);
+}
+
+.misiones-rango .menu-button-alt { opacity: .6; }
+.misiones-rango .rank-d { border-color: #2e7d32; color: #4caf50; }
+.misiones-rango .rank-c { border-color: #1565c0; color: #42a5f5; }
+.misiones-rango .rank-b { border-color: #f9a825; color: #fdd835; }
+.misiones-rango .rank-a { border-color: #c62828; color: #ef5350; }
+.misiones-rango .rank-s { border-color: #6a1b9a; color: #ab47bc; }
+
+.misiones-rango .mission-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  text-align: left;
+  background: var(--surface);
+  color: var(--text-hi);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-left: 8px solid;
+  border-radius: 12px;
+  padding: 10px 8px;
+}
+
+.misiones-rango .mission-header { text-align: center; font-size: .85rem; font-weight: 800; }
+.misiones-rango .mission-details { display: flex; justify-content: space-between; font-size: .72rem; gap: 8px; }
+.misiones-rango .mission-left,
+.misiones-rango .mission-right { display: flex; flex-direction: column; gap: 2px; }
+.misiones-rango .mission-left span,
+.misiones-rango .mission-right span {
+  background: rgba(255,255,255,.06);
+  padding: 2px 6px;
+  border-radius: 12px;
+}
+
+.misiones-rango .mission-rank-d { border-left-color: #2e7d32; }
+.misiones-rango .mission-rank-c { border-left-color: #0277bd; }
+.misiones-rango .mission-rank-b { border-left-color: #ef6c00; }
+.misiones-rango .mission-rank-a { border-left-color: #b71c1c; }
+.misiones-rango .mission-rank-s { border-left-color: #6a1b9a; }
+.misiones-rango .locked { opacity: .5; filter: grayscale(.6); }
+
+.misiones-rango .battle-arena { display: flex; justify-content: space-between; gap: 10px; height: 128px; }
+.misiones-rango .character-card,
+.misiones-rango .enemy-card { width: 48%; border-radius: 14px; padding: 8px; text-align: center; }
+.misiones-rango .character-card { background: #112240; border: 2px solid #1e4d8c; }
+.misiones-rango .enemy-card { background: #2a0a0a; border: 2px solid #b71c1c; }
+.misiones-rango .card-emoji { font-size: 36px; }
+.misiones-rango .hp-bar,
+.misiones-rango .mp-bar { height: 8px; margin: 4px 0; background: rgba(255,255,255,.08); border-radius: 8px; overflow: hidden; }
+.misiones-rango .hp-fill { width: 100%; height: 100%; background: #d32f2f; transition: width .2s; }
+.misiones-rango .mp-fill { width: 100%; height: 100%; background: #1565c0; transition: width .2s; }
+
+.misiones-rango .combat-log {
+  flex: 1;
+  min-height: 140px;
+  max-height: 220px;
+  background: rgba(8,12,20,.85);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+  padding: 8px;
+  overflow-y: auto;
+  font-family: monospace;
+  font-size: .72rem;
+}
+.misiones-rango .log-entry { padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,.05); }

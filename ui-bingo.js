@@ -42,8 +42,7 @@
       rankA: root.querySelector('#bingo-rank-option-a'),
       rankB: root.querySelector('#bingo-rank-option-b'),
       title: root.querySelector('#bingo-rank-title'),
-      enemyList: root.querySelector('#bingo-enemy-list'),
-      toRanksFromEnemies: root.querySelector('#back-to-bingo-ranks-from-enemies')
+      enemyList: root.querySelector('#bingo-enemy-list')
     };
 
     let timerInterval = null;
@@ -184,11 +183,6 @@
     on(refs.rankA, 'click', handleRankSelection);
     on(refs.rankB, 'click', handleRankSelection);
 
-    on(refs.toRanksFromEnemies, 'click', () => {
-      clearEnemyListeners();
-      renderRankOptions();
-      showScreen('bingo-ranks');
-    });
 
     startTimer();
 

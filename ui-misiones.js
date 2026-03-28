@@ -55,7 +55,6 @@
       <div id="bingo-enemies-screen" class="screen hidden">
         <div id="bingo-rank-title" class="section-label">📘 Libro Bingo</div>
         <div id="bingo-enemy-list" class="bingo-enemy-list"></div>
-        <button id="back-to-bingo-ranks-from-enemies" class="back-button">⬅️ Volver a Rangos Bingo</button>
       </div>
       <div id="battle-screen" class="screen hidden">
         <button id="back-from-battle-to-main" class="back-button">⬅️ Abandonar misión</button>

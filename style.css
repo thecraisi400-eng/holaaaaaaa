@@ -430,6 +430,71 @@ html, body {
 }
 .overlay-close:hover { background: var(--btn-hover); border-color: var(--teal); color: var(--teal); }
 
+/* MISIONES SYSTEM */
+.misiones-system {
+  width: 100%;
+  height: 100%;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+}
+.misiones-title {
+  text-align: center;
+  font-size: 10px;
+  letter-spacing: 2px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.4);
+}
+.misiones-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.misiones-entry,
+.misiones-back-btn,
+.hero-misiones-rango-btn {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #162035;
+  color: #c9d1d9;
+  border-radius: 30px;
+  min-height: 44px;
+  width: 100%;
+  padding: 10px 12px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+}
+.misiones-entry-rango,
+.hero-misiones-rango-btn {
+  border-color: #2e7d32;
+  color: #a5d6a7;
+  box-shadow: 0 4px 0 #1b5e20;
+}
+.misiones-entry:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.misiones-host {
+  flex: 1;
+  min-height: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.2);
+}
+.misiones-rango-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+  background: transparent;
+}
+.hidden {
+  display: none !important;
+}
+
 .hud-corner {
   position: absolute;
   width: 10px;

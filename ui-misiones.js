@@ -35,7 +35,6 @@
       <div id="missions-menu-screen" class="screen">
         <button id="open-rank-list" class="menu-button">⚔️ MISIONES RANGO ⚔️</button>
         <button id="open-libro-bingo" class="menu-button">📘 LIBRO BINGO</button>
-        <button id="back-to-main-from-missions-menu" class="back-button">⬅️ Volver</button>
       </div>
       <div id="rank-list-screen" class="screen hidden">
         <button id="rank-D" class="rank-button rank-d">📜 MISIONES RANGO D</button>
@@ -210,7 +209,6 @@
       on(root.querySelector(`#rank-${rank}`), 'click', () => showMissions(rank));
     }
 
-    on(root.querySelector('#back-to-main-from-missions-menu'), 'click', goMain);
     on(root.querySelector('#back-to-main-from-ranks'), 'click', goMain);
     on(root.querySelector('#back-from-battle-to-main'), 'click', () => {
       if (activeBattleMode === 'bingo' && bingoUI.isBingoBattleActive()) {

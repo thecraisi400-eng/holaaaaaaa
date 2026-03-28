@@ -7,7 +7,8 @@
       getPlayerStats,
       onReturn,
       onRewardGain,
-      onCombatStateChange
+      onCombatStateChange,
+      onPlayerAttack
     } = options;
 
     const listeners = [];
@@ -116,6 +117,7 @@
         if (logDiv.children.length > 15) logDiv.removeChild(logDiv.lastChild);
       },
       onRewards: onRewardGain,
+      onPlayerAttack,
       onDefeat: () => {
         if (activeBattleMode === 'bingo') return;
         onCombatStateChange(false);
@@ -129,6 +131,7 @@
       showScreen,
       onCombatStateChange,
       onRewards: onRewardGain,
+      onPlayerAttack,
       setBattleMode: (mode) => {
         activeBattleMode = mode;
       }

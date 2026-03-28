@@ -334,6 +334,28 @@
     spawnParticles(cx, cy, 'amber-spark');
   }
 
+  function stopHeroPassiveRegen() {
+    if (barsIntervalId !== null) {
+      window.clearInterval(barsIntervalId);
+      barsIntervalId = null;
+    }
+  }
+
+  function startHeroPassiveRegen() {
+    stopHeroPassiveRegen();
+    barsIntervalId = window.setInterval(() => {
+      if (state.activeSection !== 'heroe') return;
+      const hpRegen = Math.max(1, Math.round(state.hpMax * 0.05));
+      const mpRegen = Math.max(1, Math.round(state.mpMax * 0.05));
+      const nextHp = Math.min(state.hpMax, state.hp + hpRegen);
+      const nextMp = Math.min(state.mpMax, state.mp + mpRegen);
+      if (nextHp === state.hp && nextMp === state.mp) return;
+      state.hp = nextHp;
+      state.mp = nextMp;
+      refreshResourceBars();
+    }, 1000);
+  }
+
   function setActiveButton(activeBtn) {
     refs.nav.querySelectorAll('.nav-btn.active').forEach((btn) => btn.classList.remove('active'));
     activeBtn.classList.add('active');
@@ -393,6 +415,21 @@
         refs.overlay.classList.remove('visible');
         refs.nav.style.pointerEvents = active ? 'none' : '';
         refs.nav.style.opacity = active ? '0.4' : '';
+      },
+      onPlayerAttack: () => {
+        const playerStats = window.heroEngine.computeStats(window.gameCharacter);
+        const regenPct = Math.max(0, Number(playerStats.REGEN) || 0);
+        if (regenPct <= 0) return;
+
+        const hpHeal = Math.max(1, Math.round(state.hpMax * (regenPct / 100)));
+        const mpHeal = Math.max(1, Math.round(state.mpMax * (regenPct / 100)));
+        const nextHp = Math.min(state.hpMax, state.hp + hpHeal);
+        const nextMp = Math.min(state.mpMax, state.mp + mpHeal);
+
+        if (nextHp === state.hp && nextMp === state.mp) return;
+        state.hp = nextHp;
+        state.mp = nextMp;
+        refreshResourceBars();
       },
       onReturn: () => {
         refs.nav.style.pointerEvents = '';
@@ -630,17 +667,20 @@
     state.activeSection = sectionKey;
 
     if (sectionKey === 'heroe') {
+      startHeroPassiveRegen();
       refs.overlay.classList.remove('visible');
       renderHeroSection();
       return;
     }
 
     if (sectionKey === 'misiones') {
+      stopHeroPassiveRegen();
       refs.overlay.classList.remove('visible');
       renderMisionesSection();
       return;
     }
 
+    stopHeroPassiveRegen();
     renderPlaceholder(sectionKey);
     refs.overlayTitle.textContent = `${info.icon} ${info.title}`;
     refs.overlayDesc.textContent = info.desc;

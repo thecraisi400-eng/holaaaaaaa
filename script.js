@@ -8,9 +8,9 @@
     hpMax: 1000,
     mp: 290,
     mpMax: 500,
-    exp: 4400,
+    exp: 0,
     expMax: 10000,
-    gold: 4320,
+    gold: 100,
     atk: 1240,
     def: 880,
     level: 1,
@@ -69,11 +69,11 @@
 
   const controller = new AbortController();
   const { signal } = controller;
-  let barsIntervalId = null;
   let heroCleanup = null;
   let misionesCleanup = null;
   let selectedCharacter = null;
   let gameLaunched = false;
+  let uiCache = null;
 
   const baseCharacter = {
     gold: state.gold,
@@ -118,6 +118,10 @@
   function applyCharacterToGame(char) {
     selectedCharacter = char;
     const baseStats = char.formula(1);
+    const initialGold = 100;
+
+    window.gameCharacter.gold = initialGold;
+    window.gameCharacter.levels = { cabeza: 1, pecho: 1, manos: 1, piernas: 1, pies: 1, accesorio: 1 };
 
     window.BASE_STATS = {
       HP: baseStats.HP,
@@ -140,6 +144,7 @@
     state.mpMax = baseStats.MP;
     state.exp = 0;
     state.expMax = baseStats.XP;
+    state.gold = initialGold;
 
     refs.charName.textContent = char.name.toUpperCase();
     refs.charRank.textContent = char.rank;
@@ -150,9 +155,13 @@
 
   function syncTopStats() {
     const stats = window.heroEngine.computeStats(window.gameCharacter);
-    refs.statGold.textContent = Number(window.gameCharacter.gold || 0).toLocaleString();
-    refs.statAtk.textContent = Number(stats.ATK || 0).toLocaleString('es-ES', { maximumFractionDigits: 1 });
-    refs.statDef.textContent = Number(stats.DEF || 0).toLocaleString('es-ES', { maximumFractionDigits: 1 });
+    const nextGold = Number(window.gameCharacter.gold || 0).toLocaleString();
+    const nextAtk = Number(stats.ATK || 0).toLocaleString('es-ES', { maximumFractionDigits: 1 });
+    const nextDef = Number(stats.DEF || 0).toLocaleString('es-ES', { maximumFractionDigits: 1 });
+
+    if (refs.statGold.textContent !== nextGold) refs.statGold.textContent = nextGold;
+    if (refs.statAtk.textContent !== nextAtk) refs.statAtk.textContent = nextAtk;
+    if (refs.statDef.textContent !== nextDef) refs.statDef.textContent = nextDef;
   }
 
   function refreshResourceBars() {
@@ -160,17 +169,32 @@
     const mpPct = Math.round((state.mp / state.mpMax) * 100);
     const expPct = Math.round((state.exp / state.expMax) * 100);
 
-    refs.hpFill.style.width = `${hpPct}%`;
-    refs.mpFill.style.width = `${mpPct}%`;
-    refs.expFill.style.width = `${expPct}%`;
+    const nextUi = {
+      hpWidth: `${hpPct}%`,
+      mpWidth: `${mpPct}%`,
+      expWidth: `${expPct}%`,
+      hpCur: String(state.hp),
+      hpMax: String(state.hpMax),
+      hpPct: `${hpPct}%`,
+      mpCur: String(state.mp),
+      mpMax: String(state.mpMax),
+      mpPct: `${mpPct}%`,
+      expNext: `${state.exp.toLocaleString()} / ${state.expMax.toLocaleString()} EXP — Próx. nivel: ${(state.expMax - state.exp).toLocaleString()}`
+    };
 
-    refs.hpCur.textContent = state.hp;
-    refs.hpMax.textContent = state.hpMax;
-    refs.hpPct.textContent = `${hpPct}%`;
-    refs.mpCur.textContent = state.mp;
-    refs.mpMax.textContent = state.mpMax;
-    refs.mpPct.textContent = `${mpPct}%`;
-    refs.expNext.textContent = `${state.exp.toLocaleString()} / ${state.expMax.toLocaleString()} EXP — Próx. nivel: ${(state.expMax - state.exp).toLocaleString()}`;
+    if (!uiCache || uiCache.hpWidth !== nextUi.hpWidth) refs.hpFill.style.width = nextUi.hpWidth;
+    if (!uiCache || uiCache.mpWidth !== nextUi.mpWidth) refs.mpFill.style.width = nextUi.mpWidth;
+    if (!uiCache || uiCache.expWidth !== nextUi.expWidth) refs.expFill.style.width = nextUi.expWidth;
+
+    if (!uiCache || uiCache.hpCur !== nextUi.hpCur) refs.hpCur.textContent = nextUi.hpCur;
+    if (!uiCache || uiCache.hpMax !== nextUi.hpMax) refs.hpMax.textContent = nextUi.hpMax;
+    if (!uiCache || uiCache.hpPct !== nextUi.hpPct) refs.hpPct.textContent = nextUi.hpPct;
+    if (!uiCache || uiCache.mpCur !== nextUi.mpCur) refs.mpCur.textContent = nextUi.mpCur;
+    if (!uiCache || uiCache.mpMax !== nextUi.mpMax) refs.mpMax.textContent = nextUi.mpMax;
+    if (!uiCache || uiCache.mpPct !== nextUi.mpPct) refs.mpPct.textContent = nextUi.mpPct;
+    if (!uiCache || uiCache.expNext !== nextUi.expNext) refs.expNext.textContent = nextUi.expNext;
+
+    uiCache = nextUi;
   }
 
   function syncCombatResources() {
@@ -187,12 +211,32 @@
   }
 
   function updateBars() {
-    state.exp = Math.min(state.expMax, state.exp + Math.floor(Math.random() * 28 + 8));
-    if (state.activeSection !== 'heroe') {
-      state.gold += Math.floor(Math.random() * 12 + 3);
-      window.gameCharacter.gold = state.gold;
-    }
     syncCombatResources();
+    refreshResourceBars();
+    syncTopStats();
+  }
+
+  function grantCombatRewards({ xp = 0, gold = 0 }) {
+    const gainedXp = Math.max(0, Math.round(xp));
+    const gainedGold = Math.max(0, Math.round(gold));
+
+    if (gainedGold > 0) {
+      window.gameCharacter.gold = Number(window.gameCharacter.gold || 0) + gainedGold;
+      state.gold = window.gameCharacter.gold;
+    }
+
+    if (gainedXp > 0) {
+      state.exp += gainedXp;
+      while (state.exp >= state.expMax) {
+        state.exp -= state.expMax;
+        state.level += 1;
+        const next = selectedCharacter?.formula(state.level);
+        if (next?.XP) {
+          state.expMax = next.XP;
+        }
+      }
+    }
+
     refreshResourceBars();
     syncTopStats();
   }
@@ -294,13 +338,7 @@
     const ui = window.createMisionesRangoUI({
       container: panel,
       getPlayerStats: () => playerStats,
-      onRewardGain: ({ xp, gold }) => {
-        state.exp = Math.min(state.expMax, state.exp + xp);
-        state.gold += gold;
-        window.gameCharacter.gold = state.gold;
-        refreshResourceBars();
-        syncTopStats();
-      },
+      onRewardGain: ({ xp, gold }) => grantCombatRewards({ xp, gold }),
       onCombatStateChange: (active) => {
         refs.overlay.classList.remove('visible');
         refs.nav.style.pointerEvents = active ? 'none' : '';
@@ -706,7 +744,6 @@
     document.addEventListener('keydown', handleKeyDown, { signal });
 
     updateBars();
-    barsIntervalId = window.setInterval(updateBars, 800);
 
     const heroBtn = document.getElementById('btn-heroe');
     if (heroBtn) {
@@ -727,10 +764,7 @@
     controller.abort();
     cleanupCenter();
     unmountStartMenu();
-    if (barsIntervalId !== null) {
-      window.clearInterval(barsIntervalId);
-      barsIntervalId = null;
-    }
+    uiCache = null;
   }
 
   window.__ninjaHud = { destroy, selectedCharacter: () => selectedCharacter };

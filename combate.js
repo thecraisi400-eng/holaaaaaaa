@@ -24,7 +24,8 @@
       onLog,
       onEnemy,
       onRewards,
-      onDefeat
+      onDefeat,
+      onPlayerAttack
     } = config;
 
     let battleInterval = null;
@@ -65,6 +66,9 @@
           currentEnemy.hp -= dmg;
           if (currentEnemy.hp < 0) currentEnemy.hp = 0;
           onLog(`🥷 Atacas y causas ${dmg} daño.`);
+          if (typeof onPlayerAttack === 'function') {
+            onPlayerAttack({ playerStats, enemy: currentEnemy, damage: dmg });
+          }
           onBars(playerStats, currentEnemy);
           if (currentEnemy.hp <= 0) {
             const rewards = currentMissionList[enemyIndex];

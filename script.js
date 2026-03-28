@@ -8,9 +8,9 @@
     hpMax: 1000,
     mp: 290,
     mpMax: 500,
-    exp: 4400,
-    expMax: 10000,
-    gold: 4320,
+    exp: 0,
+    expMax: 100,
+    gold: 100,
     atk: 1240,
     def: 880,
     level: 1,
@@ -74,10 +74,25 @@
   let misionesCleanup = null;
   let selectedCharacter = null;
   let gameLaunched = false;
+  const uiCache = {
+    hpPct: null,
+    mpPct: null,
+    expPct: null,
+    hp: null,
+    hpMax: null,
+    mp: null,
+    mpMax: null,
+    exp: null,
+    expMax: null,
+    topGold: null,
+    topAtk: null,
+    topDef: null
+  };
 
+  const defaultLevels = { cabeza: 1, pecho: 1, manos: 1, piernas: 1, pies: 1, accesorio: 1 };
   const baseCharacter = {
     gold: state.gold,
-    levels: { cabeza: 1, pecho: 1, manos: 1, piernas: 1, pies: 1, accesorio: 1 }
+    levels: { ...defaultLevels }
   };
 
   window.gameCharacter = window.gameCharacter || new Proxy(baseCharacter, {
@@ -140,6 +155,9 @@
     state.mpMax = baseStats.MP;
     state.exp = 0;
     state.expMax = baseStats.XP;
+    state.gold = 100;
+    window.gameCharacter.gold = 100;
+    window.gameCharacter.levels = { ...defaultLevels };
 
     refs.charName.textContent = char.name.toUpperCase();
     refs.charRank.textContent = char.rank;
@@ -150,9 +168,21 @@
 
   function syncTopStats() {
     const stats = window.heroEngine.computeStats(window.gameCharacter);
-    refs.statGold.textContent = Number(window.gameCharacter.gold || 0).toLocaleString();
-    refs.statAtk.textContent = Number(stats.ATK || 0).toLocaleString('es-ES', { maximumFractionDigits: 1 });
-    refs.statDef.textContent = Number(stats.DEF || 0).toLocaleString('es-ES', { maximumFractionDigits: 1 });
+    const nextGold = Number(window.gameCharacter.gold || 0).toLocaleString();
+    const nextAtk = Number(stats.ATK || 0).toLocaleString('es-ES', { maximumFractionDigits: 1 });
+    const nextDef = Number(stats.DEF || 0).toLocaleString('es-ES', { maximumFractionDigits: 1 });
+    if (uiCache.topGold !== nextGold) {
+      uiCache.topGold = nextGold;
+      refs.statGold.textContent = nextGold;
+    }
+    if (uiCache.topAtk !== nextAtk) {
+      uiCache.topAtk = nextAtk;
+      refs.statAtk.textContent = nextAtk;
+    }
+    if (uiCache.topDef !== nextDef) {
+      uiCache.topDef = nextDef;
+      refs.statDef.textContent = nextDef;
+    }
   }
 
   function refreshResourceBars() {
@@ -160,17 +190,41 @@
     const mpPct = Math.round((state.mp / state.mpMax) * 100);
     const expPct = Math.round((state.exp / state.expMax) * 100);
 
-    refs.hpFill.style.width = `${hpPct}%`;
-    refs.mpFill.style.width = `${mpPct}%`;
-    refs.expFill.style.width = `${expPct}%`;
-
-    refs.hpCur.textContent = state.hp;
-    refs.hpMax.textContent = state.hpMax;
-    refs.hpPct.textContent = `${hpPct}%`;
-    refs.mpCur.textContent = state.mp;
-    refs.mpMax.textContent = state.mpMax;
-    refs.mpPct.textContent = `${mpPct}%`;
-    refs.expNext.textContent = `${state.exp.toLocaleString()} / ${state.expMax.toLocaleString()} EXP — Próx. nivel: ${(state.expMax - state.exp).toLocaleString()}`;
+    if (uiCache.hpPct !== hpPct) {
+      uiCache.hpPct = hpPct;
+      refs.hpFill.style.width = `${hpPct}%`;
+      refs.hpPct.textContent = `${hpPct}%`;
+    }
+    if (uiCache.mpPct !== mpPct) {
+      uiCache.mpPct = mpPct;
+      refs.mpFill.style.width = `${mpPct}%`;
+      refs.mpPct.textContent = `${mpPct}%`;
+    }
+    if (uiCache.expPct !== expPct) {
+      uiCache.expPct = expPct;
+      refs.expFill.style.width = `${expPct}%`;
+    }
+    if (uiCache.hp !== state.hp) {
+      uiCache.hp = state.hp;
+      refs.hpCur.textContent = state.hp;
+    }
+    if (uiCache.hpMax !== state.hpMax) {
+      uiCache.hpMax = state.hpMax;
+      refs.hpMax.textContent = state.hpMax;
+    }
+    if (uiCache.mp !== state.mp) {
+      uiCache.mp = state.mp;
+      refs.mpCur.textContent = state.mp;
+    }
+    if (uiCache.mpMax !== state.mpMax) {
+      uiCache.mpMax = state.mpMax;
+      refs.mpMax.textContent = state.mpMax;
+    }
+    if (uiCache.exp !== state.exp || uiCache.expMax !== state.expMax) {
+      uiCache.exp = state.exp;
+      uiCache.expMax = state.expMax;
+      refs.expNext.textContent = `${state.exp.toLocaleString()} / ${state.expMax.toLocaleString()} EXP — Próx. nivel: ${(state.expMax - state.exp).toLocaleString()}`;
+    }
   }
 
   function syncCombatResources() {
@@ -186,15 +240,47 @@
     state.mp = Math.max(0, Math.min(state.mpMax, state.mp + mpDelta));
   }
 
-  function updateBars() {
-    state.exp = Math.min(state.expMax, state.exp + Math.floor(Math.random() * 28 + 8));
-    if (state.activeSection !== 'heroe') {
-      state.gold += Math.floor(Math.random() * 12 + 3);
-      window.gameCharacter.gold = state.gold;
-    }
+  function updateLevelScaling() {
+    if (!selectedCharacter) return;
+    const leveledStats = selectedCharacter.formula(state.level);
+    window.BASE_STATS = {
+      HP: leveledStats.HP,
+      MP: leveledStats.MP,
+      ATK: leveledStats.ATK,
+      DEF: leveledStats.DEF,
+      VEL: leveledStats.VEL,
+      CTR: leveledStats.CTR,
+      EVA: leveledStats.EVA,
+      RES: leveledStats.RES,
+      REGEN: leveledStats.REGEN,
+      ASPD: leveledStats.ASPD,
+      CDMG: leveledStats.CDMG
+    };
     syncCombatResources();
-    refreshResourceBars();
-    syncTopStats();
+  }
+
+  function applyCombatRewards(reward) {
+    if (!reward) return;
+    let valuesChanged = false;
+    if (reward.gold > 0) {
+      state.gold += reward.gold;
+      window.gameCharacter.gold = state.gold;
+      valuesChanged = true;
+    }
+    if (reward.xp > 0 && selectedCharacter) {
+      state.exp += reward.xp;
+      while (state.exp >= state.expMax) {
+        state.exp -= state.expMax;
+        state.level += 1;
+        state.expMax = selectedCharacter.formula(state.level).XP;
+        updateLevelScaling();
+      }
+      valuesChanged = true;
+    }
+    if (valuesChanged) {
+      refreshResourceBars();
+      syncTopStats();
+    }
   }
 
   function spawnParticles(x, y, type = 'chakra') {
@@ -295,11 +381,7 @@
       container: panel,
       getPlayerStats: () => playerStats,
       onRewardGain: ({ xp, gold }) => {
-        state.exp = Math.min(state.expMax, state.exp + xp);
-        state.gold += gold;
-        window.gameCharacter.gold = state.gold;
-        refreshResourceBars();
-        syncTopStats();
+        applyCombatRewards({ xp, gold });
       },
       onCombatStateChange: (active) => {
         refs.overlay.classList.remove('visible');
@@ -705,8 +787,8 @@
     refs.overlay.addEventListener('click', handleOverlayClick, { signal });
     document.addEventListener('keydown', handleKeyDown, { signal });
 
-    updateBars();
-    barsIntervalId = window.setInterval(updateBars, 800);
+    refreshResourceBars();
+    syncTopStats();
 
     const heroBtn = document.getElementById('btn-heroe');
     if (heroBtn) {
@@ -727,10 +809,8 @@
     controller.abort();
     cleanupCenter();
     unmountStartMenu();
-    if (barsIntervalId !== null) {
-      window.clearInterval(barsIntervalId);
-      barsIntervalId = null;
-    }
+    if (barsIntervalId !== null) window.clearInterval(barsIntervalId);
+    barsIntervalId = null;
   }
 
   window.__ninjaHud = { destroy, selectedCharacter: () => selectedCharacter };

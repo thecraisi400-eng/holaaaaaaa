@@ -11,9 +11,18 @@
     } = options;
 
     const listeners = [];
+    const missionScreenListeners = [];
     const on = (el, evt, fn, opts) => {
       el.addEventListener(evt, fn, opts);
       listeners.push(() => el.removeEventListener(evt, fn, opts));
+    };
+    const onMissionScreen = (el, evt, fn, opts) => {
+      el.addEventListener(evt, fn, opts);
+      missionScreenListeners.push(() => el.removeEventListener(evt, fn, opts));
+    };
+    const clearMissionScreenListeners = () => {
+      missionScreenListeners.forEach((off) => off());
+      missionScreenListeners.length = 0;
     };
 
     let currentScreen = 'main';
@@ -103,6 +112,7 @@
     }
 
     function showMissions(rank) {
+      clearMissionScreenListeners();
       const player = getPlayerStats();
       currentMissionList = window.MISIONES_RANGO_DATA[rank] || [];
       missionsScreen.innerHTML = '';
@@ -127,7 +137,7 @@
           ${locked ? `<div class="mission-lock">🔒 Nivel mínimo: ${mission.lvl}</div>` : ''}`;
 
         if (!locked) {
-          on(missionDiv, 'click', () => {
+          onMissionScreen(missionDiv, 'click', () => {
             const current = getPlayerStats();
             current.hp = current.maxHp;
             current.mp = current.maxMp;
@@ -151,7 +161,7 @@
       backButton.id = 'back-to-ranks-from-missions';
       backButton.className = 'back-button';
       backButton.textContent = '⬅️ Volver a Rangos';
-      on(backButton, 'click', () => {
+      onMissionScreen(backButton, 'click', () => {
         combat.stop();
         missionsScreen.classList.add('hidden');
         rankScreen.classList.remove('hidden');
@@ -190,6 +200,7 @@
     return {
       destroy() {
         combat.stop();
+        clearMissionScreenListeners();
         listeners.forEach((off) => off());
         listeners.length = 0;
         root.remove();

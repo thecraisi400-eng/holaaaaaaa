@@ -3,6 +3,8 @@
     window.__ninjaHud.destroy();
   }
 
+  const SAVE_KEY = 'ninjaHudSaveV1';
+
   const state = {
     hp: 720,
     hpMax: 1000,
@@ -14,7 +16,9 @@
     atk: 1240,
     def: 880,
     level: 23,
-    activeSection: 'heroe'
+    activeSection: 'heroe',
+    phase: 'boot',
+    selectedCharacterId: null
   };
 
   const sections = {
@@ -42,6 +46,7 @@
   };
 
   const refs = {
+    app: document.getElementById('app'),
     nav: document.getElementById('hud-bottom'),
     center: document.getElementById('hud-center-content'),
     overlay: document.getElementById('section-overlay'),
@@ -58,17 +63,25 @@
     expNext: document.getElementById('expNext'),
     statAtk: document.getElementById('statAtk'),
     statDef: document.getElementById('statDef'),
-    statGold: document.getElementById('statGold')
+    statGold: document.getElementById('statGold'),
+    hpMax: document.getElementById('hpMax'),
+    mpMax: document.getElementById('mpMax'),
+    charName: document.getElementById('charName'),
+    charRank: document.getElementById('charRank'),
+    avatarFrame: document.getElementById('avatarFrame')
   };
 
   const controller = new AbortController();
   const { signal } = controller;
   let barsIntervalId = null;
   let heroCleanup = null;
+  let menuRoot = null;
 
   const baseCharacter = {
     gold: state.gold,
-    levels: { cabeza: 1, pecho: 1, manos: 1, piernas: 1, pies: 1, accesorio: 1 }
+    levels: { cabeza: 1, pecho: 1, manos: 1, piernas: 1, pies: 1, accesorio: 1 },
+    level: 1,
+    baseStats: { ...window.BASE_STATS }
   };
 
   window.gameCharacter = window.gameCharacter || new Proxy(baseCharacter, {
@@ -78,9 +91,120 @@
         state.gold = value;
       }
       syncTopStats();
+      persistGame();
       return true;
     }
   });
+
+  function ensureCharacterLibrary() {
+    if (Array.isArray(window.NINJA_CHARACTERS) && window.NINJA_CHARACTERS.length) return Promise.resolve();
+    return new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'personajes.js';
+      script.defer = true;
+      script.onload = () => resolve();
+      script.onerror = () => resolve();
+      document.head.appendChild(script);
+    });
+  }
+
+  function getCharacters() {
+    if (Array.isArray(window.NINJA_CHARACTERS) && window.NINJA_CHARACTERS.length) {
+      return window.NINJA_CHARACTERS;
+    }
+    return [
+      {
+        id: 'naruto',
+        name: 'Naruto Uzumaki',
+        role: 'Clan Uzumaki · Hokage',
+        rank: 'CHUNIN',
+        emoji: '🍥',
+        color: '#ff8020',
+        formula: (lv) => ({
+          HP: 135 + 21 * (lv - 1), MP: 125 + 19 * (lv - 1), ATK: 18 + 11 * (lv - 1), DEF: 10 + 4 * (lv - 1),
+          VEL: +(10 + 2 * (lv - 1)).toFixed(1), CTR: +(4 + 0.15 * (lv - 1)).toFixed(2), CDMG: +(150 + 1.0 * (lv - 1)).toFixed(2),
+          EVA: +(3 + 0.10 * (lv - 1)).toFixed(2), RES: +(12 + 0.15 * (lv - 1)).toFixed(2), REGEN: +(5 + 0.06 * (lv - 1)).toFixed(2), ASPD: +(0.95 + 0.02 * (lv - 1)).toFixed(2), XP: Math.round(60 * Math.pow(lv, 1.9))
+        })
+      }
+    ];
+  }
+
+  function getCurrentCharacterMeta() {
+    const finder = window.getNinjaCharacterById;
+    if (typeof finder === 'function') {
+      return finder(state.selectedCharacterId);
+    }
+    return getCharacters().find((char) => char.id === state.selectedCharacterId) || getCharacters()[0];
+  }
+
+  function persistGame() {
+    if (!state.selectedCharacterId) return;
+    const payload = {
+      selectedCharacterId: state.selectedCharacterId,
+      gameCharacter: {
+        gold: window.gameCharacter.gold,
+        levels: window.gameCharacter.levels,
+        level: window.gameCharacter.level,
+        baseStats: window.gameCharacter.baseStats
+      },
+      hud: {
+        hp: state.hp, hpMax: state.hpMax, mp: state.mp, mpMax: state.mpMax,
+        exp: state.exp, expMax: state.expMax, level: state.level, gold: state.gold
+      }
+    };
+    window.localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
+  }
+
+  function readSave() {
+    try {
+      const raw = window.localStorage.getItem(SAVE_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+
+  function applyCharacterSelection(characterId, saveData = null) {
+    const nextLevel = saveData?.gameCharacter?.level || 1;
+    const built = window.heroEngine.createCharacterState(characterId, nextLevel, saveData?.hud);
+    if (!built) return false;
+
+    const selectedCharacter = getCharacters().find((char) => char.id === built.characterId) || getCharacters()[0];
+    state.selectedCharacterId = selectedCharacter.id;
+
+    window.gameCharacter.level = built.level;
+    window.gameCharacter.baseStats = { ...built.baseStats };
+    window.gameCharacter.gold = saveData?.gameCharacter?.gold ?? state.gold;
+    window.gameCharacter.levels = {
+      cabeza: 1, pecho: 1, manos: 1, piernas: 1, pies: 1, accesorio: 1,
+      ...(saveData?.gameCharacter?.levels || {})
+    };
+
+    state.level = built.level;
+    state.hp = built.hp;
+    state.hpMax = built.hpMax;
+    state.mp = built.mp;
+    state.mpMax = built.mpMax;
+    state.exp = saveData?.hud?.exp ?? 0;
+    state.expMax = built.expMax;
+    state.gold = window.gameCharacter.gold;
+
+    refs.charName.textContent = selectedCharacter.name.toUpperCase();
+    refs.charRank.textContent = (selectedCharacter.rank || window.heroEngine.computeCurrentRank(state.level)).toUpperCase();
+    refs.hpMax.textContent = Math.round(state.hpMax);
+    refs.mpMax.textContent = Math.round(state.mpMax);
+
+    const avatar = refs.avatarFrame.querySelector('.avatar-placeholder');
+    if (avatar) {
+      avatar.textContent = selectedCharacter.emoji;
+    }
+
+    syncTopStats();
+    updateBars();
+    persistGame();
+    return true;
+  }
 
   function syncTopStats() {
     const stats = window.heroEngine.computeStats(window.gameCharacter);
@@ -90,6 +214,8 @@
   }
 
   function updateBars() {
+    if (state.phase !== 'playing') return;
+
     state.exp = Math.min(state.expMax, state.exp + Math.floor(Math.random() * 28 + 8));
     if (state.activeSection !== 'heroe') {
       state.gold += Math.floor(Math.random() * 12 + 3);
@@ -104,9 +230,9 @@
     refs.mpFill.style.width = `${mpPct}%`;
     refs.expFill.style.width = `${expPct}%`;
 
-    refs.hpCur.textContent = state.hp;
+    refs.hpCur.textContent = Math.round(state.hp);
     refs.hpPct.textContent = `${hpPct}%`;
-    refs.mpCur.textContent = state.mp;
+    refs.mpCur.textContent = Math.round(state.mp);
     refs.mpPct.textContent = `${mpPct}%`;
     refs.expNext.textContent = `${state.exp.toLocaleString()} / ${state.expMax.toLocaleString()} EXP — Próx. nivel: ${(state.expMax - state.exp).toLocaleString()}`;
     syncTopStats();
@@ -367,6 +493,7 @@
       }
 
       renderUpgradeCard(key);
+      persistGame();
     }
 
     on(heroRefs.overlay, 'click', (e) => {
@@ -386,6 +513,8 @@
   }
 
   function openSection(sectionKey, buttonEl) {
+    if (state.phase !== 'playing') return;
+
     const info = sections[sectionKey];
     if (!info) return;
 
@@ -432,18 +561,118 @@
     }
   }
 
-  function start() {
-    refs.nav.addEventListener('click', handleNavClick, { signal });
-    refs.overlay.addEventListener('click', handleOverlayClick, { signal });
-    document.addEventListener('keydown', handleKeyDown, { signal });
+  function createStartMenu() {
+    if (menuRoot) return menuRoot;
+    menuRoot = document.createElement('div');
+    menuRoot.id = 'startFlow';
+    menuRoot.style.cssText = 'position:fixed;inset:0;background:rgba(3,8,16,.95);z-index:9999;display:flex;align-items:center;justify-content:center;font-family:Rajdhani,sans-serif;color:#d8eeff;';
+    menuRoot.innerHTML = `
+      <div style="width:min(540px,92vw);background:#0d162a;border:1px solid rgba(46,207,207,.4);padding:18px 16px 14px;border-radius:10px;box-shadow:0 0 0 1px rgba(232,146,58,.2) inset;">
+        <h2 style="font-family:Orbitron,sans-serif;letter-spacing:.12em;color:#f0b24f;text-align:center;margin:0 0 10px;">NARUTO IDLE RPG</h2>
+        <div data-screen="main" style="display:grid;gap:10px;">
+          <button data-action="new" style="padding:12px;border:1px solid rgba(240,178,79,.45);background:#172747;color:#f7d38a;font-weight:700;border-radius:8px;cursor:pointer;">⚔ NUEVA PARTIDA</button>
+          <button data-action="continue" style="padding:12px;border:1px solid rgba(46,207,207,.35);background:#15273b;color:#b5d8ff;font-weight:700;border-radius:8px;cursor:pointer;">◈ CONTINUAR</button>
+          <p id="startMenuMsg" style="min-height:20px;font-size:.85rem;color:#86a8c5;margin:0;text-align:center;"></p>
+        </div>
+        <div data-screen="select" style="display:none;gap:8px;"></div>
+      </div>`;
+    document.body.appendChild(menuRoot);
+    return menuRoot;
+  }
 
-    updateBars();
-    barsIntervalId = window.setInterval(updateBars, 800);
+  function renderCharacterSelect() {
+    const root = createStartMenu();
+    const main = root.querySelector('[data-screen="main"]');
+    const select = root.querySelector('[data-screen="select"]');
+    main.style.display = 'none';
+    select.style.display = 'grid';
+
+    select.innerHTML = '<button data-action="back" style="justify-self:start;padding:8px 10px;background:#1a2e42;color:#b7d6f4;border:1px solid rgba(46,207,207,.35);border-radius:6px;cursor:pointer;">← Volver</button>';
+    for (const char of getCharacters()) {
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.dataset.action = 'pick';
+      card.dataset.charId = char.id;
+      card.style.cssText = `text-align:left;padding:10px 12px;border:1px solid ${char.color}55;background:#13243a;color:#e9f3ff;border-radius:8px;cursor:pointer;`;
+      card.innerHTML = `<strong>${char.emoji} ${char.name}</strong><div style="font-size:.85rem;color:#8db4d8;margin-top:2px;">${char.role}</div>`;
+      select.appendChild(card);
+    }
+  }
+
+  function showMainStartMenu(message = '') {
+    const root = createStartMenu();
+    const main = root.querySelector('[data-screen="main"]');
+    const select = root.querySelector('[data-screen="select"]');
+    const msg = root.querySelector('#startMenuMsg');
+    main.style.display = 'grid';
+    select.style.display = 'none';
+    msg.textContent = message;
+  }
+
+  function closeStartMenu() {
+    if (menuRoot) {
+      menuRoot.remove();
+      menuRoot = null;
+    }
+    refs.app.style.visibility = 'visible';
+    state.phase = 'playing';
+
+    if (barsIntervalId === null) {
+      updateBars();
+      barsIntervalId = window.setInterval(updateBars, 800);
+    }
 
     const heroBtn = document.getElementById('btn-heroe');
     if (heroBtn) {
       openSection('heroe', heroBtn);
     }
+  }
+
+  function handleStartFlowClick(event) {
+    const actionEl = event.target.closest('[data-action]');
+    if (!actionEl || !menuRoot?.contains(actionEl)) return;
+
+    const { action } = actionEl.dataset;
+    if (action === 'new') {
+      renderCharacterSelect();
+      return;
+    }
+    if (action === 'back') {
+      showMainStartMenu();
+      return;
+    }
+    if (action === 'continue') {
+      const saved = readSave();
+      if (!saved?.selectedCharacterId) {
+        showMainStartMenu('No hay partida guardada. Inicia una nueva partida.');
+        return;
+      }
+      const ok = applyCharacterSelection(saved.selectedCharacterId, saved);
+      if (!ok) {
+        showMainStartMenu('La partida guardada no es válida.');
+        return;
+      }
+      closeStartMenu();
+      return;
+    }
+    if (action === 'pick') {
+      const { charId } = actionEl.dataset;
+      const ok = applyCharacterSelection(charId);
+      if (!ok) return;
+      closeStartMenu();
+    }
+  }
+
+  function start() {
+    refs.app.style.visibility = 'hidden';
+
+    refs.nav.addEventListener('click', handleNavClick, { signal });
+    refs.overlay.addEventListener('click', handleOverlayClick, { signal });
+    document.addEventListener('keydown', handleKeyDown, { signal });
+    document.addEventListener('click', handleStartFlowClick, { signal });
+    window.addEventListener('beforeunload', persistGame, { signal });
+
+    showMainStartMenu();
   }
 
   function destroy() {
@@ -453,8 +682,12 @@
       window.clearInterval(barsIntervalId);
       barsIntervalId = null;
     }
+    if (menuRoot) {
+      menuRoot.remove();
+      menuRoot = null;
+    }
   }
 
   window.__ninjaHud = { destroy };
-  start();
+  ensureCharacterLibrary().finally(start);
 })();

@@ -53,7 +53,7 @@ function fmtNum(n) {
 }
 
 function computeStats(player) {
-  const stats = { ...window.BASE_STATS };
+  const stats = { ...(player.baseStats || window.BASE_STATS) };
   for (const key of window.SLOT_ORDER) {
     const lvl = player.levels[key];
     const gains = lvl - 1;
@@ -65,6 +65,36 @@ function computeStats(player) {
   return stats;
 }
 
+
+
+function createCharacterState(characterId, level = 1, existing = null) {
+  const getChar = window.getNinjaCharacterById || ((id) => (window.NINJA_CHARACTERS || []).find((char) => char.id === id));
+  const char = getChar(characterId);
+  if (!char) return null;
+
+  const baseStats = char.formula(level);
+  return {
+    characterId: char.id,
+    level,
+    exp: existing?.exp || 0,
+    expMax: baseStats.XP,
+    hp: existing?.hp ?? baseStats.HP,
+    hpMax: baseStats.HP,
+    mp: existing?.mp ?? baseStats.MP,
+    mpMax: baseStats.MP,
+    atk: baseStats.ATK,
+    def: baseStats.DEF,
+    baseStats
+  };
+}
+
+function computeCurrentRank(level) {
+  if (level >= 50) return 'KAGE';
+  if (level >= 35) return 'JONIN';
+  if (level >= 20) return 'CHUNIN';
+  return 'GENIN';
+}
+
 window.heroEngine = {
   getUpgradeCost,
   rankClass,
@@ -72,5 +102,7 @@ window.heroEngine = {
   fmtStat,
   fmtGain,
   fmtNum,
-  computeStats
+  computeStats,
+  createCharacterState,
+  computeCurrentRank
 };

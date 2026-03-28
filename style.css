@@ -662,6 +662,18 @@ html, body {
 }
 
 .misiones-rango .menu-button-alt { opacity: .6; }
+.misiones-rango .bingo-timer {
+  cursor: default;
+  pointer-events: none;
+}
+.misiones-rango .bingo-enemy-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1;
+}
 .misiones-rango .rank-d { border-color: #2e7d32; color: #4caf50; }
 .misiones-rango .rank-c { border-color: #1565c0; color: #42a5f5; }
 .misiones-rango .rank-b { border-color: #f9a825; color: #fdd835; }

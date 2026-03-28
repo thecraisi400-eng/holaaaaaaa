@@ -41,8 +41,14 @@
       onBars(getPlayerStats(), currentEnemy);
     }
 
-    function start(missions, missionIndex) {
+    function start(missions, missionIndex, options = {}) {
       stop();
+      const settings = {
+        continueOnWin: options.continueOnWin !== false,
+        onVictory: typeof options.onVictory === 'function' ? options.onVictory : null,
+        onDefeat: typeof options.onDefeat === 'function' ? options.onDefeat : null
+      };
+
       currentMissionList = missions;
       enemyIndex = missionIndex;
       battleLoopCount = 0;
@@ -64,6 +70,14 @@
             const rewards = currentMissionList[enemyIndex];
             onLog(`💀 ¡Enemigo derrotado! +${rewards.xp} XP y +${rewards.gold} Oro.`);
             onRewards(rewards);
+
+            if (!settings.continueOnWin) {
+              battleActive = false;
+              stop();
+              if (settings.onVictory) settings.onVictory({ enemy: currentEnemy, rewards });
+              return;
+            }
+
             battleLoopCount += 1;
             loadEnemy(enemyIndex);
             onLog(`🔁 Iteración ${battleLoopCount}: ${currentEnemy.name} reaparece para continuar el Auto-Battle.`);
@@ -80,6 +94,7 @@
             onLog('😵 Has sido derrotado...');
             battleActive = false;
             stop();
+            if (settings.onDefeat) settings.onDefeat({ enemy: currentEnemy });
             onDefeat();
           }
         }

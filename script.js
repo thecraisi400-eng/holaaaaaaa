@@ -52,6 +52,7 @@
     hpFill: document.getElementById('hpFill'),
     mpFill: document.getElementById('mpFill'),
     expFill: document.getElementById('expFill'),
+    charLevel: document.getElementById('charLevel'),
     hpCur: document.getElementById('hpCur'),
     hpMax: document.getElementById('hpMax'),
     hpPct: document.getElementById('hpPct'),
@@ -84,6 +85,7 @@
     mpMax: null,
     exp: null,
     expMax: null,
+    level: null,
     topGold: null,
     topAtk: null,
     topDef: null
@@ -224,6 +226,10 @@
       uiCache.exp = state.exp;
       uiCache.expMax = state.expMax;
       refs.expNext.textContent = `${state.exp.toLocaleString()} / ${state.expMax.toLocaleString()} EXP — Próx. nivel: ${(state.expMax - state.exp).toLocaleString()}`;
+    }
+    if (uiCache.level !== state.level) {
+      uiCache.level = state.level;
+      refs.charLevel.textContent = state.level;
     }
   }
 

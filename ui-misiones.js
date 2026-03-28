@@ -27,6 +27,7 @@
 
     let currentScreen = 'main';
     let currentMissionList = [];
+    let activeBattleMode = 'rank';
 
     const root = document.createElement('div');
     root.className = 'misiones-rango';
@@ -37,6 +38,7 @@
       </div>
       <div id="missions-menu-screen" class="screen hidden">
         <button id="open-rank-list" class="menu-button">⚔️ MISION RANGO ⚔️</button>
+        <button id="open-libro-bingo" class="menu-button">📘 LIBRO BINGO</button>
         <button id="back-to-main-from-missions-menu" class="back-button">⬅️ Volver</button>
       </div>
       <div id="rank-list-screen" class="screen hidden">
@@ -49,6 +51,19 @@
       </div>
       <div id="missions-screen" class="screen hidden">
         <button id="back-to-ranks-from-missions" class="back-button">⬅️ Volver a Rangos</button>
+      </div>
+      <div id="bingo-rank-screen" class="screen hidden">
+        <div id="bingo-timer" class="menu-button menu-button-alt bingo-timer">⏳ 05:00:00</div>
+        <button id="bingo-rank-option-a" class="rank-button rank-d">📘 Rango</button>
+        <button id="bingo-rank-option-b" class="rank-button rank-c">📘 Rango</button>
+        <button id="back-to-missions-from-bingo-ranks" class="back-button">⬅️ Volver a Misiones</button>
+        <button id="back-to-main-from-bingo-ranks" class="back-button">⬅️ Volver al Inicio</button>
+      </div>
+      <div id="bingo-enemies-screen" class="screen hidden">
+        <div id="bingo-rank-title" class="section-label">📘 Libro Bingo</div>
+        <div id="bingo-enemy-list" class="bingo-enemy-list"></div>
+        <button id="back-to-bingo-ranks-from-enemies" class="back-button">⬅️ Volver a Rangos Bingo</button>
+        <button id="back-to-main-from-bingo-enemies" class="back-button">⬅️ Volver al Inicio</button>
       </div>
       <div id="battle-screen" class="screen hidden">
         <button id="back-from-battle-to-main" class="back-button">⬅️ Abandonar misión</button>
@@ -71,11 +86,22 @@
 
     container.replaceChildren(root);
 
-    const mainScreen = root.querySelector('#main-menu-screen');
-    const missionsMenuScreen = root.querySelector('#missions-menu-screen');
-    const rankScreen = root.querySelector('#rank-list-screen');
-    const missionsScreen = root.querySelector('#missions-screen');
-    const battleScreen = root.querySelector('#battle-screen');
+    const screenMap = {
+      main: root.querySelector('#main-menu-screen'),
+      'missions-menu': root.querySelector('#missions-menu-screen'),
+      ranks: root.querySelector('#rank-list-screen'),
+      missions: root.querySelector('#missions-screen'),
+      'bingo-ranks': root.querySelector('#bingo-rank-screen'),
+      'bingo-enemies': root.querySelector('#bingo-enemies-screen'),
+      battle: root.querySelector('#battle-screen')
+    };
+
+    function showScreen(screenKey) {
+      Object.values(screenMap).forEach((node) => node.classList.add('hidden'));
+      const target = screenMap[screenKey] || screenMap.main;
+      target.classList.remove('hidden');
+      currentScreen = screenKey;
+    }
 
     const combat = window.createMisionesRangoCombat({
       getPlayerStats,
@@ -97,24 +123,37 @@
         if (logDiv.children.length > 15) logDiv.removeChild(logDiv.lastChild);
       },
       onRewards: onRewardGain,
-      onDefeat: () => onCombatStateChange(false)
+      onDefeat: () => {
+        if (activeBattleMode === 'bingo') return;
+        onCombatStateChange(false);
+      }
+    });
+
+    const bingoUI = window.createLibroBingoUI({
+      root,
+      getPlayerStats,
+      combat,
+      showScreen,
+      onCombatStateChange,
+      onRewards: onRewardGain,
+      setBattleMode: (mode) => {
+        activeBattleMode = mode;
+      }
     });
 
     function goMain() {
       combat.stop();
-      battleScreen.classList.add('hidden');
-      missionsScreen.classList.add('hidden');
-      rankScreen.classList.add('hidden');
-      missionsMenuScreen.classList.add('hidden');
-      mainScreen.classList.remove('hidden');
-      currentScreen = 'main';
+      bingoUI.stopCombatIfAny();
+      showScreen('main');
       onCombatStateChange(false);
+      activeBattleMode = 'rank';
     }
 
     function showMissions(rank) {
       clearMissionScreenListeners();
       const player = getPlayerStats();
       currentMissionList = window.MISIONES_RANGO_DATA[rank] || [];
+      const missionsScreen = root.querySelector('#missions-screen');
       missionsScreen.innerHTML = '';
 
       currentMissionList.forEach((mission, index) => {
@@ -142,12 +181,9 @@
             current.hp = current.maxHp;
             current.mp = current.maxMp;
             root.querySelector('#combat-log').innerHTML = '';
-            missionsScreen.classList.add('hidden');
-            rankScreen.classList.add('hidden');
-            mainScreen.classList.add('hidden');
-            battleScreen.classList.remove('hidden');
-            currentScreen = 'battle';
             onCombatStateChange(true);
+            activeBattleMode = 'rank';
+            showScreen('battle');
             combat.start(currentMissionList, index);
           });
         } else {
@@ -163,29 +199,20 @@
       backButton.textContent = '⬅️ Volver a Rangos';
       onMissionScreen(backButton, 'click', () => {
         combat.stop();
-        missionsScreen.classList.add('hidden');
-        rankScreen.classList.remove('hidden');
-        currentScreen = 'ranks';
+        showScreen('ranks');
         onCombatStateChange(false);
       });
       missionsScreen.appendChild(backButton);
 
-      rankScreen.classList.add('hidden');
-      missionsMenuScreen.classList.add('hidden');
-      missionsScreen.classList.remove('hidden');
-      currentScreen = 'missions';
+      showScreen('missions');
     }
 
     on(root.querySelector('#open-misiones-menu'), 'click', () => {
-      mainScreen.classList.add('hidden');
-      missionsMenuScreen.classList.remove('hidden');
-      currentScreen = 'missions-menu';
+      showScreen('missions-menu');
     });
 
     on(root.querySelector('#open-rank-list'), 'click', () => {
-      missionsMenuScreen.classList.add('hidden');
-      rankScreen.classList.remove('hidden');
-      currentScreen = 'ranks';
+      showScreen('ranks');
     });
 
     for (const rank of RANKS) {
@@ -194,12 +221,25 @@
 
     on(root.querySelector('#back-to-main-from-missions-menu'), 'click', goMain);
     on(root.querySelector('#back-to-main-from-ranks'), 'click', goMain);
-    on(root.querySelector('#back-from-battle-to-main'), 'click', goMain);
-    on(root.querySelector('#stop-battle-btn'), 'click', goMain);
+    on(root.querySelector('#back-from-battle-to-main'), 'click', () => {
+      if (activeBattleMode === 'bingo' && bingoUI.isBingoBattleActive()) {
+        bingoUI.backFromBattle();
+        return;
+      }
+      goMain();
+    });
+    on(root.querySelector('#stop-battle-btn'), 'click', () => {
+      if (activeBattleMode === 'bingo' && bingoUI.isBingoBattleActive()) {
+        bingoUI.backFromBattle();
+        return;
+      }
+      goMain();
+    });
 
     return {
       destroy() {
         combat.stop();
+        bingoUI.destroy();
         clearMissionScreenListeners();
         listeners.forEach((off) => off());
         listeners.length = 0;

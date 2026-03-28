@@ -433,3 +433,104 @@ html, body {
   .nav-btn { min-height: 68px; }
   .btn-icon { font-size: 1.5rem; }
 }
+
+#hud-center-content {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.hero-panel-shell {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.hero-panel-shell .panel {
+  width: min(355px, 100%);
+  height: min(500px, 100%);
+  max-width: 100%;
+  max-height: 100%;
+  background: transparent;
+  position: relative;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  overflow: hidden;
+  object-fit: contain;
+}
+
+.hero-panel-shell .section-label { font-size: 8px; font-weight: 700; letter-spacing: 2.5px; color: rgba(255,255,255,0.28); text-transform: uppercase; flex-shrink: 0; text-align: center; height: 10px; line-height: 10px; }
+.hero-panel-shell .stats-panel { background: rgba(19,26,38,0.82); border: 1px solid rgba(255,255,255,0.07); border-radius: 9px; padding: 5px; flex-shrink: 0; }
+.hero-panel-shell .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.hero-panel-shell .stat-chip { background: #1c2740; border-radius: 6px; height: 46px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; border: 1px solid rgba(255,255,255,0.04); transition: background 0.2s; }
+.hero-panel-shell .stat-chip:hover { background: #22305a; }
+.hero-panel-shell .stat-icon { font-size: 11px; line-height: 1.2; }
+.hero-panel-shell .stat-lbl { font-size: 7px; color: rgba(255,255,255,0.38); font-weight: 700; letter-spacing: 0.3px; }
+.hero-panel-shell .stat-val { font-size: 10px; color: #c6d8ff; font-weight: 800; }
+.hero-panel-shell .equip-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; flex-shrink: 0; }
+.hero-panel-shell .slot { height: 108px; background: #131a26; border-radius: 10px; border: 2px solid; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; transition: transform 0.15s ease, filter 0.15s ease; position: relative; overflow: hidden; user-select: none; }
+.hero-panel-shell .slot::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 30%, rgba(255,255,255,0.04) 0%, transparent 70%); pointer-events: none; }
+.hero-panel-shell .slot:hover { transform: translateY(-2px) scale(1.02); filter: brightness(1.18); }
+.hero-panel-shell .slot:active { transform: scale(0.96); }
+.hero-panel-shell .slot-icon { font-size: 28px; line-height: 1; }
+.hero-panel-shell .slot-name { font-size: 9px; color: rgba(255,255,255,0.5); font-weight: 700; letter-spacing: 0.3px; }
+.hero-panel-shell .slot-lvl { font-size: 8px; font-weight: 900; padding: 2px 8px; border-radius: 4px; background: rgba(0,0,0,0.4); letter-spacing: 0.5px; }
+.hero-panel-shell .rank-gray { border-color: #4b5563; }
+.hero-panel-shell .rank-gray .slot-lvl { color: #9ca3af; }
+.hero-panel-shell .rank-gray .slot-name { color: #6b7280; }
+.hero-panel-shell .rank-green { border-color: #16a34a; box-shadow: 0 0 10px rgba(22,163,74,0.35), inset 0 0 20px rgba(22,163,74,0.06); }
+.hero-panel-shell .rank-green .slot-lvl { color: #4ade80; }
+.hero-panel-shell .rank-blue { border-color: #2563eb; box-shadow: 0 0 10px rgba(37,99,235,0.4), inset 0 0 20px rgba(37,99,235,0.06); }
+.hero-panel-shell .rank-blue .slot-lvl { color: #60a5fa; }
+.hero-panel-shell .rank-purple { border-color: #7c3aed; box-shadow: 0 0 12px rgba(124,58,237,0.45), inset 0 0 20px rgba(124,58,237,0.07); }
+.hero-panel-shell .rank-purple .slot-lvl { color: #c084fc; }
+.hero-panel-shell .rank-yellow { border-color: #ca8a04; box-shadow: 0 0 12px rgba(234,179,8,0.5), inset 0 0 20px rgba(234,179,8,0.07); }
+.hero-panel-shell .rank-yellow .slot-lvl { color: #fbbf24; }
+.hero-panel-shell .rank-red { border-color: #dc2626; box-shadow: 0 0 14px rgba(220,38,38,0.55), inset 0 0 20px rgba(220,38,38,0.08); }
+.hero-panel-shell .rank-red .slot-lvl { color: #f87171; }
+@keyframes levelUp { 0% { filter: brightness(1); } 25% { filter: brightness(2.5) saturate(2); } 100% { filter: brightness(1); } }
+.hero-panel-shell .slot.flash { animation: levelUp 0.5s ease-out; }
+.hero-panel-shell .overlay { position: absolute; inset: 0; background: rgba(8,12,20,0.91); border-radius: 10px; z-index: 200; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; }
+.hero-panel-shell .overlay.active { opacity: 1; pointer-events: all; }
+.hero-panel-shell .upgrade-card { background: #131a26; border: 1px solid rgba(255,255,255,0.09); border-radius: 14px; padding: 14px 13px 13px; width: min(294px, calc(100% - 8px)); position: relative; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+.hero-panel-shell .uc-close { position: absolute; top: 10px; right: 13px; color: rgba(255,255,255,0.35); cursor: pointer; font-size: 18px; line-height: 1; transition: color 0.15s; font-weight: 300; }
+.hero-panel-shell .uc-close:hover { color: #ff6b6b; }
+.hero-panel-shell .uc-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding-right: 20px; }
+.hero-panel-shell .uc-icon { font-size: 30px; line-height: 1; }
+.hero-panel-shell .uc-name { font-size: 14px; font-weight: 800; color: #dde8ff; letter-spacing: 0.5px; }
+.hero-panel-shell .uc-rank-badge { display: inline-block; font-size: 8px; font-weight: 800; padding: 1px 6px; border-radius: 3px; letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
+.hero-panel-shell .uc-level-row { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; background: #1c2740; border-radius: 8px; padding: 7px 10px; }
+.hero-panel-shell .uc-lvl-block { flex: 1; text-align: center; }
+.hero-panel-shell .uc-lvl-lbl { font-size: 7px; color: rgba(255,255,255,0.3); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+.hero-panel-shell .uc-lvl-num { font-size: 18px; font-weight: 900; margin-top: 1px; }
+.hero-panel-shell .cur-num { color: rgba(255,255,255,0.55); }
+.hero-panel-shell .nxt-num { color: #4ade80; }
+.hero-panel-shell .uc-arrow { font-size: 18px; color: rgba(255,165,0,0.6); flex-shrink: 0; }
+.hero-panel-shell .uc-stats-label { font-size: 7px; font-weight: 800; letter-spacing: 2px; color: rgba(255,255,255,0.28); text-transform: uppercase; margin-bottom: 5px; }
+.hero-panel-shell .uc-stats { display: flex; flex-direction: column; gap: 3px; margin-bottom: 10px; }
+.hero-panel-shell .uc-stat-row { display: flex; justify-content: space-between; align-items: center; background: rgba(28,39,64,0.6); border-radius: 5px; padding: 4px 9px; }
+.hero-panel-shell .uc-stat-name { font-size: 10px; color: rgba(255,255,255,0.5); }
+.hero-panel-shell .uc-stat-gain { font-size: 10px; font-weight: 800; color: #4ade80; }
+.hero-panel-shell .uc-cost-row { display: flex; align-items: center; justify-content: space-between; background: rgba(255,215,0,0.07); border: 1px solid rgba(255,215,0,0.18); border-radius: 8px; padding: 7px 11px; margin-bottom: 10px; }
+.hero-panel-shell .uc-cost-lbl { font-size: 7px; color: rgba(255,255,255,0.35); font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; }
+.hero-panel-shell .uc-cost-val { font-size: 16px; font-weight: 900; color: #ffd700; line-height: 1.2; }
+.hero-panel-shell .uc-have-row { text-align: right; }
+.hero-panel-shell .uc-have-lbl { font-size: 7px; color: rgba(255,255,255,0.3); font-weight: 600; letter-spacing: 0.5px; }
+.hero-panel-shell .uc-have-val { font-size: 11px; font-weight: 800; }
+.hero-panel-shell .enough { color: #4ade80; }
+.hero-panel-shell .not-enough { color: #f87171; }
+.hero-panel-shell .uc-btn { width: 100%; padding: 9px; border: none; border-radius: 8px; font-size: 11px; font-weight: 900; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; transition: all 0.15s ease; }
+.hero-panel-shell .uc-btn.can-upgrade { background: linear-gradient(135deg, #f0a500 0%, #c87000 100%); color: #0d1117; box-shadow: 0 4px 12px rgba(240,165,0,0.3); }
+.hero-panel-shell .uc-btn.can-upgrade:hover { filter: brightness(1.12); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(240,165,0,0.4); }
+.hero-panel-shell .uc-btn.cant-upgrade { background: #162035; color: rgba(255,255,255,0.25); cursor: not-allowed; }
+.hero-panel-shell .uc-max-msg { text-align: center; padding: 8px; color: #f0a500; font-size: 12px; font-weight: 800; letter-spacing: 1px; text-shadow: 0 0 8px rgba(240,165,0,0.5); }

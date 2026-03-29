@@ -116,7 +116,12 @@
         logDiv.insertBefore(entry, logDiv.firstChild);
         if (logDiv.children.length > 15) logDiv.removeChild(logDiv.lastChild);
       },
-      onRewards: onRewardGain,
+      onRewards: (rewards) => {
+        onRewardGain({
+          ...rewards,
+          __source: activeBattleMode === 'bingo' ? 'bingo' : 'rank'
+        });
+      },
       onPlayerAttack,
       onDefeat: () => {
         if (activeBattleMode === 'bingo') return;
@@ -182,7 +187,9 @@
             onCombatStateChange(true);
             activeBattleMode = 'rank';
             showScreen('battle');
-            combat.start(currentMissionList, index);
+            combat.start(currentMissionList, index, {
+              rank
+            });
           });
         } else {
           missionDiv.disabled = true;

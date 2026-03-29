@@ -50,7 +50,8 @@
       const settings = {
         continueOnWin: options.continueOnWin !== false,
         onVictory: typeof options.onVictory === 'function' ? options.onVictory : null,
-        onDefeat: typeof options.onDefeat === 'function' ? options.onDefeat : null
+        onDefeat: typeof options.onDefeat === 'function' ? options.onDefeat : null,
+        rank: typeof options.rank === 'string' ? options.rank : null
       };
 
       currentMissionList = missions;
@@ -78,7 +79,10 @@
           if (currentEnemy.hp <= 0) {
             const rewards = currentMissionList[enemyIndex];
             onLog(`💀 ¡Enemigo derrotado! +${rewards.xp} XP y +${rewards.gold} Oro.`);
-            onRewards(rewards);
+            onRewards({
+              ...rewards,
+              __rank: settings.rank
+            });
 
             if (!settings.continueOnWin) {
               battleActive = false;

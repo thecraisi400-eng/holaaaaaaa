@@ -1,4 +1,8 @@
 (() => {
+  const SAVE_STORAGE_KEY = 'naruto_idle_save_v1';
+  const SAVE_VERSION = 1;
+  const AUTO_SAVE_MS = 30000;
+
   if (window.__ninjaHud?.destroy) {
     window.__ninjaHud.destroy();
   }
@@ -14,7 +18,12 @@
     atk: 1240,
     def: 880,
     level: 1,
-    activeSection: 'heroe'
+    activeSection: 'heroe',
+    missionProgress: {
+      totalWins: 0,
+      rankWins: {},
+      bingoWins: 0
+    }
   };
 
   const sections = {
@@ -75,6 +84,8 @@
   let misionesCleanup = null;
   let selectedCharacter = null;
   let gameLaunched = false;
+  let autoSaveIntervalId = null;
+  let pendingAutoSaveTimeout = null;
   const uiCache = {
     hpPct: null,
     mpPct: null,
@@ -118,6 +129,174 @@
       script.onerror = () => reject(new Error('No se pudo cargar personajes.js'));
       document.head.appendChild(script);
     });
+  }
+
+  function sanitizeMissionProgress(raw) {
+    const progress = raw && typeof raw === 'object' ? raw : {};
+    const rankWins = {};
+    if (progress.rankWins && typeof progress.rankWins === 'object') {
+      Object.entries(progress.rankWins).forEach(([key, value]) => {
+        const count = Number(value);
+        if (Number.isFinite(count) && count > 0) {
+          rankWins[key] = Math.floor(count);
+        }
+      });
+    }
+
+    const totalWins = Number.isFinite(Number(progress.totalWins)) ? Math.max(0, Math.floor(Number(progress.totalWins))) : 0;
+    const bingoWins = Number.isFinite(Number(progress.bingoWins)) ? Math.max(0, Math.floor(Number(progress.bingoWins))) : 0;
+
+    return { totalWins, rankWins, bingoWins };
+  }
+
+  function readSaveData() {
+    try {
+      const raw = window.localStorage.getItem(SAVE_STORAGE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || parsed.version !== SAVE_VERSION || !parsed.payload) return null;
+      return parsed.payload;
+    } catch {
+      return null;
+    }
+  }
+
+  function buildSavePayload() {
+    return {
+      characterId: selectedCharacter?.id || null,
+      state: {
+        hp: Math.round(state.hp),
+        hpMax: Math.round(state.hpMax),
+        mp: Math.round(state.mp),
+        mpMax: Math.round(state.mpMax),
+        exp: Math.round(state.exp),
+        expMax: Math.round(state.expMax),
+        gold: Math.round(state.gold),
+        level: Math.round(state.level),
+        missionProgress: sanitizeMissionProgress(state.missionProgress)
+      },
+      equipment: {
+        gold: Math.round(Number(window.gameCharacter?.gold || state.gold)),
+        levels: { ...(window.gameCharacter?.levels || {}) }
+      },
+      meta: {
+        activeSection: state.activeSection,
+        savedAt: new Date().toISOString()
+      }
+    };
+  }
+
+  function saveGame({ notify = false } = {}) {
+    try {
+      const wrapper = {
+        version: SAVE_VERSION,
+        payload: buildSavePayload()
+      };
+      window.localStorage.setItem(SAVE_STORAGE_KEY, JSON.stringify(wrapper));
+      if (notify) window.alert('✅ Partida guardada correctamente.');
+      return true;
+    } catch (error) {
+      console.error('No se pudo guardar la partida', error);
+      if (notify) window.alert('❌ Error al guardar la partida.');
+      return false;
+    }
+  }
+
+  function queueAutoSave() {
+    if (!gameLaunched) return;
+    if (pendingAutoSaveTimeout !== null) return;
+    pendingAutoSaveTimeout = window.setTimeout(() => {
+      pendingAutoSaveTimeout = null;
+      saveGame();
+    }, 600);
+  }
+
+  function clearAutoSaveQueue() {
+    if (pendingAutoSaveTimeout !== null) {
+      window.clearTimeout(pendingAutoSaveTimeout);
+      pendingAutoSaveTimeout = null;
+    }
+  }
+
+  function startAutoSave() {
+    stopAutoSave();
+    autoSaveIntervalId = window.setInterval(() => {
+      saveGame();
+    }, AUTO_SAVE_MS);
+    document.addEventListener('visibilitychange', handleVisibilityAutoSave, { signal });
+    window.addEventListener('beforeunload', handleBeforeUnloadAutoSave, { signal });
+  }
+
+  function stopAutoSave() {
+    if (autoSaveIntervalId !== null) {
+      window.clearInterval(autoSaveIntervalId);
+      autoSaveIntervalId = null;
+    }
+    clearAutoSaveQueue();
+  }
+
+  function handleVisibilityAutoSave() {
+    if (document.visibilityState === 'hidden') {
+      saveGame();
+    }
+  }
+
+  function handleBeforeUnloadAutoSave() {
+    saveGame();
+  }
+
+  function hasSavedGame() {
+    return Boolean(readSaveData());
+  }
+
+  function applySaveData(payload) {
+    if (!payload || !payload.state) return null;
+
+    const character = window.PERSONAJES_DATA.find((char) => char.id === payload.characterId) || window.PERSONAJES_DATA[0];
+    if (!character) return null;
+
+    applyCharacterToGame(character);
+
+    const targetLevel = Math.max(1, Math.floor(Number(payload.state.level) || 1));
+    state.level = targetLevel;
+    updateLevelScaling();
+
+    state.exp = Math.max(0, Math.floor(Number(payload.state.exp) || 0));
+    state.expMax = Math.max(1, Math.floor(Number(payload.state.expMax) || character.formula(state.level).XP));
+    state.hpMax = Math.max(1, Math.floor(Number(payload.state.hpMax) || state.hpMax));
+    state.mpMax = Math.max(1, Math.floor(Number(payload.state.mpMax) || state.mpMax));
+    state.hp = Math.max(0, Math.min(state.hpMax, Math.floor(Number(payload.state.hp) || state.hpMax)));
+    state.mp = Math.max(0, Math.min(state.mpMax, Math.floor(Number(payload.state.mp) || state.mpMax)));
+    state.gold = Math.max(0, Math.floor(Number(payload.state.gold) || 0));
+    state.missionProgress = sanitizeMissionProgress(payload.state.missionProgress);
+
+    const levels = payload.equipment?.levels && typeof payload.equipment.levels === 'object'
+      ? payload.equipment.levels
+      : {};
+    window.gameCharacter.levels = { ...defaultLevels, ...levels };
+    window.gameCharacter.gold = Math.max(0, Math.floor(Number(payload.equipment?.gold) || state.gold));
+    state.gold = window.gameCharacter.gold;
+
+    return character;
+  }
+
+  function recordMissionProgress(reward) {
+    if (!reward || typeof reward !== 'object') return;
+    if (!state.missionProgress || typeof state.missionProgress !== 'object') {
+      state.missionProgress = sanitizeMissionProgress();
+    }
+
+    const source = reward.__source === 'bingo' ? 'bingo' : 'rank';
+    state.missionProgress.totalWins += 1;
+
+    if (source === 'bingo') {
+      state.missionProgress.bingoWins += 1;
+    } else {
+      const rank = typeof reward.__rank === 'string' ? reward.__rank : 'GEN';
+      state.missionProgress.rankWins[rank] = (state.missionProgress.rankWins[rank] || 0) + 1;
+    }
+
+    queueAutoSave();
   }
 
   function hideMainHud() {
@@ -286,6 +465,7 @@
     if (valuesChanged) {
       refreshResourceBars();
       syncTopStats();
+      queueAutoSave();
     }
   }
 
@@ -408,8 +588,9 @@
     const ui = window.createMisionesRangoUI({
       container: panel,
       getPlayerStats: () => playerStats,
-      onRewardGain: ({ xp, gold }) => {
-        applyCombatRewards({ xp, gold });
+      onRewardGain: (reward) => {
+        recordMissionProgress(reward);
+        applyCombatRewards({ xp: reward.xp, gold: reward.gold });
       },
       onCombatStateChange: (active) => {
         refs.overlay.classList.remove('visible');
@@ -443,6 +624,46 @@
       refs.nav.style.pointerEvents = '';
       refs.nav.style.opacity = '';
     };
+  }
+
+  function renderAjustesSection() {
+    cleanupCenter();
+    const panel = document.createElement('div');
+    panel.className = 'heroe-system';
+    panel.style.gap = '12px';
+    panel.innerHTML = `
+      <div class="section-label">── PERSISTENCIA DE PARTIDA ──</div>
+      <div style="display:flex;flex-direction:column;gap:10px;padding:6px 8px;">
+        <button class="menu-button" id="btn-save-manual">💾 Guardar ahora</button>
+        <button class="menu-button menu-button-alt" id="btn-load-manual">📂 Cargar último guardado</button>
+        <div style="font-size:.72rem;color:var(--text-mid);line-height:1.45;">
+          El guardado automático ocurre cada 30 segundos, al cambiar de pestaña y durante eventos clave de progreso.
+        </div>
+      </div>
+    `;
+    refs.center.appendChild(panel);
+
+    const saveBtn = panel.querySelector('#btn-save-manual');
+    const loadBtn = panel.querySelector('#btn-load-manual');
+
+    const handleSave = () => saveGame({ notify: true });
+    const handleLoad = () => {
+      const save = readSaveData();
+      if (!save) {
+        window.alert('No existe una partida guardada.');
+        return;
+      }
+      applySaveData(save);
+      refreshResourceBars();
+      syncTopStats();
+      if (state.activeSection === 'heroe') {
+        renderHeroSection();
+      }
+      window.alert('✅ Partida cargada.');
+    };
+
+    saveBtn.addEventListener('click', handleSave, { signal });
+    loadBtn.addEventListener('click', handleLoad, { signal });
   }
 
   function renderHeroSection() {
@@ -615,6 +836,7 @@
       window.gameCharacter.gold -= cost;
       window.gameCharacter.levels[key] += 1;
       state.gold = window.gameCharacter.gold;
+      queueAutoSave();
 
       renderStats();
 
@@ -680,6 +902,13 @@
       return;
     }
 
+    if (sectionKey === 'ajustes') {
+      stopHeroPassiveRegen();
+      refs.overlay.classList.remove('visible');
+      renderAjustesSection();
+      return;
+    }
+
     stopHeroPassiveRegen();
     renderPlaceholder(sectionKey);
     refs.overlayTitle.textContent = `${info.icon} ${info.title}`;
@@ -707,7 +936,7 @@
     }
   }
 
-  function mountStartMenu(onChooseCharacter) {
+  function mountStartMenu(onChooseCharacter, onLoadSavedGame) {
     if (document.getElementById('ninja-start-root')) return;
 
     const style = document.createElement('style');
@@ -765,7 +994,8 @@
           </div>
         </div>
         <div id="s-load" class="screen">
-          <div class="load-msg"><span>📂</span>No se encontró ninguna partida guardada.</div>
+          <div class="load-msg" id="load-message"><span>📂</span>No se encontró ninguna partida guardada.</div>
+          <button class="menu-btn btn-primary" id="load-confirm-btn" data-action="confirm-load" style="display:none;max-width:220px;margin-top:8px;">▶ CARGAR GUARDADO</button>
           <button class="load-back-btn" data-action="back-menu">← VOLVER</button>
         </div>
         <div id="s-char" class="screen">
@@ -779,6 +1009,8 @@
 
     const summaryIcons = { HP: '❤️', MP: '💙', ATK: '⚔️', DEF: '🛡️', Vel: '⚡', REGEN: '🌿' };
     const summaryClass = (val) => ({ 'Muy Alto': 's-muy-alto', Alto: 's-alto', Medio: 's-medio', Bajo: 's-bajo', 'Muy Bajo': 's-muyBajo' }[val] || 's-medio');
+    const loadMessage = root.querySelector('#load-message');
+    const loadConfirmBtn = root.querySelector('#load-confirm-btn');
     const showScreen = (id) => {
       root.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
       root.querySelector(`#${id}`)?.classList.add('active');
@@ -811,7 +1043,17 @@
       if (!target) return;
       const action = target.getAttribute('data-action');
       if (action === 'new-game') showScreen('s-char');
-      if (action === 'load-game') showScreen('s-load');
+      if (action === 'load-game') {
+        if (hasSavedGame()) {
+          loadMessage.innerHTML = '<span>📂</span>Partida detectada. Puedes continuar tu progreso.';
+          loadConfirmBtn.style.display = '';
+        } else {
+          loadMessage.innerHTML = '<span>📂</span>No se encontró ninguna partida guardada.';
+          loadConfirmBtn.style.display = 'none';
+        }
+        showScreen('s-load');
+      }
+      if (action === 'confirm-load') onLoadSavedGame();
       if (action === 'back-menu') showScreen('s-menu');
     }, { signal });
   }
@@ -821,11 +1063,16 @@
     document.getElementById('ninja-start-style')?.remove();
   }
 
-  function launchGame(char) {
+  function launchGame(char, options = {}) {
     if (gameLaunched) return;
     gameLaunched = true;
 
-    applyCharacterToGame(char);
+    if (options.loadPayload) {
+      applySaveData(options.loadPayload);
+    } else {
+      applyCharacterToGame(char);
+      state.missionProgress = sanitizeMissionProgress();
+    }
     unmountStartMenu();
     showMainHud();
 
@@ -835,26 +1082,43 @@
 
     refreshResourceBars();
     syncTopStats();
+    startAutoSave();
 
     const heroBtn = document.getElementById('btn-heroe');
     if (heroBtn) {
       openSection('heroe', heroBtn);
+    }
+
+    if (!options.loadPayload) {
+      saveGame();
     }
   }
 
   async function start() {
     hideMainHud();
     await ensureCharacterScript();
-    mountStartMenu((char) => {
-      launchGame(char);
-    });
+    mountStartMenu(
+      (char) => {
+        launchGame(char);
+      },
+      () => {
+        const payload = readSaveData();
+        if (!payload) {
+          window.alert('No existe una partida guardada válida.');
+          return;
+        }
+        launchGame(null, { loadPayload: payload });
+      }
+    );
   }
 
   function destroy() {
+    saveGame();
     gameLaunched = false;
     controller.abort();
     cleanupCenter();
     unmountStartMenu();
+    stopAutoSave();
     if (barsIntervalId !== null) window.clearInterval(barsIntervalId);
     barsIntervalId = null;
   }

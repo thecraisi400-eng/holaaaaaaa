@@ -679,16 +679,14 @@
     }
 
     const panel = document.createElement('div');
-    panel.className = 'heroe-system';
-    panel.style.padding = '0';
-    panel.style.width = '100%';
-    panel.style.height = '100%';
-    panel.style.minHeight = '0';
-    panel.style.display = 'flex';
-    panel.style.flexDirection = 'column';
+    panel.className = 'hud-center-inner hud-center-fit';
+
+    const arbolContainer = document.createElement('div');
+    arbolContainer.className = 'hud-center-inner hud-center-fit';
+    panel.appendChild(arbolContainer);
     refs.center.appendChild(panel);
 
-    const ui = window.mountArbolUI({ container: panel });
+    const ui = window.mountArbolUI({ container: arbolContainer });
     arbolCleanup = () => {
       ui.destroy();
       panel.remove();

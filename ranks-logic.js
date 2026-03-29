@@ -15,21 +15,46 @@
       done:      [false,false,false,false,false],
       stats:     {hp:500, atk:120, def:80, spd:95, crit:15, chk:200, pwr:310}
     };
+    let destroyed = false;
+    const timeouts = new Set();
+    const intervals = new Set();
+
+    function runTimeout(fn, ms) {
+      const id = setTimeout(() => {
+        timeouts.delete(id);
+        if (destroyed) return;
+        fn();
+      }, ms);
+      timeouts.add(id);
+      return id;
+    }
+
+    function runInterval(fn, ms) {
+      const id = setInterval(() => {
+        if (destroyed) return;
+        fn();
+      }, ms);
+      intervals.add(id);
+      return id;
+    }
 
     function setRC(color) {
+      if (destroyed) return;
       q('gp').style.setProperty('--rc', color);
     }
 
     function flashStatus(msg, dur=2200) {
+      if (destroyed) return;
       const el = q('status-txt');
       el.textContent = msg;
       clearTimeout(el._t);
-      el._t = setTimeout(() => {
+      el._t = runTimeout(() => {
         el.textContent = 'Sistema de Rango Activo';
       }, dur);
     }
 
     function animatePts() {
+      if (destroyed) return;
       const el = q('pts-val');
       el.classList.remove('flash');
       void el.offsetWidth;
@@ -37,15 +62,17 @@
     }
 
     function boostStat(key) {
+      if (destroyed) return;
       const el = q('v-' + key);
       if (!el) return;
       el.classList.remove('up');
       void el.offsetWidth;
       el.classList.add('up');
-      setTimeout(() => el.classList.remove('up'), 700);
+      runTimeout(() => el.classList.remove('up'), 700);
     }
 
     function render() {
+      if (destroyed) return;
       const R = RANKS[G.viewRank];
       setRC(R.color);
 
@@ -89,6 +116,7 @@
     }
 
     function renderStats() {
+      if (destroyed) return;
       const s = G.stats;
       q('v-hp').textContent = s.hp;
       q('v-atk').textContent = s.atk;
@@ -102,6 +130,7 @@
     }
 
     function renderCnst() {
+      if (destroyed) return;
       const cnst = q('cnst');
       const svg = q('cnst-svg');
       const R = RANKS[G.viewRank];
@@ -194,6 +223,7 @@
     }
 
     function buyNode(idx) {
+      if (destroyed) return;
       const R = RANKS[G.curRank];
       const node = R.nodes[idx];
       if (G.nodes[G.curRank][idx]) return;
@@ -211,13 +241,14 @@
       if (allDone && !G.done[G.curRank]) {
         G.done[G.curRank] = true;
         render();
-        setTimeout(showAscension, 350);
+        runTimeout(showAscension, 350);
       } else {
         render();
       }
     }
 
     function showAscension() {
+      if (destroyed) return;
       const R = RANKS[G.curRank];
       const ems = ['⭐','🌟','💛','💎','🔥'];
       q('asc-em').textContent = ems[G.curRank];
@@ -231,7 +262,7 @@
       ov.style.setProperty('--rc', R.color);
       ov.classList.add('show');
 
-      setTimeout(() => {
+      runTimeout(() => {
         ov.classList.remove('show');
         if (G.curRank < 4) {
           G.curRank++;
@@ -242,11 +273,13 @@
     }
 
     function viewRank(ri) {
+      if (destroyed) return;
       G.viewRank = ri;
       render();
     }
 
     function addPoints() {
+      if (destroyed) return;
       const earned = Math.floor(Math.random() * 18) + 8;
       G.pts += earned;
       animatePts();
@@ -255,17 +288,29 @@
     }
 
     function init() {
+      if (destroyed) return;
       let d = 0;
       const target = G.pts;
-      const iv = setInterval(() => {
+      const iv = runInterval(() => {
         d = Math.min(d + 2, target);
         q('pts-val').textContent = String(d).padStart(4,'0');
-        if (d >= target) clearInterval(iv);
+        if (d >= target) {
+          clearInterval(iv);
+          intervals.delete(iv);
+        }
       }, 25);
       render();
     }
 
-    return { init, viewRank, addPoints, render };
+    function destroy() {
+      destroyed = true;
+      timeouts.forEach((id) => clearTimeout(id));
+      intervals.forEach((id) => clearInterval(id));
+      timeouts.clear();
+      intervals.clear();
+    }
+
+    return { init, viewRank, addPoints, render, destroy };
   }
 
   window.createRanksLogic = createRanksLogic;

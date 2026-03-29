@@ -82,6 +82,7 @@
   let barsIntervalId = null;
   let heroCleanup = null;
   let misionesCleanup = null;
+  let arbolCleanup = null;
   let selectedCharacter = null;
   let gameLaunched = false;
   let autoSaveIntervalId = null;
@@ -550,6 +551,10 @@
       misionesCleanup();
       misionesCleanup = null;
     }
+    if (typeof arbolCleanup === 'function') {
+      arbolCleanup();
+      arbolCleanup = null;
+    }
     refs.center.replaceChildren();
   }
 
@@ -664,6 +669,30 @@
 
     saveBtn.addEventListener('click', handleSave, { signal });
     loadBtn.addEventListener('click', handleLoad, { signal });
+  }
+
+  function renderArbolSection() {
+    cleanupCenter();
+    if (typeof window.mountArbolUI !== 'function') {
+      renderPlaceholder('habilidades');
+      return;
+    }
+
+    const panel = document.createElement('div');
+    panel.className = 'heroe-system';
+    panel.style.padding = '0';
+    panel.style.width = '100%';
+    panel.style.height = '100%';
+    panel.style.minHeight = '0';
+    panel.style.display = 'flex';
+    panel.style.flexDirection = 'column';
+    refs.center.appendChild(panel);
+
+    const ui = window.mountArbolUI({ container: panel });
+    arbolCleanup = () => {
+      ui.destroy();
+      panel.remove();
+    };
   }
 
   function renderHeroSection() {
@@ -906,6 +935,13 @@
       stopHeroPassiveRegen();
       refs.overlay.classList.remove('visible');
       renderAjustesSection();
+      return;
+    }
+
+    if (sectionKey === 'habilidades') {
+      stopHeroPassiveRegen();
+      refs.overlay.classList.remove('visible');
+      renderArbolSection();
       return;
     }
 

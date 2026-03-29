@@ -82,6 +82,7 @@
   let barsIntervalId = null;
   let heroCleanup = null;
   let misionesCleanup = null;
+  let arbolCleanup = null;
   let selectedCharacter = null;
   let gameLaunched = false;
   let autoSaveIntervalId = null;
@@ -550,6 +551,10 @@
       misionesCleanup();
       misionesCleanup = null;
     }
+    if (typeof arbolCleanup === 'function') {
+      arbolCleanup();
+      arbolCleanup = null;
+    }
     refs.center.replaceChildren();
   }
 
@@ -664,6 +669,25 @@
 
     saveBtn.addEventListener('click', handleSave, { signal });
     loadBtn.addEventListener('click', handleLoad, { signal });
+  }
+
+  function renderArbolSection() {
+    cleanupCenter();
+
+    const panel = document.createElement('div');
+    panel.className = 'arb-center-inner';
+    refs.center.appendChild(panel);
+
+    if (typeof window.createRanksUI !== 'function') {
+      panel.innerHTML = '<div style="padding:16px;color:var(--text-mid);text-align:center;">No se pudo cargar el sistema ARBOL.</div>';
+      return;
+    }
+
+    const ui = window.createRanksUI({ container: panel });
+    arbolCleanup = () => {
+      ui.destroy();
+      panel.remove();
+    };
   }
 
   function renderHeroSection() {
@@ -906,6 +930,13 @@
       stopHeroPassiveRegen();
       refs.overlay.classList.remove('visible');
       renderAjustesSection();
+      return;
+    }
+
+    if (sectionKey === 'habilidades') {
+      stopHeroPassiveRegen();
+      refs.overlay.classList.remove('visible');
+      renderArbolSection();
       return;
     }
 

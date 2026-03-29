@@ -145,6 +145,7 @@
           const off = listeners.pop();
           off();
         }
+        logic.destroy();
         container.replaceChildren();
       }
     };

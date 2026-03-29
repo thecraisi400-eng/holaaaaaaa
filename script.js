@@ -34,7 +34,7 @@
     jutsus: { icon: '🌀', title: 'JUTSUS', desc: 'Gestiona tus técnicas ninja. Equipa hasta 4 jutsus activos y mejora sus rangos con sellos de chakra.' },
     batallas: { icon: '⚔️', title: 'BATALLAS', desc: 'Modo PvP y arena de rango. Desafía a otros jugadores y sube en la tabla clasificatoria mundial.' },
     invocaciones: { icon: '✨', title: 'INVOCACIONES', desc: 'Invoca nuevos compañeros y objetos míticos. Utiliza pergaminos de convocación para obtener aliados S-Rank.' },
-    habilidades: { icon: '🌿', title: 'ÁRBOL DE HABILIDAD', desc: 'Asigna puntos de habilidad en ramas de Ninjutsu, Taijutsu y Genjutsu para personalizar tu estilo de combate.' },
+    habilidades: { icon: '🌿', title: 'ARBOL', desc: 'Sistema de Rangos ARBOL activo.' },
     ajustes: { icon: '⚙️', title: 'AJUSTES', desc: 'Configura notificaciones, audio, gráficos y tu cuenta de shinobi. También puedes vincular tu aldea.' }
   };
 
@@ -46,7 +46,7 @@
     jutsus: 'JUTSUS',
     batallas: 'BATALLAS',
     invocaciones: 'INVOCAR',
-    habilidades: 'ÁRBOL',
+    habilidades: 'ARBOL',
     ajustes: 'AJUSTES'
   };
 
@@ -82,6 +82,7 @@
   let barsIntervalId = null;
   let heroCleanup = null;
   let misionesCleanup = null;
+  let ranksCleanup = null;
   let selectedCharacter = null;
   let gameLaunched = false;
   let autoSaveIntervalId = null;
@@ -550,6 +551,10 @@
       misionesCleanup();
       misionesCleanup = null;
     }
+    if (typeof ranksCleanup === 'function') {
+      ranksCleanup();
+      ranksCleanup = null;
+    }
     refs.center.replaceChildren();
   }
 
@@ -664,6 +669,24 @@
 
     saveBtn.addEventListener('click', handleSave, { signal });
     loadBtn.addEventListener('click', handleLoad, { signal });
+  }
+
+  function renderArbolSection() {
+    cleanupCenter();
+
+    const panel = document.createElement('div');
+    panel.className = 'heroe-system';
+    panel.style.padding = '0';
+    refs.center.appendChild(panel);
+
+    const ui = window.createRanksUI({
+      container: panel
+    });
+
+    ranksCleanup = () => {
+      ui.destroy();
+      panel.remove();
+    };
   }
 
   function renderHeroSection() {
@@ -906,6 +929,13 @@
       stopHeroPassiveRegen();
       refs.overlay.classList.remove('visible');
       renderAjustesSection();
+      return;
+    }
+
+    if (sectionKey === 'habilidades') {
+      stopHeroPassiveRegen();
+      refs.overlay.classList.remove('visible');
+      renderArbolSection();
       return;
     }
 

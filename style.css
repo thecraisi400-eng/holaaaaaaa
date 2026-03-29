@@ -249,9 +249,36 @@ html, body {
   overflow: hidden;
 }
 
-#hud-center-content img,
-#hud-center-content video,
-#hud-center-content canvas {
+#hud-center-inner {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 4px;
+}
+
+#hud-center-inner.center-mode-text {
+  flex-direction: column;
+}
+
+#hud-center-inner.center-mode-media {
+  flex-direction: row;
+}
+
+#hud-center-inner > * {
+  max-width: 100%;
+  max-height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+#hud-center-inner > img,
+#hud-center-inner > video,
+#hud-center-inner > canvas {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;

@@ -34,7 +34,7 @@
     jutsus: { icon: '🌀', title: 'JUTSUS', desc: 'Gestiona tus técnicas ninja. Equipa hasta 4 jutsus activos y mejora sus rangos con sellos de chakra.' },
     batallas: { icon: '⚔️', title: 'BATALLAS', desc: 'Modo PvP y arena de rango. Desafía a otros jugadores y sube en la tabla clasificatoria mundial.' },
     invocaciones: { icon: '✨', title: 'INVOCACIONES', desc: 'Invoca nuevos compañeros y objetos míticos. Utiliza pergaminos de convocación para obtener aliados S-Rank.' },
-    habilidades: { icon: '🌿', title: 'ÁRBOL DE HABILIDAD', desc: 'Asigna puntos de habilidad en ramas de Ninjutsu, Taijutsu y Genjutsu para personalizar tu estilo de combate.' },
+    habilidades: { icon: '🌿', title: 'ARBOL', desc: 'Sistema de Rangos ARBOL activo.' },
     ajustes: { icon: '⚙️', title: 'AJUSTES', desc: 'Configura notificaciones, audio, gráficos y tu cuenta de shinobi. También puedes vincular tu aldea.' }
   };
 
@@ -46,14 +46,14 @@
     jutsus: 'JUTSUS',
     batallas: 'BATALLAS',
     invocaciones: 'INVOCAR',
-    habilidades: 'ÁRBOL',
+    habilidades: 'ARBOL',
     ajustes: 'AJUSTES'
   };
 
   const refs = {
     app: document.getElementById('app'),
     nav: document.getElementById('hud-bottom'),
-    center: document.getElementById('hud-center-content'),
+    center: document.getElementById('hud-center-inner'),
     overlay: document.getElementById('section-overlay'),
     overlayTitle: document.getElementById('overlayTitle'),
     overlayDesc: document.getElementById('overlayDesc'),
@@ -82,6 +82,7 @@
   let barsIntervalId = null;
   let heroCleanup = null;
   let misionesCleanup = null;
+  let ranksCleanup = null;
   let selectedCharacter = null;
   let gameLaunched = false;
   let autoSaveIntervalId = null;
@@ -550,11 +551,21 @@
       misionesCleanup();
       misionesCleanup = null;
     }
+    if (typeof ranksCleanup === 'function') {
+      ranksCleanup();
+      ranksCleanup = null;
+    }
     refs.center.replaceChildren();
+  }
+
+  function setCenterMode(mode = 'text') {
+    refs.center.classList.remove('center-mode-text', 'center-mode-media');
+    refs.center.classList.add(mode === 'media' ? 'center-mode-media' : 'center-mode-text');
   }
 
   function renderPlaceholder(sectionKey) {
     cleanupCenter();
+    setCenterMode('text');
     const info = sections[sectionKey];
     const wrap = document.createElement('div');
     wrap.className = 'heroe-system';
@@ -567,6 +578,7 @@
 
   function renderMisionesSection() {
     cleanupCenter();
+    setCenterMode('text');
 
     const panel = document.createElement('div');
     panel.className = 'heroe-system';
@@ -628,6 +640,7 @@
 
   function renderAjustesSection() {
     cleanupCenter();
+    setCenterMode('text');
     const panel = document.createElement('div');
     panel.className = 'heroe-system';
     panel.style.gap = '12px';
@@ -666,8 +679,28 @@
     loadBtn.addEventListener('click', handleLoad, { signal });
   }
 
+  function renderArbolSection() {
+    cleanupCenter();
+    setCenterMode('text');
+
+    const panel = document.createElement('div');
+    panel.className = 'heroe-system';
+    panel.style.padding = '0';
+    refs.center.appendChild(panel);
+
+    const ui = window.createRanksUI({
+      container: panel
+    });
+
+    ranksCleanup = () => {
+      ui.destroy();
+      panel.remove();
+    };
+  }
+
   function renderHeroSection() {
     cleanupCenter();
+    setCenterMode('text');
 
     const panel = document.createElement('div');
     panel.className = 'heroe-system';
@@ -906,6 +939,13 @@
       stopHeroPassiveRegen();
       refs.overlay.classList.remove('visible');
       renderAjustesSection();
+      return;
+    }
+
+    if (sectionKey === 'habilidades') {
+      stopHeroPassiveRegen();
+      refs.overlay.classList.remove('visible');
+      renderArbolSection();
       return;
     }
 

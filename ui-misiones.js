@@ -35,7 +35,7 @@
     root.innerHTML = `
       <div id="missions-menu-screen" class="screen">
         <button id="open-rank-list" class="menu-button">⚔️ MISIONES RANGO ⚔️</button>
-        <button id="open-libro-bingo" class="menu-button">📘 LIBRO BINGO</button>
+        <button id="open-libro-bingo" class="menu-button">💵 📘 LIBRO BINGO</button>
       </div>
       <div id="rank-list-screen" class="screen hidden">
         <button id="rank-D" class="rank-button rank-d">📜 MISIONES RANGO D</button>

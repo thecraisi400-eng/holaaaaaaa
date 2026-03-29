@@ -34,7 +34,7 @@
     jutsus: { icon: '🌀', title: 'JUTSUS', desc: 'Gestiona tus técnicas ninja. Equipa hasta 4 jutsus activos y mejora sus rangos con sellos de chakra.' },
     batallas: { icon: '⚔️', title: 'BATALLAS', desc: 'Modo PvP y arena de rango. Desafía a otros jugadores y sube en la tabla clasificatoria mundial.' },
     invocaciones: { icon: '✨', title: 'INVOCACIONES', desc: 'Invoca nuevos compañeros y objetos míticos. Utiliza pergaminos de convocación para obtener aliados S-Rank.' },
-    habilidades: { icon: '🌿', title: 'ÁRBOL DE HABILIDAD', desc: 'Asigna puntos de habilidad en ramas de Ninjutsu, Taijutsu y Genjutsu para personalizar tu estilo de combate.' },
+    arbol: { icon: '🌿', title: 'ARBOL', desc: 'Sistema ARBOL de progresión por rangos con nodos, sinergia y ascensión.' },
     ajustes: { icon: '⚙️', title: 'AJUSTES', desc: 'Configura notificaciones, audio, gráficos y tu cuenta de shinobi. También puedes vincular tu aldea.' }
   };
 
@@ -46,9 +46,13 @@
     jutsus: 'JUTSUS',
     batallas: 'BATALLAS',
     invocaciones: 'INVOCAR',
-    habilidades: 'ÁRBOL',
+    arbol: 'ÁRBOL',
     ajustes: 'AJUSTES'
   };
+  // Compatibilidad con saves/versiones anteriores
+  sections.habilidades = sections.arbol;
+  labels.habilidades = labels.arbol;
+
 
   const refs = {
     app: document.getElementById('app'),
@@ -674,18 +678,12 @@
   function renderArbolSection() {
     cleanupCenter();
     if (typeof window.mountArbolUI !== 'function') {
-      renderPlaceholder('habilidades');
+      renderPlaceholder('arbol');
       return;
     }
 
     const panel = document.createElement('div');
-    panel.className = 'heroe-system';
-    panel.style.padding = '0';
-    panel.style.width = '100%';
-    panel.style.height = '100%';
-    panel.style.minHeight = '0';
-    panel.style.display = 'flex';
-    panel.style.flexDirection = 'column';
+    panel.className = 'hud-center-inner arbol-center-inner';
     refs.center.appendChild(panel);
 
     const ui = window.mountArbolUI({ container: panel });
@@ -938,7 +936,7 @@
       return;
     }
 
-    if (sectionKey === 'habilidades') {
+    if (sectionKey === 'arbol' || sectionKey === 'habilidades') {
       stopHeroPassiveRegen();
       refs.overlay.classList.remove('visible');
       renderArbolSection();

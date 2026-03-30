@@ -784,6 +784,30 @@
 
     let currentUpgradeKey = null;
 
+    function getHeroSlotKeys() {
+      const configured = Array.isArray(window.SLOT_ORDER) ? window.SLOT_ORDER : [];
+      const fallback = Object.keys(window.EQUIPMENT_DATA || {});
+      const keys = (configured.length ? configured : fallback).filter((key) => window.EQUIPMENT_DATA?.[key]);
+      return keys;
+    }
+
+    function normalizeEquipmentLevels(slotKeys) {
+      const currentLevels = window.gameCharacter.levels && typeof window.gameCharacter.levels === 'object'
+        ? window.gameCharacter.levels
+        : {};
+      let changed = false;
+      const normalizedLevels = { ...currentLevels };
+      for (const key of slotKeys) {
+        if (!Number.isFinite(Number(normalizedLevels[key])) || Number(normalizedLevels[key]) < 1) {
+          normalizedLevels[key] = 1;
+          changed = true;
+        }
+      }
+      if (changed) {
+        window.gameCharacter.levels = normalizedLevels;
+      }
+    }
+
     function renderStats() {
       syncCombatResources();
       const stats = getComputedHeroStats();
@@ -816,6 +840,7 @@
 
     function renderUpgradeCard(key) {
       const data = window.EQUIPMENT_DATA[key];
+      if (!data) return;
       const lvl = window.gameCharacter.levels[key];
       const cost = window.heroEngine.getUpgradeCost(key, lvl);
       const isMax = cost === null;
@@ -891,16 +916,19 @@
     }
 
     function openUpgrade(key) {
+      if (!window.EQUIPMENT_DATA[key]) return;
       currentUpgradeKey = key;
       renderUpgradeCard(key);
       heroRefs.overlay.classList.add('active');
     }
 
     function renderEquipment() {
+      const slotKeys = getHeroSlotKeys();
+      normalizeEquipmentLevels(slotKeys);
       heroRefs.equipGrid.innerHTML = '';
-      for (const key of window.SLOT_ORDER) {
+      for (const key of slotKeys) {
         const data = window.EQUIPMENT_DATA[key];
-        const lvl = window.gameCharacter.levels[key];
+        const lvl = Number(window.gameCharacter.levels[key]) || 1;
         const rc = window.heroEngine.rankClass(lvl);
         const slot = document.createElement('div');
         slot.className = `slot ${rc}`;

@@ -313,11 +313,11 @@
     ensureStyle();
 
     const ranks = [
-      { id: 'D', title: 'Recluta', lore: 'Adaptación inicial al combate.' , color: '#cd7f32', bonus: { icon: '🛡️', text: '+5% DEF', stat: 'def', mult: 1.05 } },
-      { id: 'C', title: 'Operador', lore: 'Refinamiento de técnica base.', color: '#8fbc8f', bonus: { icon: '⚔️', text: '+5% ATK', stat: 'atk', mult: 1.05 } },
-      { id: 'B', title: 'Veterano', lore: 'Tu cuerpo soporta carga superior.', color: '#c0c0c0', bonus: { icon: '❤️', text: '+10% HP', stat: 'hp', mult: 1.1 } },
-      { id: 'A', title: 'Élite', lore: 'Precisión y potencia avanzadas.', color: '#e5e4e2', bonus: { icon: '⚡', text: '+10% SPD', stat: 'spd', mult: 1.1 } },
-      { id: 'S', title: 'Leyenda', lore: 'Control total en zona de guerra.', color: '#ffd700', bonus: { icon: '🌀', text: '+12% CHAK', stat: 'chak', mult: 1.12 } }
+      { id: 'GENIN', title: 'Recluta', lore: 'Adaptación inicial al combate.' , color: '#cd7f32', bonus: { icon: '🛡️', text: '+5% DEF', stat: 'def', mult: 1.05 } },
+      { id: 'CHŪNIN', title: 'Operador', lore: 'Refinamiento de técnica base.', color: '#8fbc8f', bonus: { icon: '⚔️', text: '+5% ATK', stat: 'atk', mult: 1.05 } },
+      { id: 'JŌNIN', title: 'Veterano', lore: 'Tu cuerpo soporta carga superior.', color: '#c0c0c0', bonus: { icon: '❤️', text: '+10% HP', stat: 'hp', mult: 1.1 } },
+      { id: 'ANBU', title: 'Élite', lore: 'Precisión y potencia avanzadas.', color: '#e5e4e2', bonus: { icon: '⚡', text: '+10% SPD', stat: 'spd', mult: 1.1 } },
+      { id: 'KAGE', title: 'Leyenda', lore: 'Control total en zona de guerra.', color: '#ffd700', bonus: { icon: '🌀', text: '+12% CHAK', stat: 'chak', mult: 1.12 } }
     ];
 
     const nodeDefs = [

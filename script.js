@@ -82,6 +82,38 @@
     avatarFrame: document.getElementById('avatarFrame')
   };
 
+  function updateViewportSizing() {
+    const viewport = window.visualViewport;
+    const width = Math.max(320, Math.round((viewport?.width || window.innerWidth || 0)));
+    const height = Math.max(320, Math.round((viewport?.height || window.innerHeight || 0)));
+    const shortestSide = Math.min(width, height);
+    const baseFont = Math.max(14, Math.min(19, (shortestSide / 390) * 16));
+
+    document.documentElement.style.setProperty('--app-width', `${width}px`);
+    document.documentElement.style.setProperty('--app-height', `${height}px`);
+    document.documentElement.style.setProperty('--ui-base-font', `${baseFont.toFixed(2)}px`);
+  }
+
+  function setupAutoFullscreen() {
+    const root = document.documentElement;
+    const requestFullscreen = root.requestFullscreen
+      || root.webkitRequestFullscreen
+      || root.msRequestFullscreen;
+
+    if (!requestFullscreen) return;
+
+    const activateFullscreen = () => {
+      if (document.fullscreenElement) return;
+      try {
+        requestFullscreen.call(root);
+      } catch (error) {
+        console.debug('Pantalla completa no disponible', error);
+      }
+    };
+
+    document.addEventListener('pointerdown', activateFullscreen, { signal, once: true });
+  }
+
   const controller = new AbortController();
   const { signal } = controller;
   let barsIntervalId = null;
@@ -107,6 +139,15 @@
     topAtk: null,
     topDef: null
   };
+
+  updateViewportSizing();
+  window.addEventListener('resize', updateViewportSizing, { signal, passive: true });
+  window.addEventListener('orientationchange', updateViewportSizing, { signal, passive: true });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', updateViewportSizing, { signal, passive: true });
+    window.visualViewport.addEventListener('scroll', updateViewportSizing, { signal, passive: true });
+  }
+  setupAutoFullscreen();
 
   const defaultLevels = { cabeza: 1, pecho: 1, manos: 1, piernas: 1, pies: 1, accesorio: 1 };
   const defaultTreeBonuses = { HP: 0, MP: 0, ATK: 0, DEF: 0, VEL: 0 };

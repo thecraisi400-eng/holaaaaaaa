@@ -8,7 +8,8 @@
       onReturn,
       onRewardGain,
       onCombatStateChange,
-      onPlayerAttack
+      onPlayerAttack,
+      onSkillPointEarned
     } = options;
 
     const listeners = [];
@@ -137,6 +138,7 @@
       onCombatStateChange,
       onRewards: onRewardGain,
       onPlayerAttack,
+      onSkillPointEarned,
       setBattleMode: (mode) => {
         activeBattleMode = mode;
       }

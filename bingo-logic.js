@@ -33,7 +33,8 @@
       lvl: meta.minLevel,
       prob: meta.prob,
       defeated: false,
-      won: null
+      won: null,
+      skillPointAwarded: false
     };
   }
 
@@ -124,7 +125,7 @@
         saveState(state);
         return enemies.length > 0 && enemies.every((enemy) => enemy.defeated);
       },
-      markEnemyResult(enemyId, won) {
+      markEnemyResult(enemyId, won, skillPointAwarded = false) {
         const state = getFreshState();
         if (!state.selectedRank) return;
         const enemies = ensureRankEnemies(state, state.selectedRank);
@@ -132,6 +133,7 @@
         if (!target) return;
         target.defeated = true;
         target.won = Boolean(won);
+        target.skillPointAwarded = Boolean(skillPointAwarded);
         saveState(state);
       }
     };

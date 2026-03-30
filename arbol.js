@@ -309,15 +309,15 @@
     document.head.appendChild(style);
   }
 
-  window.mountArbolUI = function mountArbolUI({ container, manager, getStats, onAllocateStat }) {
+  window.mountArbolUI = function mountArbolUI({ container, manager, getStats, getSkillPoints, spendSkillPoints, onAllocateStat }) {
     ensureStyle();
 
     const ranks = [
-      { id: 'GENIN', title: 'Recluta', lore: 'Adaptación inicial al combate.' , color: '#cd7f32', bonus: { icon: '🛡️', text: '+5% DEF', stat: 'def', mult: 1.05 } },
-      { id: 'CHŪNIN', title: 'Operador', lore: 'Refinamiento de técnica base.', color: '#8fbc8f', bonus: { icon: '⚔️', text: '+5% ATK', stat: 'atk', mult: 1.05 } },
-      { id: 'JŌNIN', title: 'Veterano', lore: 'Tu cuerpo soporta carga superior.', color: '#c0c0c0', bonus: { icon: '❤️', text: '+10% HP', stat: 'hp', mult: 1.1 } },
-      { id: 'ANBU', title: 'Élite', lore: 'Precisión y potencia avanzadas.', color: '#e5e4e2', bonus: { icon: '⚡', text: '+10% SPD', stat: 'spd', mult: 1.1 } },
-      { id: 'KAGE', title: 'Leyenda', lore: 'Control total en zona de guerra.', color: '#ffd700', bonus: { icon: '🌀', text: '+12% CHAK', stat: 'chak', mult: 1.12 } }
+      { id: 'GENIN', title: 'Genin', lore: 'Adaptación inicial al combate.', color: '#cd7f32', slotCost: 1, bonus: { icon: '🛡️', text: '+5% DEF', stat: 'def', mult: 1.05 } },
+      { id: 'CHUNIN', title: 'Chūnin', lore: 'Refinamiento de técnica base.', color: '#8fbc8f', slotCost: 3, bonus: { icon: '⚔️', text: '+5% ATK', stat: 'atk', mult: 1.05 } },
+      { id: 'JONIN', title: 'Jōnin', lore: 'Tu cuerpo soporta carga superior.', color: '#c0c0c0', slotCost: 6, bonus: { icon: '❤️', text: '+10% HP', stat: 'hp', mult: 1.1 } },
+      { id: 'ANBU', title: 'ANBU', lore: 'Precisión y potencia avanzadas.', color: '#e5e4e2', slotCost: 10, bonus: { icon: '⚡', text: '+10% SPD', stat: 'spd', mult: 1.1 } },
+      { id: 'KAGE', title: 'Kage', lore: 'Control total en zona de guerra.', color: '#ffd700', slotCost: 15, bonus: { icon: '🌀', text: '+12% CHAK', stat: 'chak', mult: 1.12 } }
     ];
 
     const nodeDefs = [
@@ -331,7 +331,6 @@
     const state = {
       rankIndex: 0,
       viewingRank: 0,
-      points: 150,
       unlockedByRank: [0, 0, 0, 0, 0],
       ascended: [false, false, false, false, false]
     };
@@ -395,18 +394,9 @@
       };
     }
 
-    function animatePoints(to) {
-      const start = Math.max(0, state.points - to);
-      let val = start;
-      const step = Math.max(1, Math.ceil(to / 20));
-      const timer = window.setInterval(() => {
-        val += step;
-        if (val >= state.points) {
-          val = state.points;
-          window.clearInterval(timer);
-        }
-        ui.points.textContent = `🌀 ${val}`;
-      }, 20);
+    function getCurrentPoints() {
+      if (typeof getSkillPoints !== 'function') return 0;
+      return Math.max(0, Math.floor(Number(getSkillPoints()) || 0));
     }
 
     function renderTimeline() {
@@ -477,7 +467,7 @@
         const next = cur + node.inc;
         const tip = document.createElement('span');
         tip.className = 'arbol-tooltip';
-        tip.textContent = `${node.label}: +${node.inc} (${cur} → ${next})`;
+        tip.textContent = `${node.label}: +${node.inc} (${cur} → ${next}) · Costo ${ranks[viewing].slotCost}`;
         item.appendChild(tip);
         ui.grid.appendChild(item);
       });
@@ -511,15 +501,19 @@
     }
 
     function purchaseNode(index) {
-      const cost = 20;
       const rank = state.rankIndex;
-      if (state.points < cost) {
+      const cost = ranks[rank].slotCost;
+      const currentPoints = getCurrentPoints();
+      if (currentPoints < cost) {
         window.alert('Puntos insuficientes.');
         return;
       }
       if (index !== state.unlockedByRank[rank]) return;
+      if (typeof spendSkillPoints === 'function' && !spendSkillPoints(cost)) {
+        window.alert('Puntos insuficientes.');
+        return;
+      }
 
-      state.points -= cost;
       state.unlockedByRank[rank] += 1;
       const def = nodeDefs[index];
       if (typeof onAllocateStat === 'function') {
@@ -529,7 +523,7 @@
       renderStats();
       flashStat(def.uiKey);
       renderAll();
-      ui.points.textContent = `🌀 ${state.points}`;
+      ui.points.textContent = `🌀 ${Math.max(0, currentPoints - cost)}`;
     }
 
     function claimBonus() {
@@ -552,7 +546,6 @@
         if (state.rankIndex < ranks.length - 1) {
           state.rankIndex += 1;
           state.viewingRank = state.rankIndex;
-          state.points += 100;
         }
         renderAll();
       }, 1200);
@@ -563,13 +556,12 @@
       renderNodes();
       renderProgress();
       renderBonus();
-      ui.points.textContent = `🌀 ${state.points}`;
+      ui.points.textContent = `🌀 ${getCurrentPoints()}`;
       root.style.setProperty('--bronze', ranks[state.viewingRank].color);
     }
 
     renderStats();
     renderAll();
-    animatePoints(150);
 
     return {
       destroy() {

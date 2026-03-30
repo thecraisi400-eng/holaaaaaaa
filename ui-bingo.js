@@ -15,6 +15,7 @@
       showScreen,
       onCombatStateChange,
       onRewards,
+      onSkillPointEarned,
       setBattleMode
     } = options;
 
@@ -122,7 +123,7 @@
               <span>🛡️ DEF: ${enemy.def}</span>
             </div>
           </div>
-          <div class="mission-lock">${lockedByLevel ? `🔒 Nivel mínimo: ${enemy.lvl}` : (enemy.defeated ? (enemy.won ? '🏆 Superado' : '💀 Derrotado') : `🎲 Probabilidad: ${enemy.prob}`)}</div>`;
+          <div class="mission-lock">${lockedByLevel ? `🔒 Nivel mínimo: ${enemy.lvl}` : (enemy.defeated ? (enemy.won ? (enemy.skillPointAwarded ? '🏆 Superado · +1 Punto de Habilidad' : '🏆 Superado · Sin punto') : '💀 Derrotado') : `🎲 Probabilidad: ${enemy.prob}`)}</div>`;
 
         if (!lockedByLevel && !enemy.defeated) {
           onEnemy(btn, 'click', () => {
@@ -133,8 +134,18 @@
             combat.start([enemy], 0, {
               continueOnWin: false,
               onVictory: ({ rewards }) => {
-                logic.markEnemyResult(currentEnemyBattleId, true);
+                const rankMeta = window.BINGO_RANK_META[state.selectedRank] || {};
+                const pointChance = Number(rankMeta.pointChance || 0);
+                const wonSkillPoint = Math.random() < pointChance;
+                logic.markEnemyResult(currentEnemyBattleId, true, wonSkillPoint);
                 onRewards(rewards);
+                if (wonSkillPoint && typeof onSkillPointEarned === 'function') {
+                  onSkillPointEarned({
+                    amount: 1,
+                    rank: state.selectedRank,
+                    chance: pointChance
+                  });
+                }
                 currentEnemyBattleId = null;
                 if (typeof setBattleMode === 'function') setBattleMode('rank');
                 openBingoByState();

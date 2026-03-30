@@ -1,4 +1,7 @@
 :root {
+  --hud-base-width: 480;
+  --hud-base-height: 860;
+  --hud-scale: 1;
   --ink: #0d1117;
   --panel: #131a26;
   --surface: #1c2740;
@@ -39,13 +42,22 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 
+#app-shell {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+
 #app {
   display: flex;
   flex-direction: column;
-  width: 100vw;
-  height: 100vh;
-  max-width: 480px;
-  margin: 0 auto;
+  width: calc(var(--hud-base-width) * 1px);
+  height: calc(var(--hud-base-height) * 1px);
+  margin: 0;
   background:
     radial-gradient(ellipse 60% 40% at 50% 0%, rgba(46, 207, 207, 0.07) 0%, transparent 70%),
     radial-gradient(ellipse 80% 50% at 50% 100%, rgba(232, 146, 58, 0.06) 0%, transparent 60%),
@@ -54,6 +66,9 @@ html, body {
   gap: 8px;
   position: relative;
   overflow: hidden;
+  transform: scale(var(--hud-scale));
+  transform-origin: center center;
+  will-change: transform;
 }
 
 #app::before {

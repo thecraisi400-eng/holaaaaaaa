@@ -309,7 +309,7 @@
     document.head.appendChild(style);
   }
 
-  window.mountArbolUI = function mountArbolUI({ container, manager }) {
+  window.mountArbolUI = function mountArbolUI({ container, manager, getCharacterStats, onSyncUI }) {
     ensureStyle();
 
     const ranks = [
@@ -332,10 +332,12 @@
       rankIndex: 0,
       viewingRank: 0,
       points: 150,
-      stats: { atk: 10, def: 10, hp: 100, spd: 5, chak: 50 },
+      treeBonuses: { atk: 0, def: 0, hp: 0, spd: 0, chak: 0 },
       unlockedByRank: [0, 0, 0, 0, 0],
       ascended: [false, false, false, false, false]
     };
+    let pointsAnimationTimer = null;
+    let rankAdvanceTimer = null;
 
     const root = document.createElement('section');
     root.className = 'arbol-root';
@@ -374,20 +376,43 @@
       overlay: root.querySelector('[data-ui="overlay"]')
     };
 
+    function getLiveStats() {
+      const source = typeof getCharacterStats === 'function' ? getCharacterStats() : {};
+      return {
+        atk: Math.max(0, Math.round(source.ATK || 0)),
+        def: Math.max(0, Math.round(source.DEF || 0)),
+        hp: Math.max(0, Math.round(source.HP || 0)),
+        spd: Math.max(0, Math.round(source.VEL || 0)),
+        chak: Math.max(0, Math.round(source.MP || 0))
+      };
+    }
+
     function syncExternalStats() {
       if (!manager?.setState) return;
-      manager.setState({ hp: state.stats.hp, atk: state.stats.atk, def: state.stats.def });
+      const shared = manager.getState ? manager.getState() : {};
+      manager.setState({
+        skillTreeBonuses: {
+          ...(shared.skillTreeBonuses || {}),
+          ATK: state.treeBonuses.atk,
+          DEF: state.treeBonuses.def,
+          HP: state.treeBonuses.hp,
+          VEL: state.treeBonuses.spd,
+          MP: state.treeBonuses.chak
+        }
+      });
+      if (typeof onSyncUI === 'function') onSyncUI();
     }
 
     function animatePoints(to) {
       const start = Math.max(0, state.points - to);
       let val = start;
       const step = Math.max(1, Math.ceil(to / 20));
-      const timer = window.setInterval(() => {
+      pointsAnimationTimer = window.setInterval(() => {
         val += step;
         if (val >= state.points) {
           val = state.points;
-          window.clearInterval(timer);
+          window.clearInterval(pointsAnimationTimer);
+          pointsAnimationTimer = null;
         }
         ui.points.textContent = `🌀 ${val}`;
       }, 20);
@@ -417,7 +442,8 @@
 
     function renderStats() {
       ui.stats.innerHTML = '';
-      Object.entries(state.stats).forEach(([key, value]) => {
+      const live = getLiveStats();
+      Object.entries(live).forEach(([key, value]) => {
         const row = document.createElement('div');
         row.className = 'arbol-stat-row';
         row.innerHTML = `<span>${key.toUpperCase()}</span><span class="arbol-stat-value" data-stat="${key}">${value}</span>`;
@@ -455,7 +481,7 @@
           item.classList.add('locked');
         }
 
-        const cur = state.stats[node.stat];
+        const cur = getLiveStats()[node.stat];
         const next = cur + node.inc;
         const tip = document.createElement('span');
         tip.className = 'arbol-tooltip';
@@ -504,7 +530,7 @@
       state.points -= cost;
       state.unlockedByRank[rank] += 1;
       const def = nodeDefs[index];
-      state.stats[def.stat] += def.inc;
+      state.treeBonuses[def.stat] += def.inc;
       syncExternalStats();
       renderStats();
       flashStat(def.stat);
@@ -515,13 +541,13 @@
     function claimBonus() {
       const rank = ranks[state.rankIndex];
       const { stat, mult } = rank.bonus;
-      state.stats[stat] = Math.round(state.stats[stat] * mult);
+      state.treeBonuses[stat] = Math.round(state.treeBonuses[stat] * mult);
       syncExternalStats();
       renderStats();
       flashStat(stat);
       state.ascended[state.rankIndex] = true;
       ui.overlay.classList.add('show');
-      window.setTimeout(() => {
+      rankAdvanceTimer = window.setTimeout(() => {
         ui.overlay.classList.remove('show');
         if (state.rankIndex < ranks.length - 1) {
           state.rankIndex += 1;
@@ -547,6 +573,14 @@
 
     return {
       destroy() {
+        if (pointsAnimationTimer !== null) {
+          window.clearInterval(pointsAnimationTimer);
+          pointsAnimationTimer = null;
+        }
+        if (rankAdvanceTimer !== null) {
+          window.clearTimeout(rankAdvanceTimer);
+          rankAdvanceTimer = null;
+        }
         root.remove();
       }
     };

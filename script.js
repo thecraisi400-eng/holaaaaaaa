@@ -92,6 +92,7 @@
   let gameLaunched = false;
   let autoSaveIntervalId = null;
   let pendingAutoSaveTimeout = null;
+  let sharedStateUnsubscribe = null;
   const uiCache = {
     hpPct: null,
     mpPct: null,
@@ -354,7 +355,7 @@
   }
 
   function syncTopStats() {
-    const stats = window.heroEngine.computeStats(window.gameCharacter);
+    const stats = getComputedHeroStats();
     const nextGold = Number(window.gameCharacter.gold || 0).toLocaleString();
     const nextAtk = Number(stats.ATK || 0).toLocaleString('es-ES', { maximumFractionDigits: 1 });
     const nextDef = Number(stats.DEF || 0).toLocaleString('es-ES', { maximumFractionDigits: 1 });
@@ -430,7 +431,7 @@
   }
 
   function syncCombatResources() {
-    const stats = window.heroEngine.computeStats(window.gameCharacter);
+    const stats = getComputedHeroStats();
     const nextHpMax = Math.max(1, Math.round(stats.HP || state.hpMax));
     const nextMpMax = Math.max(1, Math.round(stats.MP || state.mpMax));
     const hpDelta = nextHpMax - state.hpMax;
@@ -459,6 +460,28 @@
       CDMG: leveledStats.CDMG
     };
     syncCombatResources();
+  }
+
+  function getComputedHeroStats() {
+    const base = window.heroEngine.computeStats(window.gameCharacter);
+    const bonus = sharedState?.getState ? (sharedState.getState().skillTreeBonuses || {}) : {};
+    return {
+      ...base,
+      ATK: (base.ATK || 0) + (bonus.ATK || 0),
+      DEF: (base.DEF || 0) + (bonus.DEF || 0),
+      HP: (base.HP || 0) + (bonus.HP || 0),
+      MP: (base.MP || 0) + (bonus.MP || 0),
+      VEL: (base.VEL || 0) + (bonus.VEL || 0)
+    };
+  }
+
+  function notifyHeroStatsChanged() {
+    syncCombatResources();
+    refreshResourceBars();
+    syncTopStats();
+    window.dispatchEvent(new CustomEvent('hero:stats-updated', {
+      detail: { stats: getComputedHeroStats() }
+    }));
   }
 
   function applyCombatRewards(reward) {
@@ -603,11 +626,11 @@
       get maxMp() { return state.mpMax; },
       get atk() {
         const shared = sharedState?.getState ? sharedState.getState().atk : null;
-        return Math.max(1, Math.round(shared || window.heroEngine.computeStats(window.gameCharacter).ATK || state.atk));
+        return Math.max(1, Math.round(shared || getComputedHeroStats().ATK || state.atk));
       },
       get def() {
         const shared = sharedState?.getState ? sharedState.getState().def : null;
-        return Math.max(1, Math.round(shared || window.heroEngine.computeStats(window.gameCharacter).DEF || state.def));
+        return Math.max(1, Math.round(shared || getComputedHeroStats().DEF || state.def));
       },
       get level() { return state.level; }
     };
@@ -715,7 +738,14 @@
       refs.center.appendChild(panel);
     }
 
-    const ui = window.mountArbolUI({ container: panel, manager: sharedState });
+    const ui = window.mountArbolUI({
+      container: panel,
+      manager: sharedState,
+      getCharacterStats: () => getComputedHeroStats(),
+      onSyncUI: () => {
+        notifyHeroStatsChanged();
+      }
+    });
     arbolCleanup = () => {
       ui.destroy();
       panel.remove();
@@ -756,7 +786,7 @@
 
     function renderStats() {
       syncCombatResources();
-      const stats = window.heroEngine.computeStats(window.gameCharacter);
+      const stats = getComputedHeroStats();
       heroRefs.statsGrid.innerHTML = '';
       for (const meta of window.STAT_META) {
         const chip = document.createElement('div');
@@ -916,6 +946,7 @@
     on(heroRefs.overlay, 'click', (e) => {
       if (e.target === heroRefs.overlay) closeUpgrade();
     });
+    on(window, 'hero:stats-updated', renderStats);
 
     renderStats();
     renderEquipment();
@@ -932,6 +963,7 @@
   function openSection(sectionKey, buttonEl) {
     const info = sections[sectionKey];
     if (!info) return;
+    if (state.activeSection === sectionKey && refs.center.childElementCount > 0) return;
 
     const rect = buttonEl.getBoundingClientRect();
     const cx = rect.left + rect.width / 2;
@@ -1145,6 +1177,11 @@
 
     refreshResourceBars();
     syncTopStats();
+    if (sharedState?.subscribe) {
+      sharedStateUnsubscribe = sharedState.subscribe(() => {
+        notifyHeroStatsChanged();
+      });
+    }
     startAutoSave();
 
     const heroBtn = document.getElementById('btn-heroe');
@@ -1182,6 +1219,10 @@
     cleanupCenter();
     unmountStartMenu();
     stopAutoSave();
+    if (typeof sharedStateUnsubscribe === 'function') {
+      sharedStateUnsubscribe();
+      sharedStateUnsubscribe = null;
+    }
     if (barsIntervalId !== null) window.clearInterval(barsIntervalId);
     barsIntervalId = null;
   }

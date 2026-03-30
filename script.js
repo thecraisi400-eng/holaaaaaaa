@@ -26,6 +26,11 @@
     }
   };
 
+  const sharedState = window.stateManager || null;
+  if (sharedState?.setState) {
+    sharedState.setState({ hp: state.hp, atk: state.atk, def: state.def });
+  }
+
   const sections = {
     heroe: { icon: '🥷', title: 'HÉROE', desc: 'Consulta y mejora el equipo de tu shinobi. Cambia armadura, armas y accesorios para maximizar tu poder de combate.' },
     misiones: { icon: '📜', title: 'MISIONES', desc: '' },
@@ -365,6 +370,13 @@
       uiCache.topDef = nextDef;
       refs.statDef.textContent = nextDef;
     }
+
+    if (sharedState?.setState) {
+      sharedState.setState({
+        atk: Math.max(1, Math.round(stats.ATK || state.atk)),
+        def: Math.max(1, Math.round(stats.DEF || state.def))
+      });
+    }
   }
 
   function refreshResourceBars() {
@@ -410,6 +422,10 @@
     if (uiCache.level !== state.level) {
       uiCache.level = state.level;
       refs.charLevel.textContent = state.level;
+    }
+
+    if (sharedState?.setState) {
+      sharedState.setState({ hp: state.hp });
     }
   }
 
@@ -579,14 +595,20 @@
     refs.center.appendChild(panel);
 
     const playerStats = {
-      get hp() { return state.hp; },
+      get hp() { return sharedState?.getState ? sharedState.getState().hp : state.hp; },
       set hp(value) { state.hp = Math.max(0, Math.round(value)); refreshResourceBars(); },
       get maxHp() { return state.hpMax; },
       get mp() { return state.mp; },
       set mp(value) { state.mp = Math.max(0, Math.round(value)); refreshResourceBars(); },
       get maxMp() { return state.mpMax; },
-      get atk() { return Math.max(1, Math.round(window.heroEngine.computeStats(window.gameCharacter).ATK || state.atk)); },
-      get def() { return Math.max(1, Math.round(window.heroEngine.computeStats(window.gameCharacter).DEF || state.def)); },
+      get atk() {
+        const shared = sharedState?.getState ? sharedState.getState().atk : null;
+        return Math.max(1, Math.round(shared || window.heroEngine.computeStats(window.gameCharacter).ATK || state.atk));
+      },
+      get def() {
+        const shared = sharedState?.getState ? sharedState.getState().def : null;
+        return Math.max(1, Math.round(shared || window.heroEngine.computeStats(window.gameCharacter).DEF || state.def));
+      },
       get level() { return state.level; }
     };
 
@@ -686,9 +708,14 @@
     panel.style.minHeight = '0';
     panel.style.display = 'flex';
     panel.style.flexDirection = 'column';
-    refs.center.appendChild(panel);
+    const hudCenter = document.getElementById('hud-center');
+    if (hudCenter) {
+      refs.center.replaceChildren(panel);
+    } else {
+      refs.center.appendChild(panel);
+    }
 
-    const ui = window.mountArbolUI({ container: panel });
+    const ui = window.mountArbolUI({ container: panel, manager: sharedState });
     arbolCleanup = () => {
       ui.destroy();
       panel.remove();

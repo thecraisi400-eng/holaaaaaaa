@@ -56,6 +56,7 @@
   };
 
   const refs = {
+    appShell: document.getElementById('app-shell'),
     app: document.getElementById('app'),
     nav: document.getElementById('hud-bottom'),
     center: document.getElementById('hud-center-content'),
@@ -81,6 +82,20 @@
     charRank: document.getElementById('charRank'),
     avatarFrame: document.getElementById('avatarFrame')
   };
+
+  function applyResponsiveScale() {
+    if (!refs.appShell || !refs.app) return;
+
+    const viewportWidth = Math.max(1, window.innerWidth || refs.appShell.clientWidth);
+    const viewportHeight = Math.max(1, window.innerHeight || refs.appShell.clientHeight);
+    const baseWidth = Number(getComputedStyle(document.documentElement).getPropertyValue('--hud-base-width')) || 480;
+    const baseHeight = Number(getComputedStyle(document.documentElement).getPropertyValue('--hud-base-height')) || 860;
+
+    const widthScale = viewportWidth / baseWidth;
+    const heightScale = viewportHeight / baseHeight;
+    const scale = Math.max(0.5, Math.min(widthScale, heightScale));
+    refs.app.style.setProperty('--hud-scale', scale.toFixed(4));
+  }
 
   const controller = new AbortController();
   const { signal } = controller;
@@ -1189,6 +1204,12 @@
     refs.nav.addEventListener('click', handleNavClick, { signal });
     refs.overlay.addEventListener('click', handleOverlayClick, { signal });
     document.addEventListener('keydown', handleKeyDown, { signal });
+    window.addEventListener('resize', applyResponsiveScale, { signal });
+    window.addEventListener('orientationchange', applyResponsiveScale, { signal });
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', applyResponsiveScale, { signal });
+    }
+    applyResponsiveScale();
 
     refreshResourceBars();
     syncTopStats();
@@ -1205,6 +1226,7 @@
   }
 
   async function start() {
+    applyResponsiveScale();
     hideMainHud();
     await ensureCharacterScript();
     mountStartMenu(

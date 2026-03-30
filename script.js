@@ -110,10 +110,12 @@
 
   const defaultLevels = { cabeza: 1, pecho: 1, manos: 1, piernas: 1, pies: 1, accesorio: 1 };
   const defaultTreeBonuses = { HP: 0, MP: 0, ATK: 0, DEF: 0, VEL: 0 };
+  const defaultSkillPoints = 0;
   const baseCharacter = {
     gold: state.gold,
     levels: { ...defaultLevels },
-    treeBonuses: { ...defaultTreeBonuses }
+    treeBonuses: { ...defaultTreeBonuses },
+    skillPoints: defaultSkillPoints
   };
 
   window.gameCharacter = window.gameCharacter || new Proxy(baseCharacter, {
@@ -186,7 +188,8 @@
       equipment: {
         gold: Math.round(Number(window.gameCharacter?.gold || state.gold)),
         levels: { ...(window.gameCharacter?.levels || {}) },
-        treeBonuses: { ...(window.gameCharacter?.treeBonuses || {}) }
+        treeBonuses: { ...(window.gameCharacter?.treeBonuses || {}) },
+        skillPoints: Math.max(0, Math.floor(Number(window.gameCharacter?.skillPoints) || 0))
       },
       meta: {
         activeSection: state.activeSection,
@@ -285,8 +288,10 @@
     const treeBonuses = payload.equipment?.treeBonuses && typeof payload.equipment.treeBonuses === 'object'
       ? payload.equipment.treeBonuses
       : {};
+    const skillPoints = Math.max(0, Math.floor(Number(payload.equipment?.skillPoints) || 0));
     window.gameCharacter.levels = { ...defaultLevels, ...levels };
     window.gameCharacter.treeBonuses = { ...defaultTreeBonuses, ...treeBonuses };
+    window.gameCharacter.skillPoints = skillPoints;
     window.gameCharacter.gold = Math.max(0, Math.floor(Number(payload.equipment?.gold) || state.gold));
     state.gold = window.gameCharacter.gold;
 
@@ -353,6 +358,7 @@
     window.gameCharacter.gold = 100;
     window.gameCharacter.levels = { ...defaultLevels };
     window.gameCharacter.treeBonuses = { ...defaultTreeBonuses };
+    window.gameCharacter.skillPoints = defaultSkillPoints;
 
     refs.charName.textContent = char.name.toUpperCase();
     refs.charRank.textContent = char.rank;
@@ -656,6 +662,13 @@
       onReturn: () => {
         refs.nav.style.pointerEvents = '';
         refs.nav.style.opacity = '';
+      },
+      onSkillPointEarned: ({ amount }) => {
+        const gain = Math.max(0, Math.floor(Number(amount) || 0));
+        if (gain <= 0) return;
+        const current = Math.max(0, Math.floor(Number(window.gameCharacter.skillPoints) || 0));
+        window.gameCharacter.skillPoints = current + gain;
+        queueAutoSave();
       }
     });
 
@@ -733,6 +746,15 @@
       container: panel,
       manager: sharedState,
       getStats: () => window.heroEngine.computeStats(window.gameCharacter),
+      getSkillPoints: () => Math.max(0, Math.floor(Number(window.gameCharacter.skillPoints) || 0)),
+      spendSkillPoints: (cost) => {
+        const amount = Math.max(0, Math.floor(Number(cost) || 0));
+        const current = Math.max(0, Math.floor(Number(window.gameCharacter.skillPoints) || 0));
+        if (amount <= 0 || current < amount) return false;
+        window.gameCharacter.skillPoints = current - amount;
+        queueAutoSave();
+        return true;
+      },
       onAllocateStat: ({ stat, amount }) => {
         if (!stat || !Number.isFinite(Number(amount))) return;
         const current = Number(window.gameCharacter.treeBonuses[stat] || 0);

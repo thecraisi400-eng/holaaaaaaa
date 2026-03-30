@@ -33,6 +33,9 @@
     let battleActive = false;
     let enemyTransitionPending = false;
     let currentEnemy = null;
+    let enemyStatus = null;
+    let turnCounter = 0;
+    let combatJutsus = [];
     let enemyIndex = 0;
     let currentMissionList = [];
     let battleLoopCount = 0;
@@ -40,7 +43,8 @@
 
     function loadEnemy(index) {
       const mission = currentMissionList[index];
-      currentEnemy = { name: mission.name, hp: mission.hp, maxHp: mission.hp, atk: mission.atk, def: mission.def, xp: mission.xp, gold: mission.gold };
+      currentEnemy = { name: mission.name, hp: mission.hp, maxHp: mission.hp, atk: mission.atk, def: mission.def, xp: mission.xp, gold: mission.gold, mp: 100, maxMp: 100 };
+      enemyStatus = { stunTurns: 0, freezeTurns: 0, atkDebuffPct: 0, defDebuffPct: 0, skipNextTurn: false };
       onEnemy(currentEnemy, resolveEnemyEmoji(mission.name));
       onBars(getPlayerStats(), currentEnemy);
     }
@@ -59,16 +63,108 @@
       battleLoopCount = 0;
       enemyTransitionPending = false;
       loadEnemy(enemyIndex);
+      combatJutsus = typeof window.resolveEquippedJutsusForCombat === 'function' ? window.resolveEquippedJutsusForCombat() : [];
+      turnCounter = 0;
       onLog(`⚔️ Auto-Battle iniciado contra: ${currentEnemy.name}`);
+      if (combatJutsus.length > 0) {
+        onLog(`🌀 Jutsus equipados activos: ${combatJutsus.map((j) => `${j.name} Lv.${j.level}`).join(', ')}`);
+      }
 
       battleActive = true;
       battleInterval = window.setInterval(() => {
         if (!battleActive) return;
         if (enemyTransitionPending) return;
         const playerStats = getPlayerStats();
+        turnCounter += 1;
+        let atkMult = 1;
+        let defMult = 1;
+        let evadeChance = 0;
+        let critChance = 0;
+        let critDmg = 0;
+        let extraHit = 0;
+        let defensePen = 0;
+        let enemyFailChance = 0;
+        let counterChance = 0;
+
+        combatJutsus.forEach((jutsu) => {
+          const values = jutsu.values;
+          if (jutsu.id === 0) {
+            enemyFailChance += Math.max(0, Number(values[2]) || 0);
+            defMult += (Number(values[1]) || 0) / 100;
+            if (Math.random() * 100 < (Number(values[3]) || 0)) {
+              const burn = Math.max(1, Math.floor(currentEnemy.maxHp * ((Number(values[0]) || 0) / 100)));
+              currentEnemy.hp = Math.max(0, currentEnemy.hp - burn);
+              onLog(`🔥 ${jutsu.name} quema por ${burn}.`);
+            }
+          }
+          if (jutsu.id === 1) {
+            defensePen += Number(values[2]) || 0;
+            if (Math.random() * 100 < (Number(values[3]) || 0)) {
+              enemyStatus.freezeTurns = Math.max(enemyStatus.freezeTurns, 1);
+              onLog(`❄️ ${jutsu.name} congeló al enemigo.`);
+            }
+          }
+          if (jutsu.id === 2) {
+            atkMult += (Number(values[1]) || 0) / 100;
+            defMult += (Number(values[1]) || 0) / 100;
+            if (Math.random() * 100 < (Number(values[3]) || 0)) {
+              enemyStatus.defDebuffPct = Math.max(enemyStatus.defDebuffPct, Math.abs(Number(values[2]) || 0));
+              const poison = Math.max(1, Math.floor(currentEnemy.maxHp * ((Number(values[0]) || 0) / 100)));
+              currentEnemy.hp = Math.max(0, currentEnemy.hp - poison);
+              onLog(`☠️ ${jutsu.name} envenena por ${poison}.`);
+            }
+          }
+          if (jutsu.id === 3) {
+            counterChance = Math.max(counterChance, Number(values[1]) || 0);
+            enemyStatus.atkDebuffPct = Math.max(enemyStatus.atkDebuffPct, Math.abs(Number(values[2]) || 0));
+            if (Math.random() * 100 < (Number(values[3]) || 0)) {
+              enemyStatus.stunTurns = Math.max(enemyStatus.stunTurns, 1);
+              onLog(`🌀 ${jutsu.name} aturdió al enemigo.`);
+            }
+          }
+          if (jutsu.id === 4) {
+            evadeChance = Math.max(evadeChance, Number(values[1]) || 0);
+            atkMult += (Number(values[1]) || 0) / 100;
+            if (Math.random() * 100 < (Number(values[2]) || 0)) {
+              enemyStatus.skipNextTurn = true;
+              onLog(`🌀 ${jutsu.name} confundió al enemigo.`);
+            }
+          }
+          if (jutsu.id === 5) {
+            const hpRegen = Math.max(1, Math.floor(playerStats.maxHp * ((Number(values[1]) || 0) / 100)));
+            playerStats.hp = Math.min(playerStats.maxHp, playerStats.hp + hpRegen);
+            playerStats.mp = Math.min(playerStats.maxMp, playerStats.mp + (Number(values[0]) || 0));
+            onLog(`🩸 ${jutsu.name}: +${hpRegen} HP, +${values[0]} MP.`);
+          }
+          if (jutsu.id === 6) {
+            critChance = Math.max(critChance, Number(values[1]) || 0);
+            if (Math.random() * 100 < (Number(values[3]) || 0)) {
+              enemyStatus.stunTurns = Math.max(enemyStatus.stunTurns, Number(values[0]) || 1);
+              onLog(`😵 ${jutsu.name} aplica aturdimiento.`);
+            }
+          }
+          if (jutsu.id === 7) {
+            atkMult += (Number(values[1]) || 0) / 100;
+            critDmg += Number(values[2]) || 0;
+            if (Math.random() * 100 < (Number(values[3]) || 0)) {
+              extraHit = Math.max(extraHit, Number(values[0]) || 0);
+              const hpCost = Math.max(1, Math.floor(playerStats.maxHp * 0.02));
+              playerStats.hp = Math.max(1, playerStats.hp - hpCost);
+              onLog(`💥 ${jutsu.name} sacrifica ${hpCost} HP.`);
+            }
+          }
+        });
 
         if (playerStats.hp > 0 && currentEnemy.hp > 0) {
-          let dmg = Math.max(1, Math.floor(playerStats.atk - currentEnemy.def / 3 + Math.random() * 8));
+          const enemyDef = Math.max(0, currentEnemy.def * (1 - (enemyStatus.defDebuffPct / 100)) * (1 - defensePen / 100));
+          let dmg = Math.max(1, Math.floor((playerStats.atk * atkMult) - enemyDef / 3 + Math.random() * 8));
+          if (Math.random() * 100 < critChance) {
+            dmg = Math.floor(dmg * (1.5 + critDmg / 100));
+            onLog('🎯 ¡Golpe crítico potenciado por jutsus!');
+          }
+          if (extraHit > 0) {
+            dmg += Math.floor((playerStats.atk * extraHit) / 100);
+          }
           currentEnemy.hp -= dmg;
           if (currentEnemy.hp < 0) currentEnemy.hp = 0;
           onLog(`🥷 Atacas y causas ${dmg} daño.`);
@@ -105,10 +201,29 @@
         }
 
         if (playerStats.hp > 0 && currentEnemy.hp > 0) {
-          let dmg = Math.max(1, Math.floor(currentEnemy.atk - playerStats.def / 3 + Math.random() * 6));
+          if (enemyStatus.stunTurns > 0 || enemyStatus.freezeTurns > 0 || enemyStatus.skipNextTurn) {
+            enemyStatus.stunTurns = Math.max(0, enemyStatus.stunTurns - 1);
+            enemyStatus.freezeTurns = Math.max(0, enemyStatus.freezeTurns - 1);
+            enemyStatus.skipNextTurn = false;
+            onLog(`💫 ${currentEnemy.name} pierde su turno.`);
+            onBars(playerStats, currentEnemy);
+            return;
+          }
+          if (Math.random() * 100 < Math.max(enemyFailChance, evadeChance)) {
+            onLog(`💨 ${currentEnemy.name} falló su ataque.`);
+            onBars(playerStats, currentEnemy);
+            return;
+          }
+          const enemyAtk = currentEnemy.atk * (1 - (enemyStatus.atkDebuffPct / 100));
+          let dmg = Math.max(1, Math.floor(enemyAtk - (playerStats.def * defMult) / 3 + Math.random() * 6));
           playerStats.hp -= dmg;
           if (playerStats.hp < 0) playerStats.hp = 0;
           onLog(`👹 ${currentEnemy.name} ataca y causa ${dmg} daño.`);
+          if (counterChance > 0 && Math.random() * 100 < counterChance) {
+            const counterDmg = Math.max(1, Math.floor((playerStats.atk * 0.35)));
+            currentEnemy.hp = Math.max(0, currentEnemy.hp - counterDmg);
+            onLog(`🔄 Contraataque activa ${counterDmg} daño.`);
+          }
           onBars(playerStats, currentEnemy);
           if (playerStats.hp <= 0) {
             onLog('😵 Has sido derrotado...');

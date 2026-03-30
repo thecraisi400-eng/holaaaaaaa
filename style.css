@@ -30,7 +30,7 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body {
   width: 100%;
-  height: 100%;
+  min-height: 100%;
   background: var(--ink);
   color: var(--text-hi);
   font-family: var(--font-hud);
@@ -39,19 +39,28 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+}
+
 #app {
   display: flex;
   flex-direction: column;
-  width: 100vw;
-  height: 100vh;
-  max-width: 480px;
-  margin: 0 auto;
+  width: min(100vw, calc(100dvh * 9 / 16));
+  height: min(100dvh, calc(100vw * 16 / 9));
+  aspect-ratio: 9 / 16;
+  max-width: 100vw;
+  max-height: 100vh;
+  margin: auto;
   background:
     radial-gradient(ellipse 60% 40% at 50% 0%, rgba(46, 207, 207, 0.07) 0%, transparent 70%),
     radial-gradient(ellipse 80% 50% at 50% 100%, rgba(232, 146, 58, 0.06) 0%, transparent 60%),
     var(--ink);
-  padding: 10px;
-  gap: 8px;
+  padding: calc(1.2vh + env(safe-area-inset-top, 0px)) calc(1.5vw + env(safe-area-inset-right, 0px)) calc(1.2vh + env(safe-area-inset-bottom, 0px)) calc(1.5vw + env(safe-area-inset-left, 0px));
+  gap: min(1vh, 8px);
   position: relative;
   overflow: hidden;
 }
@@ -69,6 +78,8 @@ html, body {
 
 #hud-top {
   position: relative;
+  flex: 0 0 28%;
+  min-height: 0;
   z-index: 1;
   display: flex;
   flex-direction: column;
@@ -228,6 +239,7 @@ html, body {
 
 #hud-center {
   position: relative;
+  flex: 1 1 auto;
   z-index: 1;
   flex: 1;
   min-height: 0;
@@ -259,11 +271,13 @@ html, body {
 
 #hud-bottom {
   position: relative;
+  flex: 0 0 26%;
+  min-height: 0;
   z-index: 1;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);
-  gap: 6px;
+  gap: min(0.8vh, 6px);
 }
 
 .nav-btn {
@@ -276,11 +290,11 @@ html, body {
   background: var(--btn-bg);
   border: 1px solid var(--btn-border);
   border-radius: var(--radius);
-  padding: 8px 4px;
+  padding: min(1.1vh, 8px) min(1vw, 6px);
   cursor: pointer;
   transition: background .15s, border-color .15s, transform .1s, box-shadow .15s;
   overflow: hidden;
-  min-height: 56px;
+  min-height: clamp(44px, 7vh, 72px);
   -webkit-user-select: none;
   user-select: none;
 }
@@ -443,13 +457,13 @@ html, body {
 .hud-corner.br { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
 
 @media (max-height: 700px) {
-  .avatar-frame { width: 58px; height: 58px; }
-  .nav-btn { min-height: 46px; }
-  .btn-icon { font-size: 1.1rem; }
+  .avatar-frame { width: clamp(52px, 10vw, 58px); height: clamp(52px, 10vw, 58px); }
+  .nav-btn { min-height: clamp(40px, 6.5vh, 46px); }
+  .btn-icon { font-size: clamp(1rem, 2.3vh, 1.1rem); }
 }
 @media (min-height: 900px) {
-  .nav-btn { min-height: 68px; }
-  .btn-icon { font-size: 1.5rem; }
+  .nav-btn { min-height: clamp(62px, 8vh, 72px); }
+  .btn-icon { font-size: clamp(1.3rem, 2.8vh, 1.6rem); }
 }
 
 /* HEROE SYSTEM */

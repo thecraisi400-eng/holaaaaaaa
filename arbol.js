@@ -309,7 +309,7 @@
     document.head.appendChild(style);
   }
 
-  window.mountArbolUI = function mountArbolUI({ container, manager }) {
+  window.mountArbolUI = function mountArbolUI({ container, manager, getStats, onAllocateStat }) {
     ensureStyle();
 
     const ranks = [
@@ -321,18 +321,17 @@
     ];
 
     const nodeDefs = [
-      { stat: 'atk', icon: '⚔️', inc: 5, label: 'ATK' },
-      { stat: 'def', icon: '🛡️', inc: 5, label: 'DEF' },
-      { stat: 'hp', icon: '❤️', inc: 50, label: 'HP' },
-      { stat: 'spd', icon: '⚡', inc: 1, label: 'SPD' },
-      { stat: 'chak', icon: '🌀', inc: 20, label: 'CHAK' }
+      { uiKey: 'atk', stat: 'ATK', icon: '⚔️', inc: 5, label: 'ATK' },
+      { uiKey: 'def', stat: 'DEF', icon: '🛡️', inc: 5, label: 'DEF' },
+      { uiKey: 'hp', stat: 'HP', icon: '❤️', inc: 50, label: 'HP' },
+      { uiKey: 'spd', stat: 'VEL', icon: '⚡', inc: 1, label: 'SPD' },
+      { uiKey: 'chak', stat: 'MP', icon: '🌀', inc: 20, label: 'CHAK' }
     ];
 
     const state = {
       rankIndex: 0,
       viewingRank: 0,
       points: 150,
-      stats: { atk: 10, def: 10, hp: 100, spd: 5, chak: 50 },
       unlockedByRank: [0, 0, 0, 0, 0],
       ascended: [false, false, false, false, false]
     };
@@ -375,8 +374,25 @@
     };
 
     function syncExternalStats() {
+      const stats = typeof getStats === 'function' ? getStats() : null;
+      if (!stats) return;
       if (!manager?.setState) return;
-      manager.setState({ hp: state.stats.hp, atk: state.stats.atk, def: state.stats.def });
+      manager.setState({
+        hp: Math.max(1, Math.round(Number(stats.HP || 0))),
+        atk: Math.max(1, Math.round(Number(stats.ATK || 0))),
+        def: Math.max(1, Math.round(Number(stats.DEF || 0)))
+      });
+    }
+
+    function readDisplayedStats() {
+      const stats = typeof getStats === 'function' ? getStats() : {};
+      return {
+        atk: Math.round(Number(stats.ATK || 0)),
+        def: Math.round(Number(stats.DEF || 0)),
+        hp: Math.round(Number(stats.HP || 0)),
+        spd: Number(stats.VEL || 0),
+        chak: Math.round(Number(stats.MP || 0))
+      };
     }
 
     function animatePoints(to) {
@@ -417,7 +433,8 @@
 
     function renderStats() {
       ui.stats.innerHTML = '';
-      Object.entries(state.stats).forEach(([key, value]) => {
+      const displayStats = readDisplayedStats();
+      Object.entries(displayStats).forEach(([key, value]) => {
         const row = document.createElement('div');
         row.className = 'arbol-stat-row';
         row.innerHTML = `<span>${key.toUpperCase()}</span><span class="arbol-stat-value" data-stat="${key}">${value}</span>`;
@@ -455,7 +472,8 @@
           item.classList.add('locked');
         }
 
-        const cur = state.stats[node.stat];
+        const displayStats = readDisplayedStats();
+        const cur = displayStats[node.uiKey];
         const next = cur + node.inc;
         const tip = document.createElement('span');
         tip.className = 'arbol-tooltip';
@@ -504,10 +522,12 @@
       state.points -= cost;
       state.unlockedByRank[rank] += 1;
       const def = nodeDefs[index];
-      state.stats[def.stat] += def.inc;
+      if (typeof onAllocateStat === 'function') {
+        onAllocateStat({ stat: def.stat, amount: def.inc, source: 'node' });
+      }
       syncExternalStats();
       renderStats();
-      flashStat(def.stat);
+      flashStat(def.uiKey);
       renderAll();
       ui.points.textContent = `🌀 ${state.points}`;
     }
@@ -515,7 +535,13 @@
     function claimBonus() {
       const rank = ranks[state.rankIndex];
       const { stat, mult } = rank.bonus;
-      state.stats[stat] = Math.round(state.stats[stat] * mult);
+      const statMap = { atk: 'ATK', def: 'DEF', hp: 'HP', spd: 'VEL', chak: 'MP' };
+      const liveStats = readDisplayedStats();
+      const currentValue = Number(liveStats[stat] || 0);
+      const increase = Math.max(1, Math.round(currentValue * (mult - 1)));
+      if (typeof onAllocateStat === 'function') {
+        onAllocateStat({ stat: statMap[stat], amount: increase, source: 'bonus' });
+      }
       syncExternalStats();
       renderStats();
       flashStat(stat);

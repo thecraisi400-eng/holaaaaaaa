@@ -62,6 +62,14 @@ function computeStats(player) {
       stats[stat] = (stats[stat] || 0) + amount * gains;
     }
   }
+  const treeBonuses = player?.treeBonuses && typeof player.treeBonuses === 'object'
+    ? player.treeBonuses
+    : null;
+  if (treeBonuses) {
+    for (const [stat, amount] of Object.entries(treeBonuses)) {
+      stats[stat] = (stats[stat] || 0) + Number(amount || 0);
+    }
+  }
   return stats;
 }
 

@@ -109,9 +109,11 @@
   };
 
   const defaultLevels = { cabeza: 1, pecho: 1, manos: 1, piernas: 1, pies: 1, accesorio: 1 };
+  const defaultTreeBonuses = { HP: 0, MP: 0, ATK: 0, DEF: 0, VEL: 0 };
   const baseCharacter = {
     gold: state.gold,
-    levels: { ...defaultLevels }
+    levels: { ...defaultLevels },
+    treeBonuses: { ...defaultTreeBonuses }
   };
 
   window.gameCharacter = window.gameCharacter || new Proxy(baseCharacter, {
@@ -183,7 +185,8 @@
       },
       equipment: {
         gold: Math.round(Number(window.gameCharacter?.gold || state.gold)),
-        levels: { ...(window.gameCharacter?.levels || {}) }
+        levels: { ...(window.gameCharacter?.levels || {}) },
+        treeBonuses: { ...(window.gameCharacter?.treeBonuses || {}) }
       },
       meta: {
         activeSection: state.activeSection,
@@ -279,7 +282,11 @@
     const levels = payload.equipment?.levels && typeof payload.equipment.levels === 'object'
       ? payload.equipment.levels
       : {};
+    const treeBonuses = payload.equipment?.treeBonuses && typeof payload.equipment.treeBonuses === 'object'
+      ? payload.equipment.treeBonuses
+      : {};
     window.gameCharacter.levels = { ...defaultLevels, ...levels };
+    window.gameCharacter.treeBonuses = { ...defaultTreeBonuses, ...treeBonuses };
     window.gameCharacter.gold = Math.max(0, Math.floor(Number(payload.equipment?.gold) || state.gold));
     state.gold = window.gameCharacter.gold;
 
@@ -345,6 +352,7 @@
     state.gold = 100;
     window.gameCharacter.gold = 100;
     window.gameCharacter.levels = { ...defaultLevels };
+    window.gameCharacter.treeBonuses = { ...defaultTreeBonuses };
 
     refs.charName.textContent = char.name.toUpperCase();
     refs.charRank.textContent = char.rank;
@@ -440,6 +448,12 @@
     state.mpMax = nextMpMax;
     state.hp = Math.max(0, Math.min(state.hpMax, state.hp + hpDelta));
     state.mp = Math.max(0, Math.min(state.mpMax, state.mp + mpDelta));
+  }
+
+  function refreshAllStatViews() {
+    syncCombatResources();
+    refreshResourceBars();
+    syncTopStats();
   }
 
   function updateLevelScaling() {
@@ -715,7 +729,18 @@
       refs.center.appendChild(panel);
     }
 
-    const ui = window.mountArbolUI({ container: panel, manager: sharedState });
+    const ui = window.mountArbolUI({
+      container: panel,
+      manager: sharedState,
+      getStats: () => window.heroEngine.computeStats(window.gameCharacter),
+      onAllocateStat: ({ stat, amount }) => {
+        if (!stat || !Number.isFinite(Number(amount))) return;
+        const current = Number(window.gameCharacter.treeBonuses[stat] || 0);
+        window.gameCharacter.treeBonuses[stat] = current + Number(amount);
+        refreshAllStatViews();
+        queueAutoSave();
+      }
+    });
     arbolCleanup = () => {
       ui.destroy();
       panel.remove();

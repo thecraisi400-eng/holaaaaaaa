@@ -1,96 +1,259 @@
 (() => {
-  const STYLE_ID = 'arbol-ranks-style';
+  const STYLE_ID = 'arbol-ranks-style-v2';
 
   function ensureStyle() {
     if (document.getElementById(STYLE_ID)) return;
     const style = document.createElement('style');
     style.id = STYLE_ID;
     style.textContent = `
-      .arbol-stage{width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:6px;background:rgba(8,12,20,.85);overflow:auto}
-      .arbol-shell{width:min(100%,460px);height:min(100%,360px);max-width:460px;max-height:360px;display:flex;align-items:stretch;justify-content:center}
-      .arbol-shell img{object-fit:contain;max-width:100%;max-height:100%}
-      .arbol-root{--ink:#0d1117;--panel:#131a26;--surface:#1c2740;--btn-bg:#162035;--overlay:rgba(8,12,20,.85);--orange:#ff6b00;--gold:#ffd700;--green:#00ff88;--txt:#dde8ff;--muted:#4a6080;--rank-color:#cd7f32;width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden;background:var(--ink);border:1px solid rgba(255,255,255,.08);box-shadow:0 0 24px rgba(0,0,0,.5);position:relative}
-      #top-bar{height:36px;display:flex;align-items:center;justify-content:space-between;padding:0 8px;background:var(--panel);border-bottom:1px solid rgba(255,255,255,.07)}
-      #rank-timeline{display:flex;gap:4px}
-      .tl-node{width:40px;height:26px;border-radius:4px;background:var(--btn-bg);display:flex;align-items:center;justify-content:center;font-size:7px;font-family:'Orbitron',sans-serif;color:var(--muted);cursor:pointer;border:1px solid transparent;position:relative;transition:transform .15s}
-      .tl-node:hover{transform:scale(1.08)}
-      .tl-node.completed{color:var(--gold);border-color:rgba(255,215,0,.35)}
-      .tl-node.completed::after{content:'✓';position:absolute;top:-4px;right:-3px;color:var(--gold);font-size:8px}
-      .tl-node.active{color:var(--rank-color);border-color:var(--rank-color);box-shadow:0 0 8px var(--rank-color)}
-      .tl-node.future::after{content:'🔒';position:absolute;top:-4px;right:-3px;font-size:8px}
-      #cp-box{display:flex;align-items:center;gap:5px;background:var(--surface);padding:3px 8px;border-radius:4px;border:1px solid rgba(255,165,0,.3)}
-      #cp-box .lbl{font-size:7px;color:var(--muted);font-family:'Orbitron',sans-serif;letter-spacing:1px}
-      #cp-value{font-size:14px;color:var(--orange);font-family:'Orbitron',sans-serif;min-width:30px;text-align:right}
-      @keyframes cp-flash{0%{color:var(--gold);transform:scale(1.2)}100%{color:var(--orange);transform:scale(1)}}
-      .cp-flash{animation:cp-flash .5s ease-out}
+      .arbol-stage{
+        width:100%;
+        height:100%;
+        min-width:0;
+        min-height:0;
+        background:rgba(8, 12, 20, 0.85);
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        overflow:auto;
+        padding:8px;
+      }
+      .arbol-stage::-webkit-scrollbar{width:8px;height:8px}
+      .arbol-stage::-webkit-scrollbar-track{background:#0d1117}
+      .arbol-stage::-webkit-scrollbar-thumb{background:#1c2740;border-radius:8px}
 
-      #main-row{flex:1;display:flex;min-height:0}
-      #stats-panel,#right-panel{background:var(--panel);padding:6px 4px;display:flex;flex-direction:column;gap:4px}
-      #stats-panel{width:78px;border-right:1px solid rgba(255,255,255,.06)}
-      #right-panel{width:82px;border-left:1px solid rgba(255,255,255,.06)}
-      .stats-hdr{font-size:7px;letter-spacing:1px;color:var(--muted);font-family:'Orbitron',sans-serif;text-align:center}
-      .stat-row{display:flex;gap:3px;align-items:center;background:var(--surface);padding:3px 4px;border-radius:3px;border:1px solid rgba(255,255,255,.05)}
-      .stat-nm{font-size:8px;color:var(--muted);font-weight:700;flex:1}
-      .stat-val{margin-left:auto;font-family:'Orbitron',sans-serif;font-size:9px;color:var(--txt)}
-      @keyframes boost-anim{0%{transform:scale(1.35);color:var(--green)}100%{transform:scale(1);color:var(--txt)}}
-      .stat-boosted{animation:boost-anim .65s ease-out}
+      .arbol-shell{
+        width:100%;
+        height:100%;
+        min-width:0;
+        min-height:0;
+        display:flex;
+      }
 
-      #center-panel{flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 2px;position:relative;overflow:hidden}
-      #rank-header{text-align:center;margin-bottom:3px}
-      #rank-name{font-size:11px;color:var(--rank-color);font-family:'Orbitron',sans-serif;letter-spacing:1.6px;text-shadow:0 0 8px var(--rank-color)}
-      #rank-lore{font-size:7px;color:var(--muted)}
-      #constellation{position:relative;width:152px;height:128px;flex-shrink:0}
-      #locked-ranks-bg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:0}
-      .lock-shadow{position:absolute;font-family:'Orbitron',sans-serif;font-size:18px;color:rgba(255,255,255,.08);letter-spacing:2px}
-      .lock-shadow small{font-size:11px;margin-left:4px}
-      #c-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
-      #center-emblem{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid var(--rank-color);box-shadow:0 0 12px var(--rank-color);z-index:2;background:var(--surface)}
-      .s-node{position:absolute;width:32px;height:32px;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--btn-bg);border-radius:5px;border:1.5px solid rgba(255,255,255,.12);z-index:3;cursor:pointer}
-      .s-node .n-lbl{font-size:6px;color:var(--muted)}
-      .s-locked{opacity:.28;filter:grayscale(1);cursor:not-allowed}
-      @keyframes node-pulse{0%,100%{box-shadow:0 0 4px var(--rank-color)}50%{box-shadow:0 0 12px var(--rank-color)}}
-      .s-avail{border-color:var(--rank-color);animation:node-pulse 1.6s ease-in-out infinite}
-      .s-active{border-color:var(--rank-color);box-shadow:0 0 8px var(--rank-color);background:rgba(255,255,255,.06)}
-      .s-active .n-lbl{color:var(--rank-color)}
-      .n-tip{opacity:0;pointer-events:none;position:absolute;left:108%;top:50%;transform:translateY(-50%);background:var(--overlay);font-size:8px;padding:4px 6px;border:1px solid var(--rank-color);border-radius:4px;white-space:nowrap;line-height:1.4;transition:opacity .2s;z-index:15}
-      .s-node:hover:not(.s-locked) .n-tip{opacity:1}
-      .n-tip b{color:var(--rank-color)}
+      .arbol-root{
+        --ink:#0d1117;
+        --panel:#131a26;
+        --surface:#1c2740;
+        --btn-bg:#162035;
+        --overlay:rgba(8,12,20,0.85);
+        --bronze:#cd7f32;
+        --silver:#c0c0c0;
+        --gold:#ffd700;
+        --text-main:#e6edf3;
+        --text-dim:#8b949e;
+        --accent-green:#2ea043;
+        --accent-red:#da3633;
+        --rank-color:#cd7f32;
+        width:100%;
+        height:100%;
+        min-width:0;
+        min-height:0;
+        background:var(--panel);
+        border:2px solid var(--surface);
+        box-shadow:0 0 20px rgba(0,0,0,0.5);
+        display:flex;
+        flex-direction:column;
+        position:relative;
+        overflow:hidden;
+        color:var(--text-main);
+        font-family:'Courier New', Courier, monospace;
+      }
 
-      #syn-wrap{width:100%;margin-top:6px;padding:0 2px}
-      #syn-lbl{display:flex;justify-content:space-between;font-size:7px;color:var(--muted);margin-bottom:3px}
-      #syn-bar{display:flex;gap:2px;height:6px}
-      .syn-seg{flex:1;background:var(--surface);border:1px solid rgba(255,255,255,.07);border-radius:2px}
-      .syn-seg.on{background:var(--rank-color);box-shadow:0 0 4px var(--rank-color)}
+      .ar-top{
+        height:40px;
+        min-height:40px;
+        background:var(--surface);
+        border-bottom:1px solid var(--ink);
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:8px;
+        padding:0 10px;
+      }
+      .ar-rank-timeline{display:flex;gap:4px;overflow-x:auto;min-width:0;flex:1}
+      .ar-rank-icon{
+        min-width:52px;height:25px;padding:0 4px;border:1px solid var(--text-dim);
+        background:var(--btn-bg);display:flex;align-items:center;justify-content:center;
+        font-size:9px;cursor:pointer;opacity:.5;white-space:nowrap;position:relative;
+      }
+      .ar-rank-icon.active{opacity:1;border-color:var(--gold);box-shadow:0 0 5px var(--gold)}
+      .ar-rank-icon.completed{opacity:1;background:var(--gold);color:var(--ink);font-weight:700}
+      .ar-rank-icon.future::after{content:'🔒';position:absolute;top:-8px;right:-4px;font-size:10px}
 
-      #bonus-card{flex:1;background:var(--surface);border-radius:4px;border:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:5px;text-align:center;position:relative;overflow:hidden}
-      #bonus-lbl{font-size:7px;letter-spacing:1px;color:var(--muted);font-family:'Orbitron',sans-serif}
-      #bonus-ico{font-size:20px}
-      #bonus-name{font-size:9px;color:var(--rank-color);font-weight:700}
-      #bonus-desc{font-size:7px;color:var(--muted);line-height:1.4}
-      #bonus-state{font-size:7px;color:var(--gold);margin-top:4px}
-      #bonus-lock{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(8,12,20,.72);font-size:18px}
-      #bonus-lock.open{opacity:0;pointer-events:none}
-      #next-shadow{background:var(--btn-bg);border:1px solid rgba(255,255,255,.06);border-radius:4px;min-height:36px;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:.55}
-      #next-shadow .ns-badge{font-size:11px;font-family:'Orbitron',sans-serif;font-weight:900}
-      #next-shadow .ns-lbl{font-size:6px;color:var(--muted)}
+      .ar-cp{font-size:14px;color:var(--gold);font-weight:700;white-space:nowrap;text-shadow:0 0 5px rgba(255,215,0,.5)}
+      .counting-anim{animation:countUp .2s ease-out}
+      @keyframes countUp{0%{transform:translateY(0)}50%{transform:translateY(-2px);color:#fff}100%{transform:translateY(0)}}
 
-      #bottom-bar{height:28px;display:flex;align-items:center;gap:6px;padding:0 8px;background:var(--panel);border-top:1px solid rgba(255,255,255,.06)}
-      #bot-rank{font-size:7px;color:var(--rank-color);font-family:'Orbitron',sans-serif;white-space:nowrap}
-      #bot-lore{font-size:7.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .ar-main{
+        flex:1;
+        min-height:0;
+        min-width:0;
+        display:flex;
+        gap:6px;
+        padding:6px;
+        overflow:hidden;
+      }
 
-      #ascend-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(8,12,20,.88);z-index:50;opacity:0;pointer-events:none;transition:opacity .25s}
-      #ascend-overlay.show{opacity:1;pointer-events:all}
-      #ascend-msg{font-family:'Orbitron',sans-serif;font-size:14px;color:var(--gold);text-shadow:0 0 10px var(--gold);text-align:center;line-height:1.4}
+      .ar-stats{
+        width:25%;
+        min-width:110px;
+        background:var(--surface);
+        border-radius:4px;
+        padding:8px;
+        display:flex;
+        flex-direction:column;
+        gap:6px;
+        font-size:13px;
+      }
+      .ar-stat-row{display:flex;justify-content:space-between;border-bottom:1px solid var(--btn-bg);padding-bottom:4px}
+      .ar-stat-val.updating{color:var(--accent-green);animation:flash .5s}
+      @keyframes flash{0%{color:var(--text-main)}50%{color:var(--accent-green);text-shadow:0 0 5px var(--accent-green)}100%{color:var(--text-main)}}
 
-      .arbol-stage::-webkit-scrollbar{width:4px;height:4px}
-      .arbol-stage::-webkit-scrollbar-track{background:var(--ink)}
-      .arbol-stage::-webkit-scrollbar-thumb{background:var(--surface);border-radius:2px}
+      .ar-center{
+        flex:1;
+        min-width:0;
+        min-height:0;
+        background:var(--ink);
+        border:1px solid var(--surface);
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        justify-content:center;
+        position:relative;
+        overflow:hidden;
+        padding:8px;
+      }
+      .ar-title{font-size:13px;color:var(--rank-color);font-weight:700;letter-spacing:.6px;text-align:center}
+      .ar-lore{font-size:10px;color:var(--text-dim);text-align:center;margin-bottom:6px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+      .ar-locked-bg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:.2;color:var(--text-dim);font-size:24px;letter-spacing:4px}
+      .ar-constellation{
+        width:min(100%,340px);
+        flex:1;
+        min-height:120px;
+        display:grid;
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:10px;
+        align-content:center;
+        justify-items:center;
+        z-index:2;
+      }
+      .ar-node:nth-child(5){grid-column:span 2}
+      .ar-node{
+        width:48px;height:48px;border-radius:50%;border:2px solid var(--text-dim);
+        background:var(--btn-bg);display:flex;align-items:center;justify-content:center;
+        font-size:20px;position:relative;transition:all .25s;cursor:default;
+      }
+      .ar-node.locked{opacity:.3;filter:grayscale(100%);cursor:not-allowed}
+      .ar-node.available{border-color:var(--silver);animation:pulse 2s infinite;cursor:pointer}
+      .ar-node.activated{background:var(--surface);border-color:var(--gold);box-shadow:0 0 10px var(--gold);color:var(--gold)}
+      @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(192,192,192,.4)}70%{box-shadow:0 0 0 6px rgba(192,192,192,0)}100%{box-shadow:0 0 0 0 rgba(192,192,192,0)}}
+      .ar-node::after{
+        content:attr(data-info);
+        position:absolute;
+        left:110%;
+        top:50%;
+        transform:translateY(-50%);
+        opacity:0;
+        pointer-events:none;
+        background:var(--overlay);
+        border:1px solid var(--surface);
+        padding:4px;
+        font-size:9px;
+        width:160px;
+        white-space:normal;
+        z-index:20;
+        transition:opacity .2s;
+      }
+      .ar-node:hover::after{opacity:1}
+
+      .ar-bonus{
+        width:27%;
+        min-width:130px;
+        background:var(--surface);
+        border:1px solid var(--text-dim);
+        border-radius:4px;
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        justify-content:center;
+        gap:6px;
+        text-align:center;
+        font-size:12px;
+        padding:8px;
+        opacity:.65;
+        cursor:not-allowed;
+        transition:all .3s;
+      }
+      .ar-bonus.unlocked{border-color:var(--gold);background:rgba(255,215,0,.1);opacity:1;cursor:pointer;animation:pulseGold 1.5s infinite}
+      .ar-bonus.unlocked:hover{transform:scale(1.03)}
+      @keyframes pulseGold{0%{box-shadow:0 0 0 0 rgba(255,215,0,.4)}70%{box-shadow:0 0 0 10px rgba(255,215,0,0)}100%{box-shadow:0 0 0 0 rgba(255,215,0,0)}}
+      .ar-bonus-ico{font-size:26px;filter:grayscale(1)}
+      .ar-bonus.unlocked .ar-bonus-ico{filter:grayscale(0);animation:glow 1s infinite alternate}
+      @keyframes glow{from{text-shadow:0 0 2px var(--gold)}to{text-shadow:0 0 10px var(--gold),0 0 5px var(--gold)}}
+      .ar-bonus-label{font-weight:700;color:var(--text-dim)}
+      .ar-bonus.unlocked .ar-bonus-label{color:var(--gold)}
+      .ar-bonus-sub{font-size:10px;color:var(--text-dim)}
+
+      .ar-bottom{height:34px;min-height:34px;background:var(--surface);padding:4px 10px;display:flex;flex-direction:column;justify-content:center}
+      .ar-progress{height:8px;background:var(--ink);border-radius:4px;display:flex;overflow:hidden}
+      .ar-seg{flex:1;background:var(--btn-bg);border-right:1px solid var(--ink)}
+      .ar-seg.filled{background:var(--rank-color)}
+      .ar-lore-bottom{font-size:9px;color:var(--text-dim);text-align:center;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+      .ar-ascension{
+        position:absolute;inset:0;z-index:100;
+        display:flex;flex-direction:column;align-items:center;justify-content:center;
+        background:var(--overlay);opacity:0;pointer-events:none;transition:opacity .5s;
+      }
+      .ar-ascension.active{opacity:1;pointer-events:all}
+      .ar-asc-msg{font-size:24px;color:var(--gold);font-weight:700;letter-spacing:2px;text-shadow:0 0 10px var(--gold);animation:popIn .5s cubic-bezier(.175,.885,.32,1.275)}
+      @keyframes popIn{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
+
+      @media (max-width: 420px){
+        .ar-main{flex-direction:column}
+        .ar-stats,.ar-bonus{width:100%;min-width:0}
+        .ar-center{order:-1;min-height:190px}
+      }
     `;
     document.head.appendChild(style);
   }
 
   function template() {
-    return `<div class="arbol-stage"><div class="arbol-shell"><div class="arbol-root" id="arbol-root"><div id="top-bar"><div id="rank-timeline"></div><div id="cp-box"><span>⚡</span><span class="lbl">PC</span><span id="cp-value">0</span></div></div><div id="main-row"><div id="stats-panel"><div class="stats-hdr">STATS</div><div class="stat-row"><span>⚔️</span><span class="stat-nm">ATK</span><span class="stat-val" id="sv-atk">0</span></div><div class="stat-row"><span>🛡️</span><span class="stat-nm">DEF</span><span class="stat-val" id="sv-def">0</span></div><div class="stat-row"><span>❤️</span><span class="stat-nm">HP</span><span class="stat-val" id="sv-hp">0</span></div><div class="stat-row"><span>💨</span><span class="stat-nm">SPD</span><span class="stat-val" id="sv-spd">0</span></div><div class="stat-row"><span>🔵</span><span class="stat-nm">CHK</span><span class="stat-val" id="sv-chk">0</span></div></div><div id="center-panel"><div id="rank-header"><div id="rank-name"></div><div id="rank-lore"></div></div><div id="constellation"><div id="locked-ranks-bg"></div><svg id="c-svg" viewBox="0 0 152 128"></svg><div id="center-emblem">⚡</div></div><div id="syn-wrap"><div id="syn-lbl"><span>SINTONÍA</span><span id="syn-count">0/5</span></div><div id="syn-bar"><div class="syn-seg" id="ss0"></div><div class="syn-seg" id="ss1"></div><div class="syn-seg" id="ss2"></div><div class="syn-seg" id="ss3"></div><div class="syn-seg" id="ss4"></div></div></div></div><div id="right-panel"><div id="bonus-card"><div id="bonus-lbl">BONO DE RANGO</div><div id="bonus-ico"></div><div id="bonus-name"></div><div id="bonus-desc"></div><div id="bonus-state"></div><div id="bonus-lock">🔒</div></div><div id="next-shadow"><span class="ns-badge">???</span><span class="ns-lbl">BLOQUEADO</span></div></div></div><div id="bottom-bar"><span id="bot-rank"></span><span id="bot-lore"></span></div><div id="ascend-overlay"><div id="ascend-msg">RANGO COMPLETADO</div></div></div></div></div>`;
+    return `
+      <div class="arbol-stage">
+        <div class="arbol-shell">
+          <div class="arbol-root" id="arbol-root">
+            <div class="ar-top">
+              <div class="ar-rank-timeline" id="ar-rank-timeline"></div>
+              <div class="ar-cp" id="ar-cp">🌀 0</div>
+            </div>
+            <div class="ar-main">
+              <div class="ar-stats" id="ar-stats"></div>
+              <div class="ar-center">
+                <div class="ar-title" id="ar-title"></div>
+                <div class="ar-lore" id="ar-lore"></div>
+                <div class="ar-locked-bg" id="ar-locked-bg"></div>
+                <div class="ar-constellation" id="ar-constellation"></div>
+              </div>
+              <div class="ar-bonus" id="ar-bonus">
+                <div class="ar-bonus-ico" id="ar-bonus-ico">🔒</div>
+                <div class="ar-bonus-label" id="ar-bonus-label">BLOQUEADO</div>
+                <div class="ar-bonus-sub" id="ar-bonus-sub">COMPLETA LOS 5 NODOS</div>
+              </div>
+            </div>
+            <div class="ar-bottom">
+              <div class="ar-progress" id="ar-progress"></div>
+              <div class="ar-lore-bottom" id="ar-lore-bottom"></div>
+            </div>
+            <div class="ar-ascension" id="ar-ascension">
+              <div class="ar-asc-msg" id="ar-asc-msg">RANGO COMPLETADO</div>
+              <div style="font-size:12px;margin-top:10px;">ASCENDIENDO...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   function mountArbolUI({ container, manager }) {
@@ -98,210 +261,283 @@
     container.replaceChildren();
     container.insertAdjacentHTML('beforeend', template());
 
-    const data = window.ARBOL_RANKS_DATA;
-    const logic = window.createRanksLogic({ manager });
-    const { S } = logic;
+    const ranks = ['GENIN', 'CHŪNIN', 'JŌNIN', 'ANBU', 'KAGE'];
+    const statsConfig = [
+      { id: 'atk', icon: '⚔️', label: 'ATK', increment: 5 },
+      { id: 'def', icon: '🛡️', label: 'DEF', increment: 5 },
+      { id: 'hp', icon: '❤️', label: 'HP', increment: 50 },
+      { id: 'spd', icon: '⚡', label: 'SPD', increment: 1 },
+      { id: 'chak', icon: '🌀', label: 'CHAK', increment: 20 }
+    ];
+
+    const rankBonuses = {
+      GENIN: { icon: '🍥', text: '+10% DEF' },
+      'CHŪNIN': { icon: '⚔️', text: '+10% ATK' },
+      'JŌNIN': { icon: '❤️', text: '+15% HP' },
+      ANBU: { icon: '⚡', text: '+20% SPD' },
+      KAGE: { icon: '👑', text: 'MASTER' }
+    };
+
+    const rankLore = {
+      GENIN: 'Academia: Tu cuerpo comienza a adaptarse al chakra básico.',
+      'CHŪNIN': 'Has sobrevivido a misiones de rango bajo. Resistencia aumentada.',
+      'JŌNIN': 'Estrategia y poder bruto se equilibran en tu ser.',
+      ANBU: 'Eres una amenaza para la aldea. Maestría elemental.',
+      KAGE: 'Tu presencia distorsiona el campo de batalla.'
+    };
+
+    const rankColors = {
+      GENIN: '#cd7f32',
+      'CHŪNIN': '#c0c0c0',
+      'JŌNIN': '#b08d57',
+      ANBU: '#e5e4e2',
+      KAGE: '#ffd700'
+    };
+
+    const state = {
+      currentRankIndex: 0,
+      viewRankIndex: 0,
+      combatPoints: 150,
+      stats: { atk: 10, def: 10, hp: 100, spd: 5, chak: 50 },
+      progress: ranks.map(() => [false, false, false, false, false]),
+      bonusClaimed: ranks.map(() => false)
+    };
+
     const listeners = [];
     const timers = new Set();
-    const rafIds = new Set();
+    let ascensionRunning = false;
     const q = (id) => container.querySelector(`#${id}`);
-
-    function on(el, event, handler, opts) {
-      el.addEventListener(event, handler, opts);
-      listeners.push(() => el.removeEventListener(event, handler, opts));
-    }
-
-    function setTimer(fn, ms) {
+    const on = (el, ev, fn, opts) => {
+      el.addEventListener(ev, fn, opts);
+      listeners.push(() => el.removeEventListener(ev, fn, opts));
+    };
+    const setT = (fn, ms) => {
       const id = window.setTimeout(() => {
         timers.delete(id);
         fn();
       }, ms);
       timers.add(id);
       return id;
+    };
+
+    function getDone(index) {
+      return state.progress[index].filter(Boolean).length;
     }
 
-    function animateCP(from, to) {
-      const el = q('cp-value');
-      const dur = 850;
-      const start = Date.now();
-      const tick = () => {
-        const t = Math.min((Date.now() - start) / dur, 1);
-        const ease = 1 - Math.pow(1 - t, 3);
-        el.textContent = Math.floor(from + (to - from) * ease);
-        if (t < 1) {
-          const id = requestAnimationFrame(tick);
-          rafIds.add(id);
-        } else {
-          el.textContent = String(to);
-          el.classList.add('cp-flash');
-          setTimer(() => el.classList.remove('cp-flash'), 450);
+    function refreshManagerStats() {
+      if (manager?.setState) {
+        manager.setState({
+          atk: state.stats.atk,
+          def: state.stats.def,
+          hp: state.stats.hp
+        });
+      }
+    }
+
+    function animatePoints(targetValue) {
+      let current = 0;
+      const step = Math.ceil(targetValue / 20);
+      const el = q('ar-cp');
+      const interval = window.setInterval(() => {
+        current += step;
+        if (current >= targetValue) {
+          current = targetValue;
+          window.clearInterval(interval);
+          timers.delete(interval);
         }
-      };
-      tick();
-    }
-
-    function boostStat(key) {
-      const el = q(`sv-${key}`);
-      if (!el) return;
-      el.textContent = S.stats[key];
-      el.classList.remove('stat-boosted');
-      void el.offsetWidth;
-      el.classList.add('stat-boosted');
-      const end = () => el.classList.remove('stat-boosted');
-      el.addEventListener('animationend', end, { once: true });
-      listeners.push(() => el.removeEventListener('animationend', end));
-    }
-
-    function refreshCPDisplay() {
-      q('cp-value').textContent = String(S.cp);
+        state.combatPoints = current;
+        el.textContent = `🌀 ${current}`;
+        el.classList.add('counting-anim');
+        setT(() => el.classList.remove('counting-anim'), 180);
+      }, 30);
+      timers.add(interval);
     }
 
     function renderTimeline() {
-      const tl = q('rank-timeline');
-      tl.innerHTML = '';
-      data.RANKS.forEach((r, i) => {
-        const div = document.createElement('div');
-        div.className = 'tl-node';
-        div.textContent = r.short;
-        if (i < S.currentRank) div.classList.add('completed');
-        else if (i === S.currentRank) div.classList.add('active');
-        else div.classList.add('future');
-        on(div, 'click', () => {
-          S.viewRank = i;
-          renderView();
+      const timeline = q('ar-rank-timeline');
+      timeline.innerHTML = '';
+      ranks.forEach((name, index) => {
+        const icon = document.createElement('button');
+        icon.type = 'button';
+        icon.className = 'ar-rank-icon';
+        icon.textContent = index < state.currentRankIndex ? `✓ ${name}` : name;
+        if (index < state.currentRankIndex) icon.classList.add('completed');
+        else if (index === state.currentRankIndex) icon.classList.add('active');
+        else icon.classList.add('future');
+        icon.addEventListener('click', () => {
+          state.viewRankIndex = index;
+          renderAll();
         });
-        tl.appendChild(div);
+        timeline.appendChild(icon);
       });
     }
 
-    function renderLockedBackground(viewIndex) {
-      const bg = q('locked-ranks-bg');
-      const future = data.RANKS.slice(viewIndex + 1, viewIndex + 3);
-      bg.innerHTML = future.map((r, idx) => (
-        `<div class="lock-shadow" style="transform:translate(${idx ? 28 : -26}px,${idx ? 18 : -15}px)">${r.short}<small>⛓</small></div>`
-      )).join('');
+    function renderStatsSheet() {
+      const stats = q('ar-stats');
+      stats.innerHTML = '';
+      statsConfig.forEach(({ label, id }) => {
+        const row = document.createElement('div');
+        row.className = 'ar-stat-row';
+        row.innerHTML = `<span>${label}</span><span id="ar-stat-${id}" class="ar-stat-val">${state.stats[id]}</span>`;
+        stats.appendChild(row);
+      });
     }
 
-    function renderConstellation(vi, r, prog, isCurrent) {
-      container.querySelectorAll('.s-node').forEach((n) => n.remove());
-      renderLockedBackground(vi);
+    function flashStat(id) {
+      const el = q(`ar-stat-${id}`);
+      if (!el) return;
+      el.classList.remove('updating');
+      void el.offsetWidth;
+      el.classList.add('updating');
+      setT(() => el.classList.remove('updating'), 520);
+    }
 
-      let lines = '';
+    function renderProgress() {
+      const bar = q('ar-progress');
+      bar.innerHTML = '';
+      const vi = state.viewRankIndex;
       for (let i = 0; i < 5; i += 1) {
-        const a = data.POS[i];
-        const b = data.POS[(i + 1) % 5];
-        const lit = prog[i] && prog[(i + 1) % 5];
-        lines += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${lit ? r.color : 'rgba(255,255,255,0.07)'}" stroke-width="${lit ? 1.6 : 1}" stroke-dasharray="${lit ? '' : '4 3'}" opacity="${lit ? 0.85 : 0.45}"/>`;
+        const seg = document.createElement('div');
+        seg.className = `ar-seg ${state.progress[vi][i] ? 'filled' : ''}`;
+        bar.appendChild(seg);
       }
-      q('c-svg').innerHTML = lines;
+    }
 
-      const con = q('constellation');
-      r.nodes.forEach((nd, i) => {
-        const act = prog[i];
-        const isViewedFuture = vi > S.currentRank;
-        const avail = isCurrent && !act && S.cp >= r.cost;
-        const div = document.createElement('div');
-        div.className = `s-node ${act ? 's-active' : avail ? 's-avail' : 's-locked'}`;
-        div.style.left = `${data.POS[i].x}px`;
-        div.style.top = `${data.POS[i].y}px`;
-        const after = S.stats[nd.key] + nd.bonus;
-        const tipSide = (i === 1 || i === 2) ? 'right:108%;left:auto;' : 'left:108%;';
-        div.innerHTML = `<div class="n-ico">${nd.ico}</div><div class="n-lbl">${nd.stat}</div><div class="n-tip" style="${tipSide}"><b>${nd.stat}</b><br>${act ? '✓ Activado' : `Costo: ${r.cost} PC`}<br>${S.stats[nd.key]} actuales → <b>${after}</b> tras mejora</div>`;
-        if (!act && isCurrent && !isViewedFuture) {
-          on(div, 'click', () => {
-            const result = logic.buyNode(vi, i, nd);
-            if (!result.ok) return;
-            refreshCPDisplay();
-            boostStat(result.statKey);
-            const rankDone = result.done === 5;
-            if (rankDone) {
-              runAscension(vi);
+    function renderBonusPanel() {
+      const vi = state.viewRankIndex;
+      const bonus = rankBonuses[ranks[vi]];
+      const done = getDone(vi);
+      const isCurrent = vi === state.currentRankIndex;
+      const isComplete = done === 5;
+      const isPast = vi < state.currentRankIndex || state.bonusClaimed[vi];
+
+      const panel = q('ar-bonus');
+      const icon = q('ar-bonus-ico');
+      const label = q('ar-bonus-label');
+      const sub = q('ar-bonus-sub');
+
+      panel.classList.remove('unlocked');
+      if ((isCurrent && isComplete) || isPast) {
+        panel.classList.add('unlocked');
+        icon.textContent = bonus.icon;
+        label.textContent = bonus.text;
+        sub.textContent = isCurrent && isComplete ? 'CLICK PARA ASCENDER' : 'BONO OBTENIDO';
+      } else if (vi > state.currentRankIndex) {
+        icon.textContent = '🔒';
+        label.textContent = 'RANGO FUTURO';
+        sub.textContent = 'BLOQUEADO';
+      } else {
+        icon.textContent = '🔒';
+        label.textContent = 'BLOQUEADO';
+        sub.textContent = `COMPLETA ${5 - done} NODOS`;
+      }
+    }
+
+    function renderConstellation() {
+      const vi = state.viewRankIndex;
+      const currentRank = ranks[vi];
+      const done = getDone(vi);
+      const isCurrent = vi === state.currentRankIndex;
+      const grid = q('ar-constellation');
+      grid.innerHTML = '';
+
+      q('ar-title').textContent = currentRank;
+      q('ar-lore').textContent = rankLore[currentRank];
+      q('ar-lore-bottom').textContent = `${currentRank}: ${rankLore[currentRank]}`;
+      q('arbol-root').style.setProperty('--rank-color', rankColors[currentRank]);
+
+      const futureRanks = ranks.slice(vi + 1).join(' ⛓ ');
+      q('ar-locked-bg').textContent = futureRanks;
+
+      statsConfig.forEach((stat, index) => {
+        const node = document.createElement('button');
+        node.type = 'button';
+        node.className = 'ar-node';
+        node.innerHTML = stat.icon;
+
+        const active = state.progress[vi][index];
+        const canBuy = isCurrent && !active && done === index && state.combatPoints >= 20;
+
+        if (active) node.classList.add('activated');
+        else if (canBuy) node.classList.add('available');
+        else node.classList.add('locked');
+
+        const currentVal = state.stats[stat.id];
+        const nextVal = currentVal + stat.increment;
+        node.setAttribute('data-info', `${stat.label}: +${stat.increment} (${currentVal} actuales → ${nextVal} tras mejora)`);
+
+        if (canBuy) {
+          node.addEventListener('click', () => {
+            state.combatPoints -= 20;
+            state.progress[vi][index] = true;
+            state.stats[stat.id] += stat.increment;
+            refreshManagerStats();
+            flashStat(stat.id);
+            const newDone = getDone(vi);
+            if (newDone === 5) {
+              renderAll();
+              runAscension();
               return;
             }
-            renderView();
+            renderAll();
           });
         }
-        con.appendChild(div);
+
+        grid.appendChild(node);
       });
     }
 
-    function runAscension(rankIndex) {
-      const ov = q('ascend-overlay');
-      const rank = data.RANKS[rankIndex];
-      const msg = q('ascend-msg');
-      msg.textContent = `RANGO COMPLETADO\n${rank.name}`;
-      ov.classList.add('show');
-      setTimer(() => {
-        logic.claimBonus(rankIndex);
-        ov.classList.remove('show');
-        renderTimeline();
-        renderView();
-      }, 950);
+    function runAscension() {
+      if (ascensionRunning) return;
+      ascensionRunning = true;
+      const ov = q('ar-ascension');
+      const msg = q('ar-asc-msg');
+      const rankName = ranks[state.currentRankIndex];
+      msg.textContent = `RANGO COMPLETADO: ${rankName}`;
+      ov.classList.add('active');
+
+      setT(() => {
+        state.bonusClaimed[state.currentRankIndex] = true;
+        if (state.currentRankIndex < ranks.length - 1) {
+          state.currentRankIndex += 1;
+          state.viewRankIndex = state.currentRankIndex;
+          state.combatPoints += 100;
+        }
+        ov.classList.remove('active');
+        renderAll();
+        ascensionRunning = false;
+      }, 1400);
     }
 
-    function renderView() {
-      const vi = S.viewRank;
-      const r = data.RANKS[vi];
-      const prog = S.progress[vi];
-      const done = prog.filter(Boolean).length;
-      const isCurrent = vi === S.currentRank;
-      const isPast = vi < S.currentRank;
-
-      q('arbol-root').style.setProperty('--rank-color', r.color);
-      q('rank-name').textContent = r.name;
-      q('rank-lore').textContent = r.lore;
-      q('bot-rank').textContent = `${r.name} · ${r.label}`;
-      q('bot-lore').textContent = r.loreFull;
-      q('bonus-ico').textContent = r.bonus.ico;
-      q('bonus-name').textContent = r.bonus.name;
-      q('bonus-desc').textContent = r.bonus.desc;
-
-      ['atk', 'def', 'hp', 'spd', 'chk'].forEach((k) => { q(`sv-${k}`).textContent = S.stats[k]; });
-
-      const lockEl = q('bonus-lock');
-      const bonusState = q('bonus-state');
-      if (isPast || S.bonusClaimed[vi]) {
-        lockEl.classList.add('open');
-        bonusState.textContent = 'BONO OBTENIDO';
-      } else if (done === 5 && isCurrent) {
-        lockEl.classList.add('open');
-        bonusState.textContent = 'LISTO PARA ASCENDER';
-      } else if (vi > S.currentRank) {
-        lockEl.classList.remove('open');
-        bonusState.textContent = 'RANGO FUTURO · BLOQUEADO';
-      } else {
-        lockEl.classList.remove('open');
-        bonusState.textContent = `Progreso ${done}/5`;
-      }
-
-      q('syn-count').textContent = `${done}/5`;
-      for (let i = 0; i < 5; i += 1) q(`ss${i}`).classList.toggle('on', prog[i]);
-
-      const ns = q('next-shadow');
-      if (vi < data.RANKS.length - 1) {
-        const nx = data.RANKS[vi + 1];
-        ns.innerHTML = `<span class="ns-badge" style="color:${nx.color}">${nx.short}</span><span class="ns-lbl">BLOQUEADO</span>`;
-        ns.style.display = 'flex';
-      } else {
-        ns.style.display = 'none';
-      }
-
-      renderConstellation(vi, r, prog, isCurrent);
+    function bindBonus() {
+      on(q('ar-bonus'), 'click', () => {
+        if (state.viewRankIndex !== state.currentRankIndex) return;
+        if (getDone(state.currentRankIndex) === 5) runAscension();
+      });
     }
 
-    renderTimeline();
-    renderView();
-    animateCP(Math.max(0, S.cp - 25), S.cp);
+    function renderAll() {
+      renderTimeline();
+      q('ar-cp').textContent = `🌀 ${state.combatPoints}`;
+      renderStatsSheet();
+      renderConstellation();
+      renderProgress();
+      renderBonusPanel();
+    }
+
+    bindBonus();
+    renderAll();
+    animatePoints(150);
 
     return {
       destroy() {
         listeners.forEach((off) => off());
         listeners.length = 0;
-        timers.forEach((id) => clearTimeout(id));
+        timers.forEach((id) => {
+          clearTimeout(id);
+          clearInterval(id);
+        });
         timers.clear();
-        rafIds.forEach((id) => cancelAnimationFrame(id));
-        rafIds.clear();
-        logic.destroy();
         container.replaceChildren();
       }
     };

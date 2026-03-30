@@ -88,6 +88,7 @@
   let heroCleanup = null;
   let misionesCleanup = null;
   let arbolCleanup = null;
+  let jutsusCleanup = null;
   let selectedCharacter = null;
   let gameLaunched = false;
   let autoSaveIntervalId = null;
@@ -111,11 +112,28 @@
   const defaultLevels = { cabeza: 1, pecho: 1, manos: 1, piernas: 1, pies: 1, accesorio: 1 };
   const defaultTreeBonuses = { HP: 0, MP: 0, ATK: 0, DEF: 0, VEL: 0 };
   const defaultSkillPoints = 0;
+  const defaultJutsusState = {
+    chakra: 1200,
+    levels: Array(8).fill(0),
+    slots: [null, null, null]
+  };
+  const JUTSUS_UPGRADE_COST = 150;
+  const JUTSUS_LIBRARY = [
+    { id: 0, name: 'Sombra Ardiente', durationMs: 4500, descs: ['🔥 Quema constantemente ignorando una parte de la defensa enemiga.', '🛡️ Aumenta la defensa física y reduce el daño recibido de críticos.', '💨 Crea una probabilidad de que el ataque enemigo falle totalmente.'], statKeys: ['🔥Quem', '🛡️Def%', '💨Fallo%', '📈Prob', '🔵MP'], levels: [[4.0, 10.0, 5.0, 5, 25], [4.5, 12.0, 6.0, 7, 28], [5.0, 14.0, 7.0, 9, 32], [5.5, 16.0, 8.0, 12, 36], [6.0, 18.0, 9.0, 15, 40], [7.0, 20.0, 10.0, 18, 45], [8.0, 22.0, 12.0, 22, 50], [9.0, 25.0, 14.0, 25, 55], [10.0, 28.0, 16.0, 28, 60], [12.0, 35.0, 20.0, 35, 70]] },
+    { id: 1, name: 'Colmillo Gélido', durationMs: 3500, descs: ['❄️ Reduce la velocidad del enemigo y puede congelarlo.', '❤️ Aumento masivo de la vida máxima (HP) del personaje.', '⚔️ Ataque que ignora la defensa del objetivo.'], statKeys: ['❄️-Veloc', '❤️HP%', '⚔️Penetr', '📈Prob', '🔵MP'], levels: [[15.0, 8.0, 10.0, 10, 30], [18.0, 10.0, 12.0, 12, 35], [21.0, 12.0, 14.0, 14, 40], [25.0, 15.0, 16.0, 17, 45], [30.0, 18.0, 18.0, 20, 50], [35.0, 22.0, 20.0, 24, 56], [40.0, 26.0, 22.0, 28, 62], [45.0, 30.0, 25.0, 32, 68], [48.0, 35.0, 28.0, 36, 75], [50.0, 45.0, 30.0, 45, 85]] },
+    { id: 2, name: 'Explosión Ponzoñosa', durationMs: 5000, descs: ['☠️ Inflige daño continuo de veneno cada turno.', '📊 Mejora global de todas las estadísticas como ATK, DEF y VEL.', '🔻 Genera daño de área que reduce la defensa del enemigo.'], statKeys: ['☠️Veneno', '📊Stats%', '🔻-DefEn', '📈Prob', '🔵MP'], levels: [[3.0, 5.0, -4.0, 8, 40], [3.5, 6.0, -5.0, 10, 44], [4.0, 7.0, -6.0, 13, 48], [4.5, 8.0, -7.0, 16, 52], [5.0, 9.0, -8.0, 19, 56], [6.0, 10.0, -10.0, 22, 61], [7.0, 12.0, -12.0, 26, 66], [8.0, 14.0, -14.0, 30, 72], [9.0, 16.0, -16.0, 35, 78], [12.0, 20.0, -20.0, 40, 90]] },
+    { id: 3, name: 'Dragón Tirano', durationMs: 3000, descs: ['👁️ Aturde al oponente y reduce su evasión significativamente.', '🔄 Aumenta la probabilidad de contraatacar tras recibir un golpe.', '📉 Baja el ataque de todos los enemigos por 3 turnos.'], statKeys: ['👁️-Evas', '🔄Contra%', '📉-AtkEn', '📈Prob', '🔵MP'], levels: [[-5.0, 10.0, -5.0, 15, 35], [-6.0, 12.0, -6.0, 18, 39], [-7.0, 14.0, -7.0, 21, 43], [-8.0, 16.0, -8.0, 24, 48], [-10.0, 18.0, -10.0, 28, 53], [-12.0, 21.0, -12.0, 32, 58], [-14.0, 24.0, -14.0, 36, 64], [-16.0, 27.0, -16.0, 40, 70], [-18.0, 30.0, -18.0, 45, 77], [-25.0, 40.0, -25.0, 55, 85]] },
+    { id: 4, name: 'Flash Mental', durationMs: 4000, descs: ['🚫 Probabilidad de cancelar las habilidades del enemigo.', '💨 Incrementa tu velocidad de ataque y la evasión.', '🌀 Confunde al enemigo, haciendo que se ataque a sí mismo.'], statKeys: ['🚫Cancel', '💨Vel&Ev%', '🌀Confus', '📈Prob', '🔵MP'], levels: [[5.0, 4.0, 2.0, 6, 20], [6.0, 5.0, 3.0, 8, 24], [7.0, 6.0, 4.0, 11, 28], [9.0, 8.0, 5.0, 14, 32], [11.0, 10.0, 6.0, 17, 37], [13.0, 12.0, 8.0, 21, 42], [15.0, 14.0, 10.0, 25, 48], [18.0, 16.0, 12.0, 29, 54], [21.0, 19.0, 15.0, 34, 60], [25.0, 25.0, 20.0, 40, 70]] },
+    { id: 5, name: 'Sifón Oscuro', durationMs: 0, descs: ['🩸 Roba una cantidad fija de puntos de chakra enemigo cada turno.', '💚 Regenera una porción de HP al inicio de cada turno.', '💸 Aumenta la evasión y reduce el coste de chakra de tus habilidades.'], statKeys: ['🩸RoboMP', '💚Regen%', '💸-Coste%', '📈Prob', '🔵MP'], units: ['Pts', '%', '%', '%', ''], levels: [[5, 2.0, -2.0, 100, 45], [7, 2.5, -3.0, 100, 45], [9, 3.0, -4.0, 100, 45], [12, 4.0, -5.0, 100, 45], [15, 5.0, -6.0, 100, 45], [18, 6.0, -8.0, 100, 45], [22, 7.0, -10.0, 100, 45], [26, 8.5, -12.0, 100, 45], [30, 10.0, -15.0, 100, 45], [40, 15.0, -20.0, 100, 45]] },
+    { id: 6, name: 'Guardián Fantasma', durationMs: 2500, descs: ['😵 Aturde al enemigo impidiendo que ataque por 2 turnos.', '⚡ Aumento de la probabilidad de tu golpe crítico.', '🛡️ Absorbe una cantidad fija de daño antes de desaparecer.'], statKeys: ['😵Turnos', '⚡Crit%', '🛡️EscudHP', '📈Prob', '🔵MP'], units: ['T', '%', 'HP', '%', ''], levels: [[1, 5.0, 100, 10, 50], [1, 7.0, 150, 12, 55], [1, 9.0, 200, 15, 60], [1, 11.0, 300, 18, 66], [1, 14.0, 400, 21, 72], [2, 17.0, 550, 25, 79], [2, 20.0, 700, 29, 86], [2, 24.0, 900, 34, 94], [2, 28.0, 1150, 39, 102], [2, 35.0, 1500, 45, 120]] },
+    { id: 7, name: 'Loto Volcánico', durationMs: 2000, descs: ['💥 Causa daño masivo pero reduce tu defensa temporalmente.', '⚔️ Incremento de ataque (ATK) permanente durante el combate.', '🎯 Aumento masivo de daño crítico a cambio de perder algo de HP.'], statKeys: ['💥DñoBase', '⚔️AtkPerm%', '🎯DñoCrit%', '📈Prob', '🔵MP'], units: ['%', '%', '%', '%', ''], levels: [[150, 2.0, 20.0, 50, 30], [165, 3.0, 25.0, 55, 35], [180, 4.0, 30.0, 60, 40], [200, 5.0, 35.0, 65, 45], [220, 6.0, 45.0, 70, 52], [245, 8.0, 55.0, 75, 59], [270, 10.0, 65.0, 80, 67], [300, 12.0, 80.0, 85, 75], [330, 15.0, 95.0, 90, 85], [400, 25.0, 120.0, 100, 100]] }
+  ];
   const baseCharacter = {
     gold: state.gold,
     levels: { ...defaultLevels },
     treeBonuses: { ...defaultTreeBonuses },
-    skillPoints: defaultSkillPoints
+    skillPoints: defaultSkillPoints,
+    jutsus: { ...defaultJutsusState, levels: [...defaultJutsusState.levels], slots: [...defaultJutsusState.slots] }
   };
 
   window.gameCharacter = window.gameCharacter || new Proxy(baseCharacter, {
@@ -128,6 +146,9 @@
       return true;
     }
   });
+  if (!window.gameCharacter.jutsus || typeof window.gameCharacter.jutsus !== 'object') {
+    window.gameCharacter.jutsus = { ...defaultJutsusState, levels: [...defaultJutsusState.levels], slots: [...defaultJutsusState.slots] };
+  }
 
   function ensureCharacterScript() {
     if (Array.isArray(window.PERSONAJES_DATA)) return Promise.resolve();
@@ -189,7 +210,12 @@
         gold: Math.round(Number(window.gameCharacter?.gold || state.gold)),
         levels: { ...(window.gameCharacter?.levels || {}) },
         treeBonuses: { ...(window.gameCharacter?.treeBonuses || {}) },
-        skillPoints: Math.max(0, Math.floor(Number(window.gameCharacter?.skillPoints) || 0))
+        skillPoints: Math.max(0, Math.floor(Number(window.gameCharacter?.skillPoints) || 0)),
+        jutsus: {
+          chakra: Math.max(0, Math.floor(Number(window.gameCharacter?.jutsus?.chakra) || 0)),
+          levels: Array.isArray(window.gameCharacter?.jutsus?.levels) ? window.gameCharacter.jutsus.levels.map((lv) => Math.max(0, Math.min(9, Math.floor(Number(lv) || 0)))) : [...defaultJutsusState.levels],
+          slots: Array.isArray(window.gameCharacter?.jutsus?.slots) ? window.gameCharacter.jutsus.slots.map((slot) => (Number.isInteger(slot) ? slot : null)) : [...defaultJutsusState.slots]
+        }
       },
       meta: {
         activeSection: state.activeSection,
@@ -289,9 +315,22 @@
       ? payload.equipment.treeBonuses
       : {};
     const skillPoints = Math.max(0, Math.floor(Number(payload.equipment?.skillPoints) || 0));
+    const rawJutsus = payload.equipment?.jutsus && typeof payload.equipment.jutsus === 'object'
+      ? payload.equipment.jutsus
+      : {};
+    const jutsuLevels = Array.isArray(rawJutsus.levels) ? rawJutsus.levels : defaultJutsusState.levels;
+    const jutsuSlots = Array.isArray(rawJutsus.slots) ? rawJutsus.slots : defaultJutsusState.slots;
     window.gameCharacter.levels = { ...defaultLevels, ...levels };
     window.gameCharacter.treeBonuses = { ...defaultTreeBonuses, ...treeBonuses };
     window.gameCharacter.skillPoints = skillPoints;
+    window.gameCharacter.jutsus = {
+      chakra: Math.max(0, Math.floor(Number(rawJutsus.chakra) || defaultJutsusState.chakra)),
+      levels: [...defaultJutsusState.levels].map((_, index) => Math.max(0, Math.min(9, Math.floor(Number(jutsuLevels[index]) || 0)))),
+      slots: [...defaultJutsusState.slots].map((_, index) => {
+        const id = Number(jutsuSlots[index]);
+        return Number.isInteger(id) && id >= 0 && id < JUTSUS_LIBRARY.length ? id : null;
+      })
+    };
     window.gameCharacter.gold = Math.max(0, Math.floor(Number(payload.equipment?.gold) || state.gold));
     state.gold = window.gameCharacter.gold;
 
@@ -359,6 +398,7 @@
     window.gameCharacter.levels = { ...defaultLevels };
     window.gameCharacter.treeBonuses = { ...defaultTreeBonuses };
     window.gameCharacter.skillPoints = defaultSkillPoints;
+    window.gameCharacter.jutsus = { ...defaultJutsusState, levels: [...defaultJutsusState.levels], slots: [...defaultJutsusState.slots] };
 
     refs.charName.textContent = char.name.toUpperCase();
     refs.charRank.textContent = char.rank;
@@ -591,6 +631,10 @@
       arbolCleanup();
       arbolCleanup = null;
     }
+    if (typeof jutsusCleanup === 'function') {
+      jutsusCleanup();
+      jutsusCleanup = null;
+    }
     refs.center.replaceChildren();
   }
 
@@ -603,6 +647,123 @@
     wrap.style.alignItems = 'center';
     wrap.innerHTML = `<div style="text-align:center;color:var(--text-mid)"><h3>${info.icon} ${info.title}</h3><p style="margin-top:6px;font-size:.8rem">${info.desc || 'Sin contenido por ahora.'}</p></div>`;
     refs.center.appendChild(wrap);
+  }
+
+  function resolveEquippedJutsusForCombat() {
+    const jutsuState = window.gameCharacter?.jutsus || defaultJutsusState;
+    const slots = Array.isArray(jutsuState.slots) ? jutsuState.slots : [];
+    const levels = Array.isArray(jutsuState.levels) ? jutsuState.levels : [];
+    return slots
+      .map((id) => (Number.isInteger(id) ? JUTSUS_LIBRARY[id] : null))
+      .filter(Boolean)
+      .map((skill) => {
+        const levelIndex = Math.max(0, Math.min(9, Math.floor(Number(levels[skill.id]) || 0)));
+        return { ...skill, levelIndex, level: levelIndex + 1, values: skill.levels[levelIndex] };
+      });
+  }
+
+  window.resolveEquippedJutsusForCombat = resolveEquippedJutsusForCombat;
+
+  function renderJutsusSection() {
+    cleanupCenter();
+    const panel = document.createElement('div');
+    panel.className = 'jutsus-system';
+    panel.innerHTML = `
+      <div class="jutsu-top"><b>🈳 Chakra</b><span id="jutsu-chakra"></span></div>
+      <div class="jutsu-slots" id="jutsu-slots"></div>
+      <div class="jutsu-list" id="jutsu-list"></div>`;
+    refs.center.appendChild(panel);
+
+    const chakraEl = panel.querySelector('#jutsu-chakra');
+    const slotsEl = panel.querySelector('#jutsu-slots');
+    const listEl = panel.querySelector('#jutsu-list');
+
+    const fmt = (v, unit) => {
+      if (unit) return `${v}${unit}`;
+      return Number.isInteger(v) ? `${v}%` : `${Number(v).toFixed(1)}%`;
+    };
+    const getState = () => {
+      if (!window.gameCharacter.jutsus) {
+        window.gameCharacter.jutsus = { ...defaultJutsusState, levels: [...defaultJutsusState.levels], slots: [...defaultJutsusState.slots] };
+      }
+      return window.gameCharacter.jutsus;
+    };
+    const slotOf = (id) => getState().slots.indexOf(id);
+
+    const render = () => {
+      const jutsuState = getState();
+      chakraEl.textContent = Number(jutsuState.chakra || 0).toLocaleString('es-ES');
+
+      slotsEl.innerHTML = '';
+      jutsuState.slots.forEach((skillId, index) => {
+        const slot = document.createElement('button');
+        slot.className = 'jutsu-slot';
+        const sk = Number.isInteger(skillId) ? JUTSUS_LIBRARY[skillId] : null;
+        if (!sk) {
+          slot.textContent = `Slot ${index + 1} vacío`;
+        } else {
+          slot.textContent = `${sk.name} Lv ${jutsuState.levels[skillId] + 1}`;
+        }
+        slot.addEventListener('click', () => {
+          if (sk) {
+            window.alert(`${sk.name} equipado en slot ${index + 1}`);
+          }
+        }, { signal });
+        slotsEl.appendChild(slot);
+      });
+
+      listEl.innerHTML = '';
+      JUTSUS_LIBRARY.forEach((sk) => {
+        const lv = jutsuState.levels[sk.id];
+        const values = sk.levels[lv];
+        const equipped = slotOf(sk.id) >= 0;
+        const card = document.createElement('div');
+        card.className = 'jutsu-card';
+        card.innerHTML = `
+          <div class="jutsu-card-top">
+            <span class="jutsu-name">${sk.name}</span>
+            <span class="jutsu-lv">Lv ${lv + 1}/10 ${equipped ? '✔' : ''}</span>
+          </div>
+          <div class="jutsu-stats">${sk.statKeys.slice(0, 3).map((key, i) => `<span>${key} ${fmt(values[i], sk.units?.[i])}</span>`).join('')}</div>
+          <div class="jutsu-desc">${sk.descs.join(' · ')}</div>
+          <div class="jutsu-actions">
+            <button data-action="upgrade" data-id="${sk.id}">🈳 ${JUTSUS_UPGRADE_COST} Mejorar</button>
+            <button data-action="equip" data-id="${sk.id}">${equipped ? '✖ Quitar' : '+ Equipar'}</button>
+          </div>`;
+        listEl.appendChild(card);
+      });
+    };
+
+    listEl.addEventListener('click', (event) => {
+      const btn = event.target.closest('button[data-action]');
+      if (!btn) return;
+      const skillId = Number(btn.dataset.id);
+      const skill = JUTSUS_LIBRARY[skillId];
+      if (!skill) return;
+      const jutsuState = getState();
+      const action = btn.dataset.action;
+
+      if (action === 'upgrade') {
+        if (jutsuState.levels[skillId] >= 9) return;
+        if (jutsuState.chakra < JUTSUS_UPGRADE_COST) return;
+        jutsuState.chakra -= JUTSUS_UPGRADE_COST;
+        jutsuState.levels[skillId] += 1;
+      } else if (action === 'equip') {
+        const existing = slotOf(skillId);
+        if (existing >= 0) {
+          jutsuState.slots[existing] = null;
+        } else {
+          const free = jutsuState.slots.indexOf(null);
+          if (free < 0) return;
+          jutsuState.slots[free] = skillId;
+        }
+      }
+      queueAutoSave();
+      render();
+    }, { signal });
+
+    render();
+    jutsusCleanup = () => panel.remove();
   }
 
 
@@ -1016,6 +1177,13 @@
       stopHeroPassiveRegen();
       refs.overlay.classList.remove('visible');
       renderArbolSection();
+      return;
+    }
+
+    if (sectionKey === 'jutsus') {
+      stopHeroPassiveRegen();
+      refs.overlay.classList.remove('visible');
+      renderJutsusSection();
       return;
     }
 

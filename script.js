@@ -651,7 +651,8 @@
 
   function resolveEquippedJutsusForCombat() {
     const jutsuState = window.gameCharacter?.jutsus || defaultJutsusState;
-    const slots = Array.isArray(jutsuState.slots) ? jutsuState.slots : [];
+    const slots = Array.isArray(jutsuState.slots) ? jutsuState.slots.slice(0, 3) : [];
+    while (slots.length < 3) slots.push(null);
     const levels = Array.isArray(jutsuState.levels) ? jutsuState.levels : [];
     return slots
       .map((id) => (Number.isInteger(id) ? JUTSUS_LIBRARY[id] : null))
@@ -670,6 +671,7 @@
     panel.className = 'jutsus-system';
     panel.innerHTML = `
       <div class="jutsu-top"><b>🈳 Chakra</b><span id="jutsu-chakra"></span></div>
+      <div style="font-size:.7rem;color:var(--text-mid);margin-bottom:4px">JUSTUS de combate (3 slots): cada turno se verifica su % de activación.</div>
       <div class="jutsu-slots" id="jutsu-slots"></div>
       <div class="jutsu-list" id="jutsu-list"></div>`;
     refs.center.appendChild(panel);
@@ -692,17 +694,21 @@
 
     const render = () => {
       const jutsuState = getState();
+      const normalizedSlots = Array.isArray(jutsuState.slots) ? jutsuState.slots.slice(0, 3) : [];
+      while (normalizedSlots.length < 3) normalizedSlots.push(null);
+      jutsuState.slots = normalizedSlots;
       chakraEl.textContent = Number(jutsuState.chakra || 0).toLocaleString('es-ES');
 
       slotsEl.innerHTML = '';
-      jutsuState.slots.forEach((skillId, index) => {
+      normalizedSlots.forEach((skillId, index) => {
         const slot = document.createElement('button');
         slot.className = 'jutsu-slot';
         const sk = Number.isInteger(skillId) ? JUTSUS_LIBRARY[skillId] : null;
         if (!sk) {
           slot.textContent = `Slot ${index + 1} vacío`;
         } else {
-          slot.textContent = `${sk.name} Lv ${jutsuState.levels[skillId] + 1}`;
+          const activationChance = Math.max(0, Math.min(100, Number(sk.levels[jutsuState.levels[skillId]]?.[3]) || 0));
+          slot.textContent = `${sk.name} Lv ${jutsuState.levels[skillId] + 1} · ${activationChance}%`;
         }
         slot.addEventListener('click', () => {
           if (sk) {

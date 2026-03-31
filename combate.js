@@ -40,6 +40,21 @@
     let currentMissionList = [];
     let battleLoopCount = 0;
     const ENEMY_DEFEAT_VISUAL_DELAY_MS = 320;
+    const MAX_SUBSKILLS_PER_JUTSU = 3;
+
+    function rollChancePct(chancePct) {
+      const chance = Math.max(0, Math.min(100, Number(chancePct) || 0));
+      return Math.random() * 100 < chance;
+    }
+
+    function resolveJutsuSubskillActivations(jutsu) {
+      const probFromLevel = jutsu?.values?.[3];
+      const activations = [];
+      for (let index = 0; index < MAX_SUBSKILLS_PER_JUTSU; index += 1) {
+        activations.push(rollChancePct(probFromLevel));
+      }
+      return activations;
+    }
 
     function loadEnemy(index) {
       const mission = currentMissionList[index];
@@ -88,66 +103,121 @@
 
         combatJutsus.forEach((jutsu) => {
           const values = jutsu.values;
+          const [sub1Active, sub2Active, sub3Active] = resolveJutsuSubskillActivations(jutsu);
           if (jutsu.id === 0) {
-            enemyFailChance += Math.max(0, Number(values[2]) || 0);
-            defMult += (Number(values[1]) || 0) / 100;
-            if (Math.random() * 100 < (Number(values[3]) || 0)) {
+            if (sub1Active) {
               const burn = Math.max(1, Math.floor(currentEnemy.maxHp * ((Number(values[0]) || 0) / 100)));
               currentEnemy.hp = Math.max(0, currentEnemy.hp - burn);
               onLog(`🔥 ${jutsu.name} quema por ${burn}.`);
             }
+            if (sub2Active) {
+              defMult += (Number(values[1]) || 0) / 100;
+              onLog(`🛡️ ${jutsu.name} fortalece tu defensa.`);
+            }
+            if (sub3Active) {
+              enemyFailChance += Math.max(0, Number(values[2]) || 0);
+              onLog(`💨 ${jutsu.name} aumenta fallo enemigo.`);
+            }
           }
           if (jutsu.id === 1) {
-            defensePen += Number(values[2]) || 0;
-            if (Math.random() * 100 < (Number(values[3]) || 0)) {
+            if (sub1Active) {
               enemyStatus.freezeTurns = Math.max(enemyStatus.freezeTurns, 1);
               onLog(`❄️ ${jutsu.name} congeló al enemigo.`);
             }
+            if (sub2Active) {
+              defMult += (Number(values[1]) || 0) / 100;
+              onLog(`❤️ ${jutsu.name} refuerza la resistencia.`);
+            }
+            if (sub3Active) {
+              defensePen += Number(values[2]) || 0;
+              onLog(`⚔️ ${jutsu.name} perfora defensa enemiga.`);
+            }
           }
           if (jutsu.id === 2) {
-            atkMult += (Number(values[1]) || 0) / 100;
-            defMult += (Number(values[1]) || 0) / 100;
-            if (Math.random() * 100 < (Number(values[3]) || 0)) {
-              enemyStatus.defDebuffPct = Math.max(enemyStatus.defDebuffPct, Math.abs(Number(values[2]) || 0));
+            if (sub1Active) {
               const poison = Math.max(1, Math.floor(currentEnemy.maxHp * ((Number(values[0]) || 0) / 100)));
               currentEnemy.hp = Math.max(0, currentEnemy.hp - poison);
               onLog(`☠️ ${jutsu.name} envenena por ${poison}.`);
             }
+            if (sub2Active) {
+              atkMult += (Number(values[1]) || 0) / 100;
+              defMult += (Number(values[1]) || 0) / 100;
+              onLog(`📊 ${jutsu.name} mejora tus estadísticas.`);
+            }
+            if (sub3Active) {
+              enemyStatus.defDebuffPct = Math.max(enemyStatus.defDebuffPct, Math.abs(Number(values[2]) || 0));
+              onLog(`🔻 ${jutsu.name} reduce defensa del enemigo.`);
+            }
           }
           if (jutsu.id === 3) {
-            counterChance = Math.max(counterChance, Number(values[1]) || 0);
-            enemyStatus.atkDebuffPct = Math.max(enemyStatus.atkDebuffPct, Math.abs(Number(values[2]) || 0));
-            if (Math.random() * 100 < (Number(values[3]) || 0)) {
+            if (sub1Active) {
               enemyStatus.stunTurns = Math.max(enemyStatus.stunTurns, 1);
               onLog(`🌀 ${jutsu.name} aturdió al enemigo.`);
             }
+            if (sub2Active) {
+              counterChance = Math.max(counterChance, Number(values[1]) || 0);
+              onLog(`🔄 ${jutsu.name} habilita contraataque.`);
+            }
+            if (sub3Active) {
+              enemyStatus.atkDebuffPct = Math.max(enemyStatus.atkDebuffPct, Math.abs(Number(values[2]) || 0));
+              onLog(`📉 ${jutsu.name} reduce ataque enemigo.`);
+            }
           }
           if (jutsu.id === 4) {
-            evadeChance = Math.max(evadeChance, Number(values[1]) || 0);
-            atkMult += (Number(values[1]) || 0) / 100;
-            if (Math.random() * 100 < (Number(values[2]) || 0)) {
+            if (sub1Active) {
+              enemyFailChance += Math.max(0, Number(values[0]) || 0);
+              onLog(`🚫 ${jutsu.name} intenta cancelar habilidades enemigas.`);
+            }
+            if (sub2Active) {
+              evadeChance = Math.max(evadeChance, Number(values[1]) || 0);
+              atkMult += (Number(values[1]) || 0) / 100;
+              onLog(`💨 ${jutsu.name} aumenta velocidad y evasión.`);
+            }
+            if (sub3Active) {
               enemyStatus.skipNextTurn = true;
               onLog(`🌀 ${jutsu.name} confundió al enemigo.`);
             }
           }
           if (jutsu.id === 5) {
-            const hpRegen = Math.max(1, Math.floor(playerStats.maxHp * ((Number(values[1]) || 0) / 100)));
-            playerStats.hp = Math.min(playerStats.maxHp, playerStats.hp + hpRegen);
-            playerStats.mp = Math.min(playerStats.maxMp, playerStats.mp + (Number(values[0]) || 0));
-            onLog(`🩸 ${jutsu.name}: +${hpRegen} HP, +${values[0]} MP.`);
+            if (sub1Active) {
+              playerStats.mp = Math.min(playerStats.maxMp, playerStats.mp + (Number(values[0]) || 0));
+              onLog(`🩸 ${jutsu.name} roba +${values[0]} MP.`);
+            }
+            if (sub2Active) {
+              const hpRegen = Math.max(1, Math.floor(playerStats.maxHp * ((Number(values[1]) || 0) / 100)));
+              playerStats.hp = Math.min(playerStats.maxHp, playerStats.hp + hpRegen);
+              onLog(`💚 ${jutsu.name} regenera ${hpRegen} HP.`);
+            }
+            if (sub3Active) {
+              evadeChance = Math.max(evadeChance, Math.abs(Number(values[2]) || 0));
+              onLog(`💸 ${jutsu.name} mejora evasión por ahorro de chakra.`);
+            }
           }
           if (jutsu.id === 6) {
-            critChance = Math.max(critChance, Number(values[1]) || 0);
-            if (Math.random() * 100 < (Number(values[3]) || 0)) {
+            if (sub1Active) {
               enemyStatus.stunTurns = Math.max(enemyStatus.stunTurns, Number(values[0]) || 1);
               onLog(`😵 ${jutsu.name} aplica aturdimiento.`);
             }
+            if (sub2Active) {
+              critChance = Math.max(critChance, Number(values[1]) || 0);
+              onLog(`⚡ ${jutsu.name} potencia crítico.`);
+            }
+            if (sub3Active) {
+              defMult += Math.max(0, (Number(values[2]) || 0) / 100);
+              onLog(`🛡️ ${jutsu.name} refuerza tu guardia.`);
+            }
           }
           if (jutsu.id === 7) {
-            atkMult += (Number(values[1]) || 0) / 100;
-            critDmg += Number(values[2]) || 0;
-            if (Math.random() * 100 < (Number(values[3]) || 0)) {
+            if (sub1Active) {
               extraHit = Math.max(extraHit, Number(values[0]) || 0);
+              onLog(`💥 ${jutsu.name} suma daño base.`);
+            }
+            if (sub2Active) {
+              atkMult += (Number(values[1]) || 0) / 100;
+              onLog(`⚔️ ${jutsu.name} aumenta ataque.`);
+            }
+            if (sub3Active) {
+              critDmg += Number(values[2]) || 0;
               const hpCost = Math.max(1, Math.floor(playerStats.maxHp * 0.02));
               playerStats.hp = Math.max(1, playerStats.hp - hpCost);
               onLog(`💥 ${jutsu.name} sacrifica ${hpCost} HP.`);

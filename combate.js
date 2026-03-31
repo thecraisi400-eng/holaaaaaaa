@@ -86,46 +86,47 @@
         let enemyFailChance = 0;
         let counterChance = 0;
 
-        combatJutsus.forEach((jutsu) => {
+        const activatedJutsus = combatJutsus.filter((jutsu) => {
+          const activationChance = Math.max(0, Math.min(100, Number(jutsu.values?.[3]) || 0));
+          return Math.random() * 100 < activationChance;
+        });
+
+        if (activatedJutsus.length > 0) {
+          onLog(`🌀 Turno ${turnCounter}: ${activatedJutsus.map((jutsu) => `${jutsu.name} (${Math.max(0, Math.min(100, Number(jutsu.values?.[3]) || 0))}%)`).join(', ')} activado(s).`);
+        }
+
+        activatedJutsus.forEach((jutsu) => {
           const values = jutsu.values;
           if (jutsu.id === 0) {
             enemyFailChance += Math.max(0, Number(values[2]) || 0);
             defMult += (Number(values[1]) || 0) / 100;
-            if (Math.random() * 100 < (Number(values[3]) || 0)) {
-              const burn = Math.max(1, Math.floor(currentEnemy.maxHp * ((Number(values[0]) || 0) / 100)));
-              currentEnemy.hp = Math.max(0, currentEnemy.hp - burn);
-              onLog(`🔥 ${jutsu.name} quema por ${burn}.`);
-            }
+            const burn = Math.max(1, Math.floor(currentEnemy.maxHp * ((Number(values[0]) || 0) / 100)));
+            currentEnemy.hp = Math.max(0, currentEnemy.hp - burn);
+            onLog(`🔥 ${jutsu.name} quema por ${burn}.`);
           }
           if (jutsu.id === 1) {
             defensePen += Number(values[2]) || 0;
-            if (Math.random() * 100 < (Number(values[3]) || 0)) {
-              enemyStatus.freezeTurns = Math.max(enemyStatus.freezeTurns, 1);
-              onLog(`❄️ ${jutsu.name} congeló al enemigo.`);
-            }
+            enemyStatus.freezeTurns = Math.max(enemyStatus.freezeTurns, 1);
+            onLog(`❄️ ${jutsu.name} congeló al enemigo.`);
           }
           if (jutsu.id === 2) {
             atkMult += (Number(values[1]) || 0) / 100;
             defMult += (Number(values[1]) || 0) / 100;
-            if (Math.random() * 100 < (Number(values[3]) || 0)) {
-              enemyStatus.defDebuffPct = Math.max(enemyStatus.defDebuffPct, Math.abs(Number(values[2]) || 0));
-              const poison = Math.max(1, Math.floor(currentEnemy.maxHp * ((Number(values[0]) || 0) / 100)));
-              currentEnemy.hp = Math.max(0, currentEnemy.hp - poison);
-              onLog(`☠️ ${jutsu.name} envenena por ${poison}.`);
-            }
+            enemyStatus.defDebuffPct = Math.max(enemyStatus.defDebuffPct, Math.abs(Number(values[2]) || 0));
+            const poison = Math.max(1, Math.floor(currentEnemy.maxHp * ((Number(values[0]) || 0) / 100)));
+            currentEnemy.hp = Math.max(0, currentEnemy.hp - poison);
+            onLog(`☠️ ${jutsu.name} envenena por ${poison}.`);
           }
           if (jutsu.id === 3) {
             counterChance = Math.max(counterChance, Number(values[1]) || 0);
             enemyStatus.atkDebuffPct = Math.max(enemyStatus.atkDebuffPct, Math.abs(Number(values[2]) || 0));
-            if (Math.random() * 100 < (Number(values[3]) || 0)) {
-              enemyStatus.stunTurns = Math.max(enemyStatus.stunTurns, 1);
-              onLog(`🌀 ${jutsu.name} aturdió al enemigo.`);
-            }
+            enemyStatus.stunTurns = Math.max(enemyStatus.stunTurns, 1);
+            onLog(`🌀 ${jutsu.name} aturdió al enemigo.`);
           }
           if (jutsu.id === 4) {
             evadeChance = Math.max(evadeChance, Number(values[1]) || 0);
             atkMult += (Number(values[1]) || 0) / 100;
-            if (Math.random() * 100 < (Number(values[2]) || 0)) {
+            if (Math.random() * 100 < Math.max(0, Number(values[2]) || 0)) {
               enemyStatus.skipNextTurn = true;
               onLog(`🌀 ${jutsu.name} confundió al enemigo.`);
             }
@@ -138,20 +139,16 @@
           }
           if (jutsu.id === 6) {
             critChance = Math.max(critChance, Number(values[1]) || 0);
-            if (Math.random() * 100 < (Number(values[3]) || 0)) {
-              enemyStatus.stunTurns = Math.max(enemyStatus.stunTurns, Number(values[0]) || 1);
-              onLog(`😵 ${jutsu.name} aplica aturdimiento.`);
-            }
+            enemyStatus.stunTurns = Math.max(enemyStatus.stunTurns, Number(values[0]) || 1);
+            onLog(`😵 ${jutsu.name} aplica aturdimiento.`);
           }
           if (jutsu.id === 7) {
             atkMult += (Number(values[1]) || 0) / 100;
             critDmg += Number(values[2]) || 0;
-            if (Math.random() * 100 < (Number(values[3]) || 0)) {
-              extraHit = Math.max(extraHit, Number(values[0]) || 0);
-              const hpCost = Math.max(1, Math.floor(playerStats.maxHp * 0.02));
-              playerStats.hp = Math.max(1, playerStats.hp - hpCost);
-              onLog(`💥 ${jutsu.name} sacrifica ${hpCost} HP.`);
-            }
+            extraHit = Math.max(extraHit, Number(values[0]) || 0);
+            const hpCost = Math.max(1, Math.floor(playerStats.maxHp * 0.02));
+            playerStats.hp = Math.max(1, playerStats.hp - hpCost);
+            onLog(`💥 ${jutsu.name} sacrifica ${hpCost} HP.`);
           }
         });
 

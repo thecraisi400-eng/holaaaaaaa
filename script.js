@@ -36,7 +36,7 @@
     misiones: { icon: '📜', title: 'MISIONES', desc: '' },
     clanes: { icon: '⛩️', title: 'CLANES', desc: 'Únete o crea tu clan. Participa en guerras de clanes y desbloquea jutsus exclusivos de linaje.' },
     eventos: { icon: '🎴', title: 'EVENTOS', desc: '¡Evento especial activo! Festival del Chakra Lunar: consigue multiplicadores ×3 de EXP durante 2 horas.' },
-    jutsus: { icon: '🌀', title: 'JUTSUS', desc: 'Gestiona tus técnicas ninja. Equipa hasta 4 jutsus activos y mejora sus rangos con sellos de chakra.' },
+    jutsus: { icon: '🌀', title: 'JUTSUS', desc: 'Gestiona tus técnicas ninja. Equipa 3 jutsus activos y mejora sus rangos con sellos de chakra.' },
     batallas: { icon: '⚔️', title: 'BATALLAS', desc: 'Modo PvP y arena de rango. Desafía a otros jugadores y sube en la tabla clasificatoria mundial.' },
     invocaciones: { icon: '✨', title: 'INVOCACIONES', desc: 'Invoca nuevos compañeros y objetos míticos. Utiliza pergaminos de convocación para obtener aliados S-Rank.' },
     habilidades: { icon: '🌿', title: 'ÁRBOL DE HABILIDAD', desc: 'Asigna puntos de habilidad en ramas de Ninjutsu, Taijutsu y Genjutsu para personalizar tu estilo de combate.' },
@@ -651,7 +651,7 @@
 
   function resolveEquippedJutsusForCombat() {
     const jutsuState = window.gameCharacter?.jutsus || defaultJutsusState;
-    const slots = Array.isArray(jutsuState.slots) ? jutsuState.slots : [];
+    const slots = Array.isArray(jutsuState.slots) ? jutsuState.slots.slice(0, 3) : [];
     const levels = Array.isArray(jutsuState.levels) ? jutsuState.levels : [];
     return slots
       .map((id) => (Number.isInteger(id) ? JUTSUS_LIBRARY[id] : null))
@@ -686,6 +686,13 @@
       if (!window.gameCharacter.jutsus) {
         window.gameCharacter.jutsus = { ...defaultJutsusState, levels: [...defaultJutsusState.levels], slots: [...defaultJutsusState.slots] };
       }
+      if (!Array.isArray(window.gameCharacter.jutsus.slots)) {
+        window.gameCharacter.jutsus.slots = [...defaultJutsusState.slots];
+      }
+      while (window.gameCharacter.jutsus.slots.length < 3) {
+        window.gameCharacter.jutsus.slots.push(null);
+      }
+      window.gameCharacter.jutsus.slots = window.gameCharacter.jutsus.slots.slice(0, 3);
       return window.gameCharacter.jutsus;
     };
     const slotOf = (id) => getState().slots.indexOf(id);
@@ -695,7 +702,8 @@
       chakraEl.textContent = Number(jutsuState.chakra || 0).toLocaleString('es-ES');
 
       slotsEl.innerHTML = '';
-      jutsuState.slots.forEach((skillId, index) => {
+      [...defaultJutsusState.slots].forEach((_, index) => {
+        const skillId = Number.isInteger(jutsuState.slots[index]) ? jutsuState.slots[index] : null;
         const slot = document.createElement('button');
         slot.className = 'jutsu-slot';
         const sk = Number.isInteger(skillId) ? JUTSUS_LIBRARY[skillId] : null;

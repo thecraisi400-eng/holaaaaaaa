@@ -42,6 +42,19 @@
     const ENEMY_DEFEAT_VISUAL_DELAY_MS = 320;
     const TURN_MS = 700;
 
+    function clearCombatEffects() {
+      if (enemyStatus) {
+        enemyStatus.effects = [];
+        enemyStatus.stunTurns = 0;
+        enemyStatus.freezeTurns = 0;
+        enemyStatus.atkDebuffPct = 0;
+        enemyStatus.defDebuffPct = 0;
+        enemyStatus.skipNextTurn = false;
+      }
+      combatJutsus = [];
+      turnCounter = 0;
+    }
+
     function loadEnemy(index) {
       const mission = currentMissionList[index];
       currentEnemy = { name: mission.name, hp: mission.hp, maxHp: mission.hp, atk: mission.atk, def: mission.def, xp: mission.xp, gold: mission.gold, mp: 100, maxMp: 100 };
@@ -124,71 +137,60 @@
           const values = jutsu.values;
           const prob = Math.max(0, Number(values[3]) || 0);
           const durationMs = Number(jutsu.durationMs) || TURN_MS;
-          const subActivations = [0, 1, 2].map(() => Math.random() * 100 < prob);
-          if (!subActivations.some(Boolean)) return;
+          const activated = Math.random() * 100 < prob;
+          if (!activated) return;
           const baseCost = Math.max(0, Number(values[4]) || 0);
           const mpCost = Math.max(0, Math.floor(baseCost * (1 - (mpCostReductionPct / 100))));
           if (playerStats.mp < mpCost) return;
           playerStats.mp -= mpCost;
+          onLog(`🌀 ${jutsu.name} activado (Prob ${prob}%).`);
 
           if (jutsu.id === 0) {
-            if (subActivations[0]) addEffect('burn', Number(values[0]) || 0, durationMs);
-            if (subActivations[1]) {
-              addEffect('defMult', Number(values[1]) || 0, durationMs);
-              addEffect('flatReduction', Math.floor((Number(values[1]) || 0) / 3), durationMs);
-            }
-            if (subActivations[2]) addEffect('enemyFail', Number(values[2]) || 0, durationMs);
+            addEffect('burn', Number(values[0]) || 0, durationMs);
+            addEffect('defMult', Number(values[1]) || 0, durationMs);
+            addEffect('flatReduction', Math.floor((Number(values[1]) || 0) / 3), durationMs);
+            addEffect('enemyFail', Number(values[2]) || 0, durationMs);
           }
           if (jutsu.id === 1) {
-            if (subActivations[0]) {
-              enemyStatus.freezeTurns = Math.max(enemyStatus.freezeTurns, 1);
-              onLog(`❄️ ${jutsu.name} congeló al enemigo.`);
-            }
-            if (subActivations[1]) addEffect('flatReduction', Number(values[1]) || 0, durationMs);
-            if (subActivations[2]) addEffect('defPen', Number(values[2]) || 0, durationMs);
+            enemyStatus.freezeTurns = Math.max(enemyStatus.freezeTurns, 1);
+            onLog(`❄️ ${jutsu.name} congeló al enemigo.`);
+            addEffect('flatReduction', Number(values[1]) || 0, durationMs);
+            addEffect('defPen', Number(values[2]) || 0, durationMs);
           }
           if (jutsu.id === 2) {
-            if (subActivations[0]) addEffect('poison', Number(values[0]) || 0, durationMs);
-            if (subActivations[1]) {
-              addEffect('atkMult', Number(values[1]) || 0, durationMs);
-              addEffect('defMult', Number(values[1]) || 0, durationMs);
-            }
-            if (subActivations[2]) addEffect('enemyDefDebuff', Number(values[2]) || 0, durationMs);
+            addEffect('poison', Number(values[0]) || 0, durationMs);
+            addEffect('atkMult', Number(values[1]) || 0, durationMs);
+            addEffect('defMult', Number(values[1]) || 0, durationMs);
+            addEffect('enemyDefDebuff', Number(values[2]) || 0, durationMs);
           }
           if (jutsu.id === 3) {
-            if (subActivations[0]) enemyStatus.stunTurns = Math.max(enemyStatus.stunTurns, 1);
-            if (subActivations[1]) addEffect('counter', Number(values[1]) || 0, durationMs);
-            if (subActivations[2]) addEffect('enemyAtkDebuff', Number(values[2]) || 0, durationMs);
+            enemyStatus.stunTurns = Math.max(enemyStatus.stunTurns, 1);
+            addEffect('counter', Number(values[1]) || 0, durationMs);
+            addEffect('enemyAtkDebuff', Number(values[2]) || 0, durationMs);
           }
           if (jutsu.id === 4) {
-            if (subActivations[0] && Math.random() * 100 < Math.max(5, Number(values[0]) || 0)) enemyStatus.skipNextTurn = true;
-            if (subActivations[1]) {
-              addEffect('evade', Number(values[1]) || 0, durationMs);
-              addEffect('atkMult', Number(values[1]) || 0, durationMs);
-            }
-            if (subActivations[2] && Math.random() * 100 < Math.max(5, Number(values[2]) || 0)) enemyStatus.skipNextTurn = true;
+            if (Math.random() * 100 < Math.max(5, Number(values[0]) || 0)) enemyStatus.skipNextTurn = true;
+            addEffect('evade', Number(values[1]) || 0, durationMs);
+            addEffect('atkMult', Number(values[1]) || 0, durationMs);
+            if (Math.random() * 100 < Math.max(5, Number(values[2]) || 0)) enemyStatus.skipNextTurn = true;
           }
           if (jutsu.id === 5) {
-            if (subActivations[0]) playerStats.mp = Math.min(playerStats.maxMp, playerStats.mp + (Number(values[0]) || 0));
-            if (subActivations[1]) {
-              const hpRegen = Math.max(1, Math.floor(playerStats.maxHp * ((Number(values[1]) || 0) / 100)));
-              playerStats.hp = Math.min(playerStats.maxHp, playerStats.hp + hpRegen);
-            }
-            if (subActivations[2]) addEffect('costReduction', Number(values[2]) || 0, durationMs);
+            playerStats.mp = Math.min(playerStats.maxMp, playerStats.mp + (Number(values[0]) || 0));
+            const hpRegen = Math.max(1, Math.floor(playerStats.maxHp * ((Number(values[1]) || 0) / 100)));
+            playerStats.hp = Math.min(playerStats.maxHp, playerStats.hp + hpRegen);
+            addEffect('costReduction', Number(values[2]) || 0, durationMs);
           }
           if (jutsu.id === 6) {
-            if (subActivations[0]) enemyStatus.stunTurns = Math.max(enemyStatus.stunTurns, Number(values[0]) || 1);
-            if (subActivations[1]) addEffect('critChance', Number(values[1]) || 0, durationMs);
-            if (subActivations[2]) addEffect('shield', Number(values[2]) || 0, durationMs);
+            enemyStatus.stunTurns = Math.max(enemyStatus.stunTurns, Number(values[0]) || 1);
+            addEffect('critChance', Number(values[1]) || 0, durationMs);
+            addEffect('shield', Number(values[2]) || 0, durationMs);
           }
           if (jutsu.id === 7) {
-            if (subActivations[0]) addEffect('extraHit', Number(values[0]) || 0, durationMs);
-            if (subActivations[1]) addEffect('atkMult', Number(values[1]) || 0, durationMs * 2);
-            if (subActivations[2]) {
-              addEffect('critDmg', Number(values[2]) || 0, durationMs);
-              const hpCost = Math.max(1, Math.floor(playerStats.maxHp * 0.02));
-              playerStats.hp = Math.max(1, playerStats.hp - hpCost);
-            }
+            addEffect('extraHit', Number(values[0]) || 0, durationMs);
+            addEffect('atkMult', Number(values[1]) || 0, durationMs * 2);
+            addEffect('critDmg', Number(values[2]) || 0, durationMs);
+            const hpCost = Math.max(1, Math.floor(playerStats.maxHp * 0.02));
+            playerStats.hp = Math.max(1, playerStats.hp - hpCost);
           }
         });
 
@@ -220,6 +222,7 @@
             if (!settings.continueOnWin) {
               battleActive = false;
               stop();
+              clearCombatEffects();
               if (settings.onVictory) settings.onVictory({ enemy: currentEnemy, rewards });
               return;
             }
@@ -273,6 +276,7 @@
             onLog('😵 Has sido derrotado...');
             battleActive = false;
             stop();
+            clearCombatEffects();
             if (settings.onDefeat) settings.onDefeat({ enemy: currentEnemy });
             onDefeat();
           }
@@ -293,6 +297,7 @@
       }
       enemyTransitionPending = false;
       battleActive = false;
+      clearCombatEffects();
     }
 
     return { start, stop };

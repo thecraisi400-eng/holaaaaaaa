@@ -289,7 +289,7 @@
       100% { box-shadow: 0 0 0 0 #c0c0c000; }
     }
 
-    @media (max-width: 820px) {
+    @media (max-width: 820px) and (orientation: portrait) {
       .arbol-main {
         grid-template-columns: 1fr;
         grid-auto-rows: minmax(100px, auto);

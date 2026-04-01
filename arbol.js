@@ -80,9 +80,8 @@
       width: 100%;
       height: 100%;
       min-height: 0;
-      display: grid;
-      grid-template-columns: 1fr;
-      grid-auto-rows: minmax(100px, auto);
+      display: flex;
+      flex-direction: column;
       gap: 7px;
       padding: 7px;
       overflow-y: auto;
@@ -96,6 +95,7 @@
       border: 1px solid var(--surface);
       border-radius: 6px;
       min-height: 0;
+      width: 100%;
     }
 
     .arbol-stats {

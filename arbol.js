@@ -80,9 +80,8 @@
       width: 100%;
       height: 100%;
       min-height: 0;
-      display: grid;
-      grid-template-columns: 1fr;
-      grid-auto-rows: minmax(100px, auto);
+      display: flex !important;
+      flex-direction: column !important;
       gap: 7px;
       padding: 7px;
       overflow-y: auto;
@@ -96,6 +95,13 @@
       border: 1px solid var(--surface);
       border-radius: 6px;
       min-height: 0;
+      width: 100% !important;
+    }
+
+    .arbol-main > .arbol-stats,
+    .arbol-main > .arbol-constellation,
+    .arbol-main > .arbol-bonus {
+      flex: 0 0 auto;
     }
 
     .arbol-stats {
@@ -358,6 +364,12 @@
     `;
 
     container.replaceChildren(root);
+
+    const mainLayout = root.querySelector('.arbol-main');
+    if (mainLayout) {
+      mainLayout.style.display = 'flex';
+      mainLayout.style.flexDirection = 'column';
+    }
 
     const ui = {
       timeline: root.querySelector('[data-ui="timeline"]'),

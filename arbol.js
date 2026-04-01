@@ -80,8 +80,8 @@
       width: 100%;
       height: 100%;
       min-height: 0;
-      display: flex !important;
-      flex-direction: column !important;
+      display: flex;
+      flex-direction: column;
       gap: 7px;
       padding: 7px;
       overflow-y: auto;
@@ -95,13 +95,7 @@
       border: 1px solid var(--surface);
       border-radius: 6px;
       min-height: 0;
-      width: 100% !important;
-    }
-
-    .arbol-main > .arbol-stats,
-    .arbol-main > .arbol-constellation,
-    .arbol-main > .arbol-bonus {
-      flex: 0 0 auto;
+      width: 100%;
     }
 
     .arbol-stats {

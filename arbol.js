@@ -22,6 +22,7 @@
       flex-direction: column;
       overflow: hidden;
       border: 1px solid var(--surface);
+      font-size: 95%;
     }
 
     .arbol-root * { box-sizing: border-box; }
@@ -80,10 +81,12 @@
       height: 100%;
       min-height: 0;
       display: grid;
-      grid-template-columns: minmax(90px, 0.85fr) minmax(20px, 1.25fr) minmax(130px, 0.9fr);
-      gap: 8px;
-      padding: 8px;
-      overflow: hidden;
+      grid-template-columns: 1fr;
+      grid-auto-rows: minmax(100px, auto);
+      gap: 7px;
+      padding: 7px;
+      overflow-y: auto;
+      overflow-x: hidden;
     }
 
     .arbol-stats,
@@ -147,8 +150,8 @@
     }
 
     .arbol-node {
-      width: 56px;
-      height: 56px;
+      width: 53px;
+      height: 53px;
       border-radius: 50%;
       border: 2px solid var(--text-dim);
       background: var(--btn-bg);
@@ -156,7 +159,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 24px;
+      font-size: 23px;
       cursor: default;
       transition: all .25s;
       position: relative;
@@ -287,11 +290,6 @@
     }
 
     @media (max-width: 820px) {
-      .arbol-main {
-        grid-template-columns: 1fr;
-        grid-auto-rows: minmax(100px, auto);
-        overflow-y: auto;
-      }
       .arbol-tooltip {
         left: 50%;
         top: -8px;

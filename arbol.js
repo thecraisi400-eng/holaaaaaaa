@@ -76,11 +76,14 @@
     .arbol-points { color: var(--gold); font-weight: 700; font-size: 13px; }
 
     .arbol-main {
+      --stats-size: 0.85fr;
+      --tree-size: 1.25fr;
+      --bonus-size: 0.9fr;
       width: 100%;
       height: 100%;
       min-height: 0;
       display: grid;
-      grid-template-columns: minmax(90px, 0.85fr) minmax(20px, 1.25fr) minmax(130px, 0.9fr);
+      grid-template-columns: minmax(90px, var(--stats-size)) minmax(20px, var(--tree-size)) minmax(130px, var(--bonus-size));
       gap: 8px;
       padding: 8px;
       overflow: hidden;
@@ -311,6 +314,11 @@
 
   window.mountArbolUI = function mountArbolUI({ container, manager, getStats, getSkillPoints, spendSkillPoints, onAllocateStat }) {
     ensureStyle();
+    const PANEL_SIZES = {
+      stats: 0.85,
+      tree: 1.25,
+      bonus: 0.9
+    };
 
     const ranks = [
       { id: 'GENIN', title: 'Genin', lore: 'Adaptación inicial al combate.', color: '#cd7f32', slotCost: 1, bonus: { icon: '🛡️', text: '+5% DEF', stat: 'def', mult: 1.05 } },
@@ -364,6 +372,7 @@
     const ui = {
       timeline: root.querySelector('[data-ui="timeline"]'),
       points: root.querySelector('[data-ui="points"]'),
+      main: root.querySelector('.arbol-main'),
       stats: root.querySelector('[data-ui="stats"]'),
       grid: root.querySelector('[data-ui="grid"]'),
       progress: root.querySelector('[data-ui="progress"]'),
@@ -371,6 +380,12 @@
       bonusCard: root.querySelector('[data-ui="bonusCard"]'),
       overlay: root.querySelector('[data-ui="overlay"]')
     };
+
+    function applyPanelSizes() {
+      ui.main.style.setProperty('--stats-size', `${PANEL_SIZES.stats}fr`);
+      ui.main.style.setProperty('--tree-size', `${PANEL_SIZES.tree}fr`);
+      ui.main.style.setProperty('--bonus-size', `${PANEL_SIZES.bonus}fr`);
+    }
 
     function syncExternalStats() {
       const stats = typeof getStats === 'function' ? getStats() : null;
@@ -560,6 +575,7 @@
       root.style.setProperty('--bronze', ranks[state.viewingRank].color);
     }
 
+    applyPanelSizes();
     renderStats();
     renderAll();
 

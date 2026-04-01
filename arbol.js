@@ -41,11 +41,55 @@
       gap: 8px;
     }
 
+    .arbol-size-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: auto;
+    }
+
+    .arbol-size-btn {
+      border: 1px solid var(--text-dim);
+      color: var(--text-main);
+      background: var(--btn-bg);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .arbol-size-pop {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 6px);
+      width: 220px;
+      background: var(--panel);
+      border: 1px solid var(--surface);
+      border-radius: 6px;
+      padding: 8px;
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 30;
+      box-shadow: 0 8px 16px #00000055;
+    }
+
+    .arbol-size-pop.show { display: flex; }
+
+    .arbol-size-row {
+      display: grid;
+      grid-template-columns: 64px 1fr 30px;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+    }
+
     .arbol-timeline {
       display: flex;
       gap: 4px;
       overflow-x: auto;
-      max-width: 70%;
+      max-width: 58%;
     }
 
     .arbol-rank-btn {
@@ -76,11 +120,14 @@
     .arbol-points { color: var(--gold); font-weight: 700; font-size: 13px; }
 
     .arbol-main {
+      --stats-size: 0.85fr;
+      --tree-size: 1.25fr;
+      --bonus-size: 0.9fr;
       width: 100%;
       height: 100%;
       min-height: 0;
       display: grid;
-      grid-template-columns: minmax(90px, 0.85fr) minmax(20px, 1.25fr) minmax(130px, 0.9fr);
+      grid-template-columns: minmax(90px, var(--stats-size)) minmax(20px, var(--tree-size)) minmax(130px, var(--bonus-size));
       gap: 8px;
       padding: 8px;
       overflow: hidden;
@@ -340,6 +387,10 @@
     root.innerHTML = `
       <div class="arbol-top">
         <div class="arbol-timeline" data-ui="timeline"></div>
+        <div class="arbol-size-wrap">
+          <button type="button" class="arbol-size-btn" data-ui="sizeToggle">Tamaño</button>
+          <div class="arbol-size-pop" data-ui="sizePanel"></div>
+        </div>
         <div class="arbol-points" data-ui="points">🌀 0</div>
       </div>
       <div class="arbol-main">
@@ -364,13 +415,58 @@
     const ui = {
       timeline: root.querySelector('[data-ui="timeline"]'),
       points: root.querySelector('[data-ui="points"]'),
+      main: root.querySelector('.arbol-main'),
       stats: root.querySelector('[data-ui="stats"]'),
       grid: root.querySelector('[data-ui="grid"]'),
       progress: root.querySelector('[data-ui="progress"]'),
       lore: root.querySelector('[data-ui="lore"]'),
       bonusCard: root.querySelector('[data-ui="bonusCard"]'),
-      overlay: root.querySelector('[data-ui="overlay"]')
+      overlay: root.querySelector('[data-ui="overlay"]'),
+      sizeToggle: root.querySelector('[data-ui="sizeToggle"]'),
+      sizePanel: root.querySelector('[data-ui="sizePanel"]')
     };
+
+    const sizeState = {
+      stats: 85,
+      tree: 125,
+      bonus: 90
+    };
+
+    function applyPanelSizes() {
+      ui.main.style.setProperty('--stats-size', `${(sizeState.stats / 100).toFixed(2)}fr`);
+      ui.main.style.setProperty('--tree-size', `${(sizeState.tree / 100).toFixed(2)}fr`);
+      ui.main.style.setProperty('--bonus-size', `${(sizeState.bonus / 100).toFixed(2)}fr`);
+    }
+
+    function renderSizePanel() {
+      const controls = [
+        { key: 'stats', label: 'Stats' },
+        { key: 'tree', label: 'Árbol' },
+        { key: 'bonus', label: 'Bono' }
+      ];
+      ui.sizePanel.innerHTML = '';
+      controls.forEach(({ key, label }) => {
+        const row = document.createElement('label');
+        row.className = 'arbol-size-row';
+        row.innerHTML = `
+          <span>${label}</span>
+          <input type="range" min="60" max="180" step="5" value="${sizeState[key]}" data-size="${key}">
+          <strong data-size-value="${key}">${sizeState[key]}%</strong>
+        `;
+        ui.sizePanel.appendChild(row);
+      });
+
+      ui.sizePanel.querySelectorAll('input[type="range"]').forEach((input) => {
+        input.addEventListener('input', (event) => {
+          const target = event.currentTarget;
+          const key = target.getAttribute('data-size');
+          sizeState[key] = Number(target.value);
+          const label = ui.sizePanel.querySelector(`[data-size-value="${key}"]`);
+          if (label) label.textContent = `${target.value}%`;
+          applyPanelSizes();
+        });
+      });
+    }
 
     function syncExternalStats() {
       const stats = typeof getStats === 'function' ? getStats() : null;
@@ -560,6 +656,18 @@
       root.style.setProperty('--bronze', ranks[state.viewingRank].color);
     }
 
+    ui.sizeToggle.addEventListener('click', () => {
+      ui.sizePanel.classList.toggle('show');
+    });
+
+    root.addEventListener('click', (event) => {
+      if (!ui.sizePanel.classList.contains('show')) return;
+      if (event.target === ui.sizeToggle || ui.sizePanel.contains(event.target)) return;
+      ui.sizePanel.classList.remove('show');
+    });
+
+    renderSizePanel();
+    applyPanelSizes();
     renderStats();
     renderAll();
 

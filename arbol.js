@@ -359,6 +359,12 @@
 
     container.replaceChildren(root);
 
+    const mainLayout = root.querySelector('.arbol-main');
+    if (mainLayout) {
+      mainLayout.style.display = 'flex';
+      mainLayout.style.flexDirection = 'column';
+    }
+
     const ui = {
       timeline: root.querySelector('[data-ui="timeline"]'),
       points: root.querySelector('[data-ui="points"]'),

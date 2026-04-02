@@ -22,6 +22,8 @@
       flex-direction: column;
       overflow: hidden;
       border: 1px solid var(--surface);
+      min-height: 0;
+      position: relative;
     }
 
     .arbol-root * { box-sizing: border-box; }
@@ -80,7 +82,8 @@
       --tree-size: 1.25fr;
       --bonus-size: 0.9fr;
       width: 100%;
-      height: 100%;
+      flex: 1 1 auto;
+      height: auto;
       min-height: 0;
       display: grid;
       grid-template-columns: minmax(90px, var(--stats-size)) minmax(20px, var(--tree-size)) minmax(130px, var(--bonus-size));
@@ -289,11 +292,47 @@
       100% { box-shadow: 0 0 0 0 #c0c0c000; }
     }
 
-    @media (max-width: 820px) and (orientation: portrait) {
+    @media (max-width: 900px) {
+      .arbol-main {
+        grid-template-columns: minmax(120px, 1fr) minmax(160px, 1.4fr);
+        grid-template-rows: minmax(130px, 1fr) minmax(120px, auto);
+      }
+      .arbol-constellation {
+        grid-column: 2;
+        grid-row: 1 / span 2;
+      }
+      .arbol-stats {
+        grid-column: 1;
+        grid-row: 1;
+      }
+      .arbol-bonus {
+        grid-column: 1;
+        grid-row: 2;
+      }
+      .arbol-grid {
+        width: min(220px, 90%);
+        gap: 10px;
+      }
+      .arbol-node {
+        width: 52px;
+        height: 52px;
+        font-size: 22px;
+      }
+    }
+
+    @media (max-width: 560px) {
       .arbol-main {
         grid-template-columns: 1fr;
         grid-auto-rows: minmax(100px, auto);
         overflow-y: auto;
+      }
+      .arbol-stats,
+      .arbol-bonus,
+      .arbol-constellation {
+        min-height: 130px;
+      }
+      .arbol-grid {
+        width: min(240px, 95%);
       }
       .arbol-tooltip {
         left: 50%;

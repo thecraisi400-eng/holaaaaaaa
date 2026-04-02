@@ -89,6 +89,7 @@
   let misionesCleanup = null;
   let arbolCleanup = null;
   let jutsusCleanup = null;
+  let batallasCleanup = null;
   let selectedCharacter = null;
   let gameLaunched = false;
   let autoSaveIntervalId = null;
@@ -635,6 +636,10 @@
       jutsusCleanup();
       jutsusCleanup = null;
     }
+    if (typeof batallasCleanup === 'function') {
+      batallasCleanup();
+      batallasCleanup = null;
+    }
     refs.center.replaceChildren();
   }
 
@@ -772,6 +777,42 @@
 
     render();
     jutsusCleanup = () => panel.remove();
+  }
+
+  function renderBatallasSection() {
+    cleanupCenter();
+    if (typeof window.mountBatallasNinjaUI !== 'function') {
+      renderPlaceholder('batallas');
+      return;
+    }
+
+    const panel = document.createElement('div');
+    panel.className = 'heroe-system';
+    panel.style.padding = '0';
+    panel.style.width = '100%';
+    panel.style.height = '100%';
+    panel.style.minHeight = '0';
+    panel.style.display = 'flex';
+    panel.style.flexDirection = 'column';
+    refs.center.appendChild(panel);
+
+    const ui = window.mountBatallasNinjaUI({
+      container: panel,
+      getPlayerStats: () => ({
+        level: state.level,
+        hp: state.hp,
+        maxHp: state.hpMax,
+        mp: state.mp,
+        maxMp: state.mpMax,
+        atk: Math.max(1, Math.round(window.heroEngine.computeStats(window.gameCharacter).ATK || state.atk)),
+        def: Math.max(1, Math.round(window.heroEngine.computeStats(window.gameCharacter).DEF || state.def))
+      })
+    });
+
+    batallasCleanup = () => {
+      if (ui?.destroy) ui.destroy();
+      panel.remove();
+    };
   }
 
 
@@ -1189,6 +1230,13 @@
       stopHeroPassiveRegen();
       refs.overlay.classList.remove('visible');
       renderJutsusSection();
+      return;
+    }
+
+    if (sectionKey === 'batallas') {
+      stopHeroPassiveRegen();
+      refs.overlay.classList.remove('visible');
+      renderBatallasSection();
       return;
     }
 

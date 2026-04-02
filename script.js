@@ -89,6 +89,7 @@
   let misionesCleanup = null;
   let arbolCleanup = null;
   let jutsusCleanup = null;
+  let batallasCleanup = null;
   let selectedCharacter = null;
   let gameLaunched = false;
   let autoSaveIntervalId = null;
@@ -635,7 +636,19 @@
       jutsusCleanup();
       jutsusCleanup = null;
     }
+    if (typeof batallasCleanup === 'function') {
+      batallasCleanup();
+      batallasCleanup = null;
+    }
     refs.center.replaceChildren();
+  }
+
+  function bindCleanClick(button, handler) {
+    if (!button) return null;
+    const clone = button.cloneNode(true);
+    button.replaceWith(clone);
+    clone.addEventListener('click', handler, { signal });
+    return clone;
   }
 
   function renderPlaceholder(sectionKey) {
@@ -843,6 +856,48 @@
       panel.remove();
       refs.nav.style.pointerEvents = '';
       refs.nav.style.opacity = '';
+    };
+  }
+
+  function renderBatallasSection() {
+    cleanupCenter();
+
+    const panel = document.createElement('div');
+    panel.className = 'heroe-system';
+    panel.style.padding = '16px';
+    panel.style.gap = '12px';
+    panel.innerHTML = `
+      <div class="section-label">── BATALLAS ──</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <button class="menu-button" id="btn-batallas-ninja">⚔️ BATALLAS NINJA</button>
+      </div>
+      <div id="batallas-content" style="flex:1;min-height:0;display:flex;flex-direction:column;"></div>
+    `;
+    refs.center.appendChild(panel);
+
+    const content = panel.querySelector('#batallas-content');
+    let btnBatallasNinja = panel.querySelector('#btn-batallas-ninja');
+
+    const renderBatallasNinja = () => {
+      content.replaceChildren();
+      const frame = document.createElement('iframe');
+      frame.title = 'Batallas Ninja';
+      frame.src = 'batallas-ninja.html';
+      frame.style.width = '100%';
+      frame.style.height = '100%';
+      frame.style.minHeight = '440px';
+      frame.style.border = '1px solid var(--border)';
+      frame.style.borderRadius = '4px';
+      frame.style.background = '#0d1117';
+      frame.setAttribute('loading', 'eager');
+      content.appendChild(frame);
+    };
+
+    btnBatallasNinja = bindCleanClick(btnBatallasNinja, renderBatallasNinja) || btnBatallasNinja;
+
+    batallasCleanup = () => {
+      content.replaceChildren();
+      panel.remove();
     };
   }
 
@@ -1189,6 +1244,13 @@
       stopHeroPassiveRegen();
       refs.overlay.classList.remove('visible');
       renderJutsusSection();
+      return;
+    }
+
+    if (sectionKey === 'batallas') {
+      stopHeroPassiveRegen();
+      refs.overlay.classList.remove('visible');
+      renderBatallasSection();
       return;
     }
 

@@ -859,36 +859,25 @@
     panel.style.gap = '12px';
     panel.innerHTML = `
       <div class="section-label">── BATALLAS ──</div>
-      <div style="display:flex;flex-direction:column;gap:10px;padding:6px 8px;">
-        <button class="menu-button" id="btn-batallas-ninja">⚔️ BATALLAS NINJA</button>
-      </div>
-      <div id="batallas-ninja-host" style="display:none;"></div>
+      <div id="batallas-ninja-host"></div>
     `;
     refs.center.appendChild(panel);
 
     const host = panel.querySelector('#batallas-ninja-host');
-    const baseBtn = panel.querySelector('#btn-batallas-ninja');
-    const cleanBtn = baseBtn.cloneNode(true);
-    baseBtn.replaceWith(cleanBtn);
+    host.innerHTML = '';
 
-    const openBatallasNinja = () => {
-      host.style.display = 'block';
-      host.innerHTML = '';
-      const frame = document.createElement('iframe');
-      frame.title = 'Batallas Ninja';
-      frame.style.width = '100%';
-      frame.style.height = '360px';
-      frame.style.border = '1px solid rgba(240,192,64,0.35)';
-      frame.style.borderRadius = '8px';
-      frame.style.background = '#0d1117';
-      frame.src = 'batallas-ninja.html';
-      host.appendChild(frame);
-    };
-
-    cleanBtn.addEventListener('click', openBatallasNinja);
+    const frame = document.createElement('iframe');
+    frame.title = 'Batallas Ninja';
+    frame.style.width = '100%';
+    frame.style.height = '360px';
+    frame.style.border = '1px solid rgba(240,192,64,0.35)';
+    frame.style.borderRadius = '8px';
+    frame.style.background = '#0d1117';
+    frame.src = 'batallas-ninja.html';
+    host.appendChild(frame);
 
     batallasCleanup = () => {
-      cleanBtn.removeEventListener('click', openBatallasNinja);
+      host.innerHTML = '';
       panel.remove();
     };
   }

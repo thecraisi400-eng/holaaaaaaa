@@ -856,11 +856,8 @@
 
     const panel = document.createElement('div');
     panel.className = 'heroe-system';
-    panel.style.gap = '12px';
-    panel.innerHTML = `
-      <div class="section-label">── BATALLAS ──</div>
-      <div id="batallas-ninja-host"></div>
-    `;
+    panel.style.gap = '0';
+    panel.innerHTML = '<div id="batallas-ninja-host" style="display:flex;flex:1;min-height:0;"></div>';
     refs.center.appendChild(panel);
 
     const host = panel.querySelector('#batallas-ninja-host');
@@ -869,7 +866,7 @@
     const frame = document.createElement('iframe');
     frame.title = 'Batallas Ninja';
     frame.style.width = '100%';
-    frame.style.height = '360px';
+    frame.style.height = '100%';
     frame.style.border = '1px solid rgba(240,192,64,0.35)';
     frame.style.borderRadius = '8px';
     frame.style.background = '#0d1117';

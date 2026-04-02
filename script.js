@@ -89,6 +89,7 @@
   let misionesCleanup = null;
   let arbolCleanup = null;
   let jutsusCleanup = null;
+  let batallasCleanup = null;
   let selectedCharacter = null;
   let gameLaunched = false;
   let autoSaveIntervalId = null;
@@ -108,6 +109,18 @@
     topAtk: null,
     topDef: null
   };
+
+  const cleanClickHandlers = new WeakMap();
+
+  function bindCleanClick(element, handler) {
+    if (!element) return;
+    const prevHandler = cleanClickHandlers.get(element);
+    if (prevHandler) {
+      element.removeEventListener('click', prevHandler);
+    }
+    element.addEventListener('click', handler);
+    cleanClickHandlers.set(element, handler);
+  }
 
   const defaultLevels = { cabeza: 1, pecho: 1, manos: 1, piernas: 1, pies: 1, accesorio: 1 };
   const defaultTreeBonuses = { HP: 0, MP: 0, ATK: 0, DEF: 0, VEL: 0 };
@@ -635,6 +648,10 @@
       jutsusCleanup();
       jutsusCleanup = null;
     }
+    if (typeof batallasCleanup === 'function') {
+      batallasCleanup();
+      batallasCleanup = null;
+    }
     refs.center.replaceChildren();
   }
 
@@ -663,6 +680,63 @@
   }
 
   window.resolveEquippedJutsusForCombat = resolveEquippedJutsusForCombat;
+
+
+  function renderBatallasSection() {
+    cleanupCenter();
+    const panel = document.createElement('div');
+    panel.className = 'batallas-system';
+    panel.innerHTML = `
+      <div class="section-label">── BATALLAS ──</div>
+      <div class="batallas-menu" id="batallas-menu"></div>
+      <div class="batallas-stage" id="batallas-stage"></div>`;
+    refs.center.appendChild(panel);
+
+    const menu = panel.querySelector('#batallas-menu');
+    const stage = panel.querySelector('#batallas-stage');
+
+    const renderSubmenu = () => {
+      stage.replaceChildren();
+      const btn = document.createElement('button');
+      btn.className = 'batallas-btn';
+      btn.textContent = '⚔️ BATALLAS NINJA';
+      bindCleanClick(btn, () => openBatallasNinja());
+      menu.replaceChildren(btn);
+    };
+
+    const openBatallasNinja = () => {
+      menu.replaceChildren();
+      stage.replaceChildren();
+
+      const toolbar = document.createElement('div');
+      toolbar.className = 'batallas-toolbar';
+
+      const backBtn = document.createElement('button');
+      backBtn.className = 'batallas-btn batallas-btn-back';
+      backBtn.textContent = '← Volver';
+      bindCleanClick(backBtn, renderSubmenu);
+
+      const title = document.createElement('div');
+      title.className = 'batallas-title';
+      title.textContent = 'BATALLAS NINJA';
+
+      toolbar.append(backBtn, title);
+
+      const iframe = document.createElement('iframe');
+      iframe.className = 'batallas-iframe';
+      iframe.src = 'batallas-ninja.html';
+      iframe.title = 'Batallas Ninja';
+      iframe.loading = 'eager';
+
+      stage.append(toolbar, iframe);
+    };
+
+    renderSubmenu();
+
+    batallasCleanup = () => {
+      panel.remove();
+    };
+  }
 
   function renderJutsusSection() {
     cleanupCenter();
@@ -1192,6 +1266,13 @@
       return;
     }
 
+    if (sectionKey === 'batallas') {
+      stopHeroPassiveRegen();
+      refs.overlay.classList.remove('visible');
+      renderBatallasSection();
+      return;
+    }
+
     stopHeroPassiveRegen();
     renderPlaceholder(sectionKey);
     refs.overlayTitle.textContent = `${info.icon} ${info.title}`;
@@ -1359,6 +1440,9 @@
     unmountStartMenu();
     showMainHud();
 
+    refs.nav.removeEventListener('click', handleNavClick);
+    refs.overlay.removeEventListener('click', handleOverlayClick);
+    document.removeEventListener('keydown', handleKeyDown);
     refs.nav.addEventListener('click', handleNavClick, { signal });
     refs.overlay.addEventListener('click', handleOverlayClick, { signal });
     document.addEventListener('keydown', handleKeyDown, { signal });

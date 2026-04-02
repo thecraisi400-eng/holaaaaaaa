@@ -89,6 +89,7 @@
   let misionesCleanup = null;
   let arbolCleanup = null;
   let jutsusCleanup = null;
+  let batallasCleanup = null;
   let selectedCharacter = null;
   let gameLaunched = false;
   let autoSaveIntervalId = null;
@@ -635,6 +636,10 @@
       jutsusCleanup();
       jutsusCleanup = null;
     }
+    if (typeof batallasCleanup === 'function') {
+      batallasCleanup();
+      batallasCleanup = null;
+    }
     refs.center.replaceChildren();
   }
 
@@ -843,6 +848,338 @@
       panel.remove();
       refs.nav.style.pointerEvents = '';
       refs.nav.style.opacity = '';
+    };
+  }
+
+  function renderBatallasSection() {
+    cleanupCenter();
+    const panel = document.createElement('div');
+    panel.className = 'batalla-ninja-system';
+    panel.innerHTML = `
+      <div class="bn-topbar">
+        <button class="bn-icon-btn" data-action="messages">💬 <span class="bn-badge" id="bn-msg-badge" hidden>0</span></button>
+        <div class="bn-player">🥷 Tú · #<span id="bn-player-rank">101</span> · Lv.<span id="bn-player-level">${state.level}</span></div>
+        <button class="bn-icon-btn" data-action="leaderboard">🏆 <span class="bn-icon-label">100</span></button>
+      </div>
+      <div class="bn-header">⚔️ BATALLA NINJA ⚔️ · ⏱️ <span id="bn-event-time">24:00:00</span></div>
+      <div class="bn-player-stats">❤️x6 <span id="bn-ph">0</span> · 💎 <span id="bn-pm">60</span> · ⚔️ <span id="bn-pa">0</span> · 🛡️ <span id="bn-pd">0</span></div>
+      <div class="bn-scroll-title">🧾 Scroll: BATALLA NINJA</div>
+      <div class="bn-content" id="bn-content"></div>
+      <div class="bn-bottom">
+        <div class="bn-log-title">📜 Últimos combates</div>
+        <div class="bn-log" id="bn-log"></div>
+      </div>
+      <div class="bn-overlay" id="bn-overlay"></div>
+      <div class="bn-battle" id="bn-battle"></div>
+    `;
+    refs.center.appendChild(panel);
+
+    const NAMES_POOL = [...new Set([
+      'Naruto Uzumaki','Sasuke Uchiha','Kakashi Hatake','Sakura Haruno','Itachi Uchiha','Jiraiya','Hinata Hyuga','Gaara','Shikamaru Nara','Minato Namikaze',
+      'Madara Uchiha','Obito Uchiha','Orochimaru','Tsunade','Rock Lee','Neji Hyuga','Nagato (Pain)','Konan','Killer Bee','Temari','Kankuro','Ino Yamanaka',
+      'Choji Akimichi','Asuma Sarutobi','Hiruzen Sarutobi','Hashirama Senju','Tobirama Senju','Kushina Uzumaki','Sai','Yamato','Kisame Hoshigaki','Deidara',
+      'Sasori','Hidan','Kakuzu','Zetsu','Kabuto Yakushi','Kaguya Otsutsuki','Iruka Umino','Shino Aburame','Kiba Inuzuka','Akamaru','Tenten','Guy Might',
+      'Suigetsu Hozuki','Karin Uzumaki','Jugo','Danzo Shimura','Shisui Uchiha','Rin Nohara','Yahiko','Konohamaru Sarutobi','Hanabi Hyuga','Hiashi Hyuga',
+      'Hizashi Hyuga','Kimimaro','Haku','Zabuza Momochi','Cuarto Raikage','Onoki','Darui','Chojuro','Anko Mitarashi','Shizune','Kurenai Yuhi','Gamabunta',
+      'Katsuyu','Manda','Kurama','Shukaku','Hagoromo Otsutsuki','Hamura Otsutsuki','Indra Otsutsuki','Ashura Otsutsuki','Toneri Otsutsuki','Cuarto Kazekage',
+      'Chiyo','Ebizo','Utakata','Fuu','Roshi','Han','Yugito Nii','Yagura','Ibiki Morino','Mei Terumi','Ao','Kotetsu Hagane','Izumo Kamizuki','Baki',
+      'Shin Uchiha','Momoshiki Otsutsuki','Kinshiki Otsutsuki','Urashiki Otsutsuki','Delta','Code','Amado','Koji Kashin','Boruto Uzumaki','Sarada Uchiha',
+      'Mitsuki','Kawaki','Mirai Sarutobi','Wasabi Izuno','Namida Suzumeno','Iwabe Yuino','Denki Kaminarimon','Metal Lee','Sumire Kakei','Moegi Kazamatsuri',
+      'Udon Ise','Konohamaru'
+    ])].slice(0, 100);
+    const RANKS = ['Genin', 'Chunin', 'Jonin', 'Anbu', 'Kage'];
+    const FORMULAS = [
+      l => ({ hp: 80 + 12 * (l - 1), atk: 22 + 11 * (l - 1), def: 5 + 4 * (l - 1), spd: 120 + 5 * (l - 1), crt: 8 + 0.6 * (l - 1), eva: 10 + 0.5 * (l - 1), res: 50 + 8 * (l - 1) }),
+      l => ({ hp: 90 + 15 * (l - 1), atk: 28 + 16 * (l - 1), def: 6 + 3 * (l - 1), spd: 95 + 2 * (l - 1), crt: 4 + 0.2 * (l - 1), eva: 3 + 0.1 * (l - 1), res: 140 + 28 * (l - 1) }),
+      l => ({ hp: 115 + 20 * (l - 1), atk: 20 + 13 * (l - 1), def: 8 + 7 * (l - 1), spd: 105 + 3 * (l - 1), crt: 12 + 0.8 * (l - 1), eva: 5 + 0.2 * (l - 1), res: 75 + 12 * (l - 1) }),
+      l => ({ hp: 105 + 18 * (l - 1), atk: 12 + 4 * (l - 1), def: 12 + 9 * (l - 1), spd: 90 + 2 * (l - 1), crt: 2 + 0.05 * (l - 1), eva: 4 + 0.15 * (l - 1), res: 180 + 35 * (l - 1) }),
+      l => ({ hp: 100 + 20 * (l - 1), atk: 18 + 8 * (l - 1), def: 8 + 5 * (l - 1), spd: 100 + 2 * (l - 1), crt: 5 + 0.2 * (l - 1), eva: 2 + 0.1 * (l - 1), res: 80 + 15 * (l - 1) }),
+      l => ({ hp: 85 + 14 * (l - 1), atk: 14 + 7 * (l - 1), def: 6 + 4 * (l - 1), spd: 110 + 3.5 * (l - 1), crt: 3 + 0.15 * (l - 1), eva: 8 + 0.4 * (l - 1), res: 200 + 40 * (l - 1) }),
+      l => ({ hp: 130 + 22 * (l - 1), atk: 16 + 9 * (l - 1), def: 9 + 6 * (l - 1), spd: 90 + 1.5 * (l - 1), crt: 2 + 0.1 * (l - 1), eva: 1 + 0.05 * (l - 1), res: 120 + 25 * (l - 1) }),
+      l => ({ hp: 150 + 28 * (l - 1), atk: 35 + 18 * (l - 1), def: 2 + (l - 1), spd: 85 + (l - 1), crt: 15 + 1.2 * (l - 1), eva: 0, res: 50 + 5 * (l - 1) }),
+      l => ({ hp: 110 + 18 * (l - 1), atk: 10 + 5 * (l - 1), def: 12 + 8 * (l - 1), spd: 100 + 2.5 * (l - 1), crt: 1 + 0.05 * (l - 1), eva: 5 + 0.25 * (l - 1), res: 150 + 30 * (l - 1) }),
+      l => ({ hp: 75 + 11 * (l - 1), atk: 20 + 10 * (l - 1), def: 4 + 3 * (l - 1), spd: 140 + 6 * (l - 1), crt: 10 + 0.5 * (l - 1), eva: 12 + 0.6 * (l - 1), res: 60 + 10 * (l - 1) })
+    ];
+
+    const bs = {
+      player: { name: 'Tú', rank: 101, level: Math.max(7, state.level), mp: Math.max(50, Math.floor(state.mpMax / 5)), maxMp: Math.max(50, Math.floor(state.mpMax / 5)) },
+      ninjas: [],
+      eventEndAt: Date.now() + (24 * 60 * 60 * 1000),
+      logs: [],
+      notifications: [],
+      unread: 0,
+      inBattle: false
+    };
+
+    const $ = (sel) => panel.querySelector(sel);
+    const bnContent = $('#bn-content');
+    const bnLog = $('#bn-log');
+    const bnOverlay = $('#bn-overlay');
+    const bnBattle = $('#bn-battle');
+    const iconButtons = panel.querySelectorAll('.bn-icon-btn');
+
+    function getRewards(rank) {
+      if (rank === 1) return '🥇 15000 oro + 25 pts Jutsus';
+      if (rank === 2) return '🥈 10000 oro + 15 pts Jutsus';
+      if (rank === 3) return '🥉 7000 oro + 10 pts Jutsus';
+      if (rank <= 10) return '🔹 4000 oro + 6 pts Jutsus';
+      if (rank <= 25) return '⚪ 1000 oro + 2 pts Jutsus';
+      if (rank <= 70) return '🪙 300 oro + 0 pts';
+      return '—';
+    }
+
+    function makeNinja(rank, name) {
+      const level = Math.floor(Math.random() * (100 - bs.player.level + 1)) + bs.player.level;
+      const f = FORMULAS[Math.floor(Math.random() * FORMULAS.length)](level);
+      return {
+        rank,
+        name,
+        level,
+        hp: Math.floor(f.hp),
+        hpX6: Math.floor(f.hp * 6),
+        atk: Math.floor(f.atk),
+        def: Math.floor(f.def),
+        mp: 50,
+        maxMp: 50,
+        spd: f.spd,
+        crt: f.crt,
+        eva: f.eva,
+        res: f.res,
+        rango: RANKS[Math.floor(Math.random() * RANKS.length)],
+        nextAttackAt: Date.now() + (Math.floor(Math.random() * 3600) + 60) * 1000,
+        cadenceMs: 2 * 60 * 60 * 1000,
+        emoji: ['🔥', '🌪️', '🌙', '⭐', '🗡️', '🦊', '❄️', '🌀', '💀', '⚡', '🐍', '🐸'][Math.floor(Math.random() * 12)]
+      };
+    }
+
+    NAMES_POOL.forEach((name, idx) => bs.ninjas.push(makeNinja(idx + 1, name)));
+    const pf = FORMULAS[Math.floor(Math.random() * FORMULAS.length)](bs.player.level);
+    bs.player.hp = Math.floor(pf.hp);
+    bs.player.hpX6 = bs.player.hp * 6;
+    bs.player.maxHpX6 = bs.player.hpX6;
+    bs.player.atk = Math.floor(pf.atk);
+    bs.player.def = Math.floor(pf.def);
+
+    function pushLog(msg, type = 'neutral') {
+      bs.logs.unshift({ msg, type, time: new Date().toLocaleTimeString('es-ES', { hour12: false }) });
+      if (bs.logs.length > 6) bs.logs.pop();
+      bnLog.innerHTML = bs.logs.map((l) => `<div class="bn-log-item ${l.type}"><b>${l.time}</b> ${l.msg}</div>`).join('');
+    }
+
+    function addNotif(msg, type) {
+      bs.notifications.unshift({ msg, type, read: false });
+      if (bs.notifications.length > 20) bs.notifications.pop();
+      bs.unread = bs.notifications.filter((n) => !n.read).length;
+      const badge = $('#bn-msg-badge');
+      badge.hidden = bs.unread === 0;
+      badge.textContent = String(bs.unread);
+    }
+
+    function rankClass(rank) {
+      if (rank === 1) return 'rank-1';
+      if (rank <= 3) return 'rank-3';
+      if (rank <= 10) return 'rank-10';
+      if (rank <= 25) return 'rank-25';
+      return '';
+    }
+
+    function renderChallenges() {
+      $('#bn-player-rank').textContent = String(bs.player.rank);
+      $('#bn-player-level').textContent = String(bs.player.level);
+      $('#bn-ph').textContent = String(bs.player.hpX6);
+      $('#bn-pm').textContent = String(bs.player.mp);
+      $('#bn-pa').textContent = String(bs.player.atk);
+      $('#bn-pd').textContent = String(bs.player.def);
+      const targets = [bs.player.rank - 1, bs.player.rank - 2, bs.player.rank - 3]
+        .filter((r) => r >= 1)
+        .map((r) => bs.ninjas.find((n) => n.rank === r))
+        .filter(Boolean);
+      bnContent.innerHTML = targets.map((n) => `
+        <button class="bn-card" data-rank="${n.rank}">
+          <div class="bn-avatar">${n.emoji}</div>
+          <div class="bn-meta">
+            <div class="bn-name">${n.name}</div>
+            <div class="bn-sub ${rankClass(n.rank)}">#${n.rank} · ${n.rango} · Lv.${n.level}</div>
+            <div class="bn-stats">❤️${n.hpX6} · ⚔️${n.atk} · 🛡️${n.def}</div>
+          </div>
+        </button>`).join('');
+    }
+
+    function swapRanks(a, b) {
+      const ra = a.rank;
+      a.rank = b.rank;
+      b.rank = ra;
+      bs.ninjas.sort((x, y) => x.rank - y.rank);
+    }
+
+    function resolveNpcFight(attacker, defender) {
+      const att = (attacker.atk * 2 + attacker.spd * 0.3 + attacker.crt * 0.6) * (0.7 + Math.random() * 0.6);
+      const def = (defender.def * 2 + defender.res * 0.25 + defender.eva * 0.5) * (0.7 + Math.random() * 0.6);
+      if (att > def) {
+        swapRanks(attacker, defender);
+        pushLog(`✅ ${attacker.name} venció a ${defender.name} y subió al #${attacker.rank}.`, 'win');
+      } else {
+        pushLog(`❌ ${attacker.name} no pudo con ${defender.name}.`, 'lose');
+      }
+      if ([bs.player.rank - 3, bs.player.rank - 2, bs.player.rank - 1].includes(attacker.rank)) {
+        const won = att > def;
+        addNotif(won ? `${attacker.name} te atacó pero defendiste tu puesto.` : `${attacker.name} te atacó y bajaste al rango #${bs.player.rank}.`, won ? 'win' : 'lose');
+      }
+    }
+
+    function processAIBattles() {
+      const now = Date.now();
+      bs.ninjas.forEach((n) => {
+        if (now < n.nextAttackAt) return;
+        const targetRanks = [n.rank - 1, n.rank - 2, n.rank - 3].filter((r) => r >= 1);
+        const possible = bs.ninjas.filter((x) => targetRanks.includes(x.rank));
+        if (possible.length) {
+          resolveNpcFight(n, possible[Math.floor(Math.random() * possible.length)]);
+        }
+        n.nextAttackAt = now + n.cadenceMs;
+      });
+      if (!bs.inBattle) renderChallenges();
+    }
+
+    function closeOverlay() {
+      bnOverlay.classList.remove('active');
+      bnOverlay.innerHTML = '';
+    }
+
+    function openMessages() {
+      bnOverlay.classList.add('active');
+      const rows = bs.notifications.length
+        ? bs.notifications.map((n) => `<div class="bn-notif ${n.type}">${n.type === 'win' ? '🟢' : '🔴'} ${n.msg}</div>`).join('')
+        : '<div class="bn-empty">Sin notificaciones.</div>';
+      bnOverlay.innerHTML = `<div class="bn-over-top"><b>💬 Noticias</b><button data-close>✕</button></div><div class="bn-over-list">${rows}</div>`;
+      bs.notifications.forEach((n) => { n.read = true; });
+      bs.unread = 0;
+      const badge = $('#bn-msg-badge');
+      badge.hidden = true;
+      badge.textContent = '0';
+    }
+
+    function openLeaderboard() {
+      const sorted = [...bs.ninjas].sort((a, b) => a.rank - b.rank);
+      const rows = sorted.map((n) => `<div class="bn-lb-row ${n.rank === bs.player.rank ? 'you' : ''}">
+        <span class="bn-lb-pos ${rankClass(n.rank)}">#${n.rank}</span>
+        <span class="bn-lb-name">${n.name}</span>
+        <span class="bn-lb-rew">${getRewards(n.rank)}</span>
+      </div>`).join('');
+      bnOverlay.classList.add('active');
+      bnOverlay.innerHTML = `<div class="bn-over-top"><b>🏆 Ranking (100 Ninjas)</b><button data-close>✕</button></div><div class="bn-over-timer">⏳ Finaliza en: <span id="bn-lb-timer"></span></div><div class="bn-over-list">${rows}</div>`;
+      const t = Math.max(0, Math.floor((bs.eventEndAt - Date.now()) / 1000));
+      const h = String(Math.floor(t / 3600)).padStart(2, '0');
+      const m = String(Math.floor((t % 3600) / 60)).padStart(2, '0');
+      const s = String(t % 60).padStart(2, '0');
+      const timer = panel.querySelector('#bn-lb-timer');
+      if (timer) timer.textContent = `${h}:${m}:${s}`;
+    }
+
+    function startBattle(enemyRank) {
+      if (bs.inBattle) return;
+      const enemy = bs.ninjas.find((n) => n.rank === Number(enemyRank));
+      if (!enemy) return;
+      bs.inBattle = true;
+      bnBattle.classList.add('active');
+      let ph = bs.player.hpX6;
+      let eh = enemy.hpX6;
+      const pmax = bs.player.maxHpX6;
+      const emax = enemy.hpX6;
+      bnBattle.innerHTML = `
+        <div class="bn-fighter">
+          <div class="bn-fava">🥷</div><div><b>${bs.player.name}</b><small>#${bs.player.rank}</small></div>
+          <div class="bn-bar"><i id="bn-phb" style="width:100%"></i></div><small id="bn-pht">${ph}/${pmax}</small>
+          <div class="bn-bar mp"><i style="width:100%"></i></div><small>MP ${bs.player.mp}/${bs.player.maxMp}</small>
+          <small>⚔️${bs.player.atk} · 🛡️${bs.player.def}</small>
+        </div>
+        <div class="bn-vs">⚔️</div>
+        <div class="bn-fighter">
+          <div class="bn-fava">${enemy.emoji}</div><div><b>${enemy.name}</b><small>#${enemy.rank}</small></div>
+          <div class="bn-bar"><i id="bn-ehb" style="width:100%"></i></div><small id="bn-eht">${eh}/${emax}</small>
+          <div class="bn-bar mp"><i style="width:100%"></i></div><small>MP ${enemy.mp}/${enemy.maxMp}</small>
+          <small>⚔️${enemy.atk} · 🛡️${enemy.def}</small>
+        </div>
+        <div class="bn-battle-log" id="bn-battle-log"></div>`;
+      const lg = panel.querySelector('#bn-battle-log');
+      const loop = window.setInterval(() => {
+        const pd = Math.max(1, bs.player.atk - Math.floor(enemy.def * 0.45) + Math.floor(Math.random() * 9));
+        eh = Math.max(0, eh - pd);
+        lg.innerHTML += `<div>🌀 Tú haces ${pd}</div>`;
+        panel.querySelector('#bn-ehb').style.width = `${(eh / emax) * 100}%`;
+        panel.querySelector('#bn-eht').textContent = `${eh}/${emax}`;
+        if (eh <= 0) return finish(true);
+        const ed = Math.max(1, enemy.atk - Math.floor(bs.player.def * 0.45) + Math.floor(Math.random() * 9));
+        ph = Math.max(0, ph - ed);
+        lg.innerHTML += `<div>💥 ${enemy.name} hace ${ed}</div>`;
+        panel.querySelector('#bn-phb').style.width = `${(ph / pmax) * 100}%`;
+        panel.querySelector('#bn-pht').textContent = `${ph}/${pmax}`;
+        lg.scrollTop = lg.scrollHeight;
+        if (ph <= 0) finish(false);
+      }, 650);
+
+      function finish(won) {
+        window.clearInterval(loop);
+        const result = document.createElement('div');
+        result.className = `bn-result ${won ? 'win' : 'lose'}`;
+        result.textContent = won ? '🏆 GANASTE' : '💀 PERDISTE';
+        bnBattle.appendChild(result);
+        if (won) {
+          const oldRank = bs.player.rank;
+          bs.player.rank = enemy.rank;
+          enemy.rank = oldRank;
+          bs.ninjas.sort((a, b) => a.rank - b.rank);
+          pushLog(`✅ Tú venciste a ${enemy.name} y subiste a #${bs.player.rank}.`, 'win');
+          addNotif(`${enemy.name} te atacó pero defendiste tu puesto.`, 'win');
+          if (Math.random() < 0.1) {
+            enemy.level = Math.min(100, enemy.level + 1);
+          }
+        } else {
+          pushLog(`❌ Perdiste contra ${enemy.name}. Te mantienes en #${bs.player.rank}.`, 'lose');
+          addNotif(`${enemy.name} te atacó y bajaste al rango #${bs.player.rank}.`, 'lose');
+        }
+        window.setTimeout(() => {
+          bnBattle.classList.remove('active');
+          bnBattle.innerHTML = '';
+          bs.inBattle = false;
+          renderChallenges();
+        }, 3000);
+      }
+    }
+
+    const tick = window.setInterval(() => {
+      const t = Math.max(0, Math.floor((bs.eventEndAt - Date.now()) / 1000));
+      const h = String(Math.floor(t / 3600)).padStart(2, '0');
+      const m = String(Math.floor((t % 3600) / 60)).padStart(2, '0');
+      const s = String(t % 60).padStart(2, '0');
+      $('#bn-event-time').textContent = `${h}:${m}:${s}`;
+      processAIBattles();
+    }, 1000);
+
+    panel.addEventListener('click', (event) => {
+      const closeBtn = event.target.closest('[data-close]');
+      if (closeBtn) {
+        closeOverlay();
+        return;
+      }
+      const card = event.target.closest('.bn-card');
+      if (card) {
+        startBattle(card.dataset.rank);
+        return;
+      }
+      const actionBtn = event.target.closest('.bn-icon-btn');
+      if (!actionBtn) return;
+      const action = actionBtn.dataset.action;
+      if (action === 'messages') openMessages();
+      if (action === 'leaderboard') openLeaderboard();
+    }, { signal });
+
+    renderChallenges();
+    pushLog('🎯 Evento iniciado: 24h de BATALLA NINJA.', 'neutral');
+    iconButtons.forEach((btn) => btn.blur());
+    batallasCleanup = () => {
+      window.clearInterval(tick);
+      panel.remove();
     };
   }
 
@@ -1189,6 +1526,13 @@
       stopHeroPassiveRegen();
       refs.overlay.classList.remove('visible');
       renderJutsusSection();
+      return;
+    }
+
+    if (sectionKey === 'batallas') {
+      stopHeroPassiveRegen();
+      refs.overlay.classList.remove('visible');
+      renderBatallasSection();
       return;
     }
 

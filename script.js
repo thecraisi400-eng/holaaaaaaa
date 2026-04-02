@@ -819,13 +819,10 @@
         if (regenPct <= 0) return;
 
         const hpHeal = Math.max(1, Math.round(state.hpMax * (regenPct / 100)));
-        const mpHeal = Math.max(1, Math.round(state.mpMax * (regenPct / 100)));
         const nextHp = Math.min(state.hpMax, state.hp + hpHeal);
-        const nextMp = Math.min(state.mpMax, state.mp + mpHeal);
 
-        if (nextHp === state.hp && nextMp === state.mp) return;
+        if (nextHp === state.hp) return;
         state.hp = nextHp;
-        state.mp = nextMp;
         refreshResourceBars();
       },
       onReturn: () => {

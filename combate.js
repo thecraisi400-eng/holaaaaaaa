@@ -41,6 +41,7 @@
     let currentMissionList = [];
     let battleLoopCount = 0;
     const ENEMY_DEFEAT_VISUAL_DELAY_MS = 320;
+    const JUTSU_MP_COST_MULTIPLIER = 0.5;
 
     function loadEnemy(index) {
       const mission = currentMissionList[index];
@@ -184,7 +185,8 @@
           const values = jutsu.values;
           const baseCost = Math.max(0, Number(values[4]) || 0);
           const chakraDiscount = Math.max(0, Number(playerStatus.chakraCostReductionPct) || 0);
-          const mpCost = Math.max(0, Math.floor(baseCost * (1 - chakraDiscount / 100)));
+          const discountedCost = Math.max(0, baseCost * (1 - chakraDiscount / 100));
+          const mpCost = Math.max(0, Math.floor(discountedCost * JUTSU_MP_COST_MULTIPLIER));
           if (playerStats.mp < mpCost) return;
           if (Math.random() * 100 > (Number(values[3]) || 0)) return;
 
@@ -271,9 +273,8 @@
           } else if (jutsu.id === 5) {
             if (subSkill === 0) {
               const mpStolen = Math.max(0, Number(values[0]) || 0);
-              playerStats.mp = Math.min(playerStats.maxMp, playerStats.mp + mpStolen);
               currentEnemy.mp = Math.max(0, currentEnemy.mp - mpStolen);
-              onLog(`🌀 ${jutsu.name} [RoboMP]: roba ${mpStolen} MP.`);
+              onLog(`🌀 ${jutsu.name} [RoboMP]: drena ${mpStolen} MP del enemigo (sin regeneración de MP propia en combate).`);
             } else if (subSkill === 1) {
               const hpRegen = Math.max(1, Math.floor(playerStats.maxHp * ((Number(values[1]) || 0) / 100)));
               playerStats.hp = Math.min(playerStats.maxHp, playerStats.hp + hpRegen);

@@ -1192,6 +1192,18 @@
       return;
     }
 
+    if (sectionKey === 'batallas') {
+      stopHeroPassiveRegen();
+      refs.overlay.classList.remove('visible');
+      if (typeof window.renderBatallasSection === 'function') {
+        cleanupCenter();
+        window.renderBatallasSection(refs.center);
+      } else {
+        renderPlaceholder(sectionKey);
+      }
+      return;
+    }
+
     stopHeroPassiveRegen();
     renderPlaceholder(sectionKey);
     refs.overlayTitle.textContent = `${info.icon} ${info.title}`;

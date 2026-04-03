@@ -89,6 +89,7 @@
   let misionesCleanup = null;
   let arbolCleanup = null;
   let jutsusCleanup = null;
+  let batallasCleanup = null;
   let selectedCharacter = null;
   let gameLaunched = false;
   let autoSaveIntervalId = null;
@@ -635,6 +636,10 @@
       jutsusCleanup();
       jutsusCleanup = null;
     }
+    if (typeof batallasCleanup === 'function') {
+      batallasCleanup();
+      batallasCleanup = null;
+    }
     refs.center.replaceChildren();
   }
 
@@ -772,6 +777,69 @@
 
     render();
     jutsusCleanup = () => panel.remove();
+  }
+
+
+  function renderBatallasSection() {
+    cleanupCenter();
+    const panel = document.createElement('div');
+    panel.className = 'heroe-system';
+    panel.style.padding = '0';
+    panel.style.height = '100%';
+    refs.center.appendChild(panel);
+
+    if (typeof window.createBatallasNinjaUI !== 'function') {
+      renderPlaceholder('batallas');
+      return;
+    }
+
+    const playerStats = {
+      get hp() { return state.hp; },
+      set hp(value) { state.hp = Math.max(0, Math.round(value)); refreshResourceBars(); },
+      get maxHp() { return state.hpMax; },
+      get mp() { return state.mp; },
+      set mp(value) { state.mp = Math.max(0, Math.round(value)); refreshResourceBars(); },
+      get maxMp() { return state.mpMax; },
+      get atk() {
+        const shared = sharedState?.getState ? sharedState.getState().atk : null;
+        return Math.max(1, Math.round(shared || window.heroEngine.computeStats(window.gameCharacter).ATK || state.atk));
+      },
+      get def() {
+        const shared = sharedState?.getState ? sharedState.getState().def : null;
+        return Math.max(1, Math.round(shared || window.heroEngine.computeStats(window.gameCharacter).DEF || state.def));
+      },
+      get level() { return state.level; }
+    };
+
+    const ui = window.createBatallasNinjaUI({
+      container: panel,
+      getPlayerStats: () => playerStats,
+      onCombatStateChange: () => {},
+      onRewardGain: (rewards) => {
+        if (!rewards || typeof rewards !== 'object') return;
+        const xpGain = Math.max(0, Number(rewards.xp) || 0);
+        const goldGain = Math.max(0, Number(rewards.gold) || 0);
+        if (xpGain > 0) state.exp = Math.min(state.expMax, state.exp + xpGain);
+        if (goldGain > 0) {
+          state.gold += goldGain;
+          if (window.gameCharacter) window.gameCharacter.gold = state.gold;
+        }
+        refreshResourceBars();
+        syncTopStats();
+        queueAutoSave();
+      },
+      onPlayerAttack: (damage = 0) => {
+        if (!Number.isFinite(damage) || damage <= 0) return;
+        const clampedDamage = Math.min(state.hp, Math.max(0, Math.round(damage)));
+        state.hp = Math.max(0, state.hp - clampedDamage);
+        refreshResourceBars();
+      }
+    });
+
+    batallasCleanup = () => {
+      if (ui?.destroy) ui.destroy();
+      panel.remove();
+    };
   }
 
 
@@ -1189,6 +1257,13 @@
       stopHeroPassiveRegen();
       refs.overlay.classList.remove('visible');
       renderJutsusSection();
+      return;
+    }
+
+    if (sectionKey === 'batallas') {
+      stopHeroPassiveRegen();
+      refs.overlay.classList.remove('visible');
+      renderBatallasSection();
       return;
     }
 

@@ -765,3 +765,121 @@ html, body {
 .jutsu-desc { color: #89a8cd; font-size: .58rem; line-height: 1.4; }
 .jutsu-actions { display: flex; gap: 6px; }
 .jutsu-actions button { flex: 1; border: 1px solid #355989; background: #1f3352; color: #d3e7ff; border-radius: 6px; padding: 5px; font-size: .6rem; font-weight: 700; }
+
+/* Batallas Ninja */
+.misiones-rango .screen::-webkit-scrollbar,
+.misiones-rango .bingo-enemy-list::-webkit-scrollbar,
+.misiones-rango .combat-log::-webkit-scrollbar,
+.batallas-ninja #main-content::-webkit-scrollbar,
+.batallas-ninja #combat-log::-webkit-scrollbar,
+.batallas-ninja .overlay::-webkit-scrollbar,
+.batallas-ninja #lb-list::-webkit-scrollbar,
+.batallas-ninja #notif-list::-webkit-scrollbar {
+  width: 4px;
+}
+.misiones-rango .screen::-webkit-scrollbar-track,
+.misiones-rango .bingo-enemy-list::-webkit-scrollbar-track,
+.misiones-rango .combat-log::-webkit-scrollbar-track,
+.batallas-ninja #main-content::-webkit-scrollbar-track,
+.batallas-ninja #combat-log::-webkit-scrollbar-track,
+.batallas-ninja .overlay::-webkit-scrollbar-track,
+.batallas-ninja #lb-list::-webkit-scrollbar-track,
+.batallas-ninja #notif-list::-webkit-scrollbar-track {
+  background: #131a26;
+}
+.misiones-rango .screen::-webkit-scrollbar-thumb,
+.misiones-rango .bingo-enemy-list::-webkit-scrollbar-thumb,
+.misiones-rango .combat-log::-webkit-scrollbar-thumb,
+.batallas-ninja #main-content::-webkit-scrollbar-thumb,
+.batallas-ninja #combat-log::-webkit-scrollbar-thumb,
+.batallas-ninja .overlay::-webkit-scrollbar-thumb,
+.batallas-ninja #lb-list::-webkit-scrollbar-thumb,
+.batallas-ninja #notif-list::-webkit-scrollbar-thumb {
+  background: #1c2740;
+  border-radius: 4px;
+}
+
+.batallas-ninja * { margin: 0; padding: 0; box-sizing: border-box; }
+.batallas-ninja {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #e6edf3;
+}
+.batallas-ninja #game-container {
+  width: min(460px, 100%);
+  height: 100%;
+  background: #0d1117;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #1c2740;
+  border-radius: 8px;
+}
+.batallas-ninja #main-menu { position: absolute; inset: 0; display: flex; justify-content: center; align-items: flex-start; padding-top: 40px; background: #0d1117; z-index: 50; transition: opacity 0.3s ease; }
+.batallas-ninja #main-menu.hidden { opacity: 0; pointer-events: none; }
+.batallas-ninja .menu-btn { padding: 10px 30px; font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; background: #131a26; color: #f0c040; border: 1px solid #f0c040; border-radius: 5px; cursor: pointer; }
+.batallas-ninja #game-content { display: none; height: 100%; }
+.batallas-ninja #game-content.visible { display: block; }
+.batallas-ninja #top-bar { display: flex; justify-content: space-between; align-items: center; padding: 3px 6px; background: #131a26; height: 32px; border-bottom: 1px solid #1c2740; }
+.batallas-ninja .top-icon { cursor: pointer; position: relative; font-size: 16px; padding: 3px 7px; background: #162035; border-radius: 5px; border: 1px solid #1c2740; color: #f0c040; }
+.batallas-ninja .badge { position: absolute; top: -3px; right: -3px; background: #ff4040; color: #fff; font-size: 8px; font-weight: bold; min-width: 14px; height: 14px; border-radius: 7px; display: flex; align-items: center; justify-content: center; padding: 0 3px; }
+.batallas-ninja #player-info { display: flex; align-items: center; gap: 5px; font-size: 10px; }
+.batallas-ninja #player-info span { color: #f0c040; font-weight: bold; }
+.batallas-ninja #event-timer-bar { text-align: center; padding: 2px; font-size: 9px; color: #ff8040; background: #131a26; border-bottom: 1px solid #1c2740; height: 20px; line-height: 16px; }
+.batallas-ninja #player-stats-bar { display: flex; justify-content: space-around; align-items: center; padding: 3px 6px; background: #1c2740; border-bottom: 1px solid #0d1117; height: 28px; gap: 4px; }
+.batallas-ninja .player-stat { display: flex; align-items: center; gap: 3px; font-size: 9px; font-weight: bold; }
+.batallas-ninja .player-stat.hp-stat { color: #ff6060; }
+.batallas-ninja .player-stat.mp-stat { color: #60a0ff; }
+.batallas-ninja .player-stat.atk-stat { color: #ff9040; }
+.batallas-ninja .player-stat.def-stat { color: #40c0ff; }
+.batallas-ninja .stat-bar-mini { width: 50px; height: 6px; background: #0d1117; border-radius: 3px; overflow: hidden; border: 1px solid rgba(255,255,255,.1); }
+.batallas-ninja .stat-bar-mini-fill-hp { height: 100%; background: linear-gradient(90deg, #ff4040, #ff8060); }
+.batallas-ninja .stat-bar-mini-fill-mp { height: 100%; background: linear-gradient(90deg, #4060ff, #80a0ff); }
+.batallas-ninja #main-content { height: calc(100% - 32px - 20px - 28px - 96px); overflow-y: auto; padding: 3px 5px; }
+.batallas-ninja .challenge-card { display: flex; align-items: center; width: 100%; text-align: left; background: #131a26; border: 1px solid #1c2740; border-radius: 5px; padding: 5px 7px; margin-bottom: 3px; cursor: pointer; }
+.batallas-ninja .challenge-card.selected { border-color: #40ff80; box-shadow: 0 0 8px rgba(64,255,128,.3); }
+.batallas-ninja .ninja-avatar { width: 40px; height: 40px; border-radius: 5px; background: #1c2740; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; border: 1px solid rgba(255,255,255,.1); }
+.batallas-ninja .ninja-details { flex: 1; margin-left: 6px; min-width: 0; }
+.batallas-ninja .ninja-name { font-size: 10px; font-weight: bold; color: #e6edf3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.batallas-ninja .ninja-rank { font-size: 9px; color: #f0c040; font-weight: bold; }
+.batallas-ninja .ninja-rank.top1 { color: #ff4040; }
+.batallas-ninja .ninja-rank.top3 { color: #ffcc00; }
+.batallas-ninja .ninja-rank.top10 { color: #4080ff; }
+.batallas-ninja .ninja-rank.top25 { color: #888; }
+.batallas-ninja .ninja-stats { display: flex; gap: 4px; font-size: 8px; margin-top: 1px; flex-wrap: wrap; }
+.batallas-ninja .stat-chip { background: #1c2740; padding: 1px 4px; border-radius: 3px; color: #a0b0c0; }
+.batallas-ninja .stat-chip.hp { color: #ff6060; }
+.batallas-ninja .stat-chip.atk { color: #ff9040; }
+.batallas-ninja .stat-chip.def { color: #60a0ff; }
+.batallas-ninja .ninja-rank-badge { font-size: 8px; padding: 2px 5px; border-radius: 3px; font-weight: bold; }
+.batallas-ninja .rank-genin { background: #408040; color: #a0ffa0; }
+.batallas-ninja .rank-chunin { background: #4040a0; color: #a0a0ff; }
+.batallas-ninja .rank-jonin { background: #a04040; color: #ffa0a0; }
+.batallas-ninja .rank-anbu { background: #604080; color: #d0a0ff; }
+.batallas-ninja .rank-kage { background: #808040; color: #ffff80; }
+.batallas-ninja #bottom-section { position: absolute; bottom: 0; left: 0; right: 0; height: 96px; background: #131a26; border-top: 1px solid #1c2740; display: flex; flex-direction: column; }
+.batallas-ninja #combat-log { flex: 1; overflow-y: auto; padding: 4px 6px; font-size: 8px; }
+.batallas-ninja .log-entry { padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,.04); display: flex; gap: 3px; align-items: center; }
+.batallas-ninja .log-entry.win { color: #40ff80; }
+.batallas-ninja .log-entry.lose { color: #ff4040; }
+.batallas-ninja .log-entry.neutral { color: #80a0c0; }
+.batallas-ninja .log-time { color: #607080; min-width: 30px; }
+.batallas-ninja .overlay { position: absolute; inset: 0; background: rgba(8,12,20,.92); display: none; flex-direction: column; z-index: 100; padding: 6px; overflow-y: auto; }
+.batallas-ninja .overlay.active { display: flex; }
+.batallas-ninja .overlay-close { align-self: flex-end; background: #162035; border: 1px solid #1c2740; color: #e6edf3; width: 22px; height: 22px; border-radius: 4px; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+.batallas-ninja .overlay-title { font-size: 13px; font-weight: bold; color: #f0c040; text-align: center; margin: 3px 0 5px 0; }
+.batallas-ninja .lb-entry { display: flex; align-items: center; padding: 2px 5px; margin-bottom: 1.5px; border-radius: 3px; background: #131a26; font-size: 8.5px; gap: 3px; }
+.batallas-ninja .lb-entry.player-row { border: 1px solid #f0c040; }
+.batallas-ninja .lb-pos { min-width: 20px; font-weight: bold; text-align: center; font-size: 8px; }
+.batallas-ninja .lb-pos.p1 { color: #ff4040; }
+.batallas-ninja .lb-pos.p2, .batallas-ninja .lb-pos.p3 { color: #ffcc00; }
+.batallas-ninja .lb-pos.p10 { color: #4080ff; }
+.batallas-ninja .lb-pos.p25 { color: #888; }
+.batallas-ninja .lb-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.batallas-ninja .lb-reward { color: #80a0c0; font-size: 7.5px; }
+.batallas-ninja #lb-timer { text-align: center; font-size: 10px; color: #ff8040; font-weight: bold; margin-bottom: 5px; padding: 3px; background: #131a26; border-radius: 4px; }
+.batallas-ninja .notif-entry { padding: 3px 5px; margin-bottom: 2px; border-radius: 3px; font-size: 8.5px; background: #131a26; border-left: 3px solid; }
+.batallas-ninja .notif-entry.win { border-color: #40ff80; color: #40ff80; }
+.batallas-ninja .notif-entry.lose { border-color: #ff4040; color: #ff4040; }

@@ -89,6 +89,7 @@
   let misionesCleanup = null;
   let arbolCleanup = null;
   let jutsusCleanup = null;
+  let batallasCleanup = null;
   let selectedCharacter = null;
   let gameLaunched = false;
   let autoSaveIntervalId = null;
@@ -635,6 +636,10 @@
       jutsusCleanup();
       jutsusCleanup = null;
     }
+    if (typeof batallasCleanup === 'function') {
+      batallasCleanup();
+      batallasCleanup = null;
+    }
     refs.center.replaceChildren();
   }
 
@@ -843,6 +848,319 @@
       panel.remove();
       refs.nav.style.pointerEvents = '';
       refs.nav.style.opacity = '';
+    };
+  }
+
+  function renderBatallasSection() {
+    cleanupCenter();
+    const panel = document.createElement('div');
+    panel.className = 'bn-wrap';
+    panel.innerHTML = `
+      <style>
+        .bn-wrap{position:relative;width:100%;height:100%;min-height:0;background:#0d1117;color:#e6edf3;display:flex;flex-direction:column;font-size:11px}
+        .bn-top{height:30px;display:flex;align-items:center;justify-content:space-between;padding:4px 6px;background:#131a26;border-bottom:1px solid #1c2740}
+        .bn-icon{border:1px solid #1c2740;background:#162035;border-radius:6px;padding:3px 7px;cursor:pointer;position:relative}
+        .bn-badge{position:absolute;right:-4px;top:-4px;min-width:14px;height:14px;border-radius:999px;background:#ff4040;color:#fff;font-size:9px;display:none;align-items:center;justify-content:center;padding:0 3px}
+        .bn-title{font-weight:700;color:#f0c040;letter-spacing:.6px}
+        .bn-timer{height:18px;background:#131a26;border-bottom:1px solid #1c2740;font-size:10px;display:flex;align-items:center;justify-content:center;color:#ff8040}
+        .bn-main{flex:1;display:flex;flex-direction:column;min-height:0}
+        .bn-scroll{flex:1;overflow:auto;padding:6px;display:flex;flex-direction:column;gap:4px}
+        .bn-scroll::-webkit-scrollbar,.bn-log::-webkit-scrollbar,.bn-overlay-list::-webkit-scrollbar{width:4px}
+        .bn-scroll::-webkit-scrollbar-thumb,.bn-log::-webkit-scrollbar-thumb,.bn-overlay-list::-webkit-scrollbar-thumb{background:#1c2740;border-radius:4px}
+        .bn-card{display:flex;gap:6px;align-items:center;background:#131a26;border:1px solid #1c2740;border-radius:8px;padding:6px;cursor:pointer}
+        .bn-card:hover{border-color:#f0c040}
+        .bn-avatar{width:40px;height:40px;border-radius:8px;background:#1c2740;display:flex;align-items:center;justify-content:center}
+        .bn-meta{flex:1;min-width:0}.bn-name{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .bn-sub{font-size:10px;color:#c7d5e5}
+        .bn-stats{display:flex;gap:4px;font-size:9px;margin-top:2px;flex-wrap:wrap}
+        .bn-chip{padding:1px 4px;border-radius:999px;background:#1c2740}.bn-chip.hp{color:#ff6060}.bn-chip.atk{color:#ff9040}.bn-chip.def{color:#60a0ff}
+        .bn-log{height:94px;background:#131a26;border-top:1px solid #1c2740;overflow:auto;padding:5px}
+        .bn-line{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+        .bn-line.win{color:#45ff88}.bn-line.lose{color:#ff5858}.bn-line.neu{color:#8ea6c2}
+        .bn-overlay{position:absolute;inset:0;background:rgba(8,12,20,.85);display:none;flex-direction:column;z-index:4;padding:6px}
+        .bn-overlay.active{display:flex}
+        .bn-overlay-top{display:flex;justify-content:space-between;align-items:center}
+        .bn-close{background:#162035;color:#e6edf3;border:1px solid #1c2740;border-radius:5px;cursor:pointer;padding:2px 7px}
+        .bn-overlay-title{color:#f0c040;font-weight:700}
+        .bn-overlay-list{margin-top:5px;overflow:auto;flex:1}
+        .bn-lb-entry{display:flex;gap:5px;align-items:center;background:#131a26;border-radius:4px;padding:3px 4px;margin-bottom:2px;font-size:10px}
+        .bn-pos{min-width:26px;font-weight:700}.bn-p1{color:#ff4040}.bn-p2,.bn-p3{color:#ffcc00}.bn-p10{color:#4080ff}.bn-p25{color:#8f8f8f}
+        .bn-lb-player{border:1px solid #f0c040}
+        .bn-notif{display:flex;align-items:center;gap:5px;font-size:10px;padding:2px 4px;margin-bottom:2px;background:#131a26;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .bn-battle{position:absolute;inset:0;background:rgba(8,12,20,.9);display:none;z-index:5;flex-direction:column;padding:8px}
+        .bn-battle.active{display:flex}
+        .bn-duel{display:flex;justify-content:space-between;gap:6px;align-items:center;flex:1}
+        .bn-f{width:45%;text-align:center}.bn-f .bn-avatar{margin:0 auto 4px;width:54px;height:54px}
+        .bn-bar-wrap{margin-bottom:2px}.bn-bar-txt{font-size:9px;display:flex;justify-content:space-between}
+        .bn-bar{height:8px;background:#0d1117;border:1px solid rgba(255,255,255,.1);border-radius:5px;overflow:hidden}
+        .bn-hp{height:100%;background:linear-gradient(90deg,#ff4040,#ff8060)} .bn-mp{height:100%;background:linear-gradient(90deg,#4060ff,#80a0ff)}
+        .bn-result{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:10px 18px;border-radius:8px;font-weight:700;display:none}
+        .bn-result.show{display:block}.bn-result.win{color:#45ff88;border:2px solid #45ff88;background:rgba(69,255,136,.15)}.bn-result.lose{color:#ff5858;border:2px solid #ff5858;background:rgba(255,88,88,.15)}
+      </style>
+      <div class="bn-top">
+        <button class="bn-icon" id="bn-msg">💬<span class="bn-badge" id="bn-msg-badge">0</span></button>
+        <div class="bn-title">⚔️ BATALLA NINJA ⚔️</div>
+        <button class="bn-icon" id="bn-trophy">🏆</button>
+      </div>
+      <div class="bn-timer">⏱️ Tiempo restante: <span id="bn-timer"></span></div>
+      <div class="bn-main">
+        <div class="bn-scroll" id="bn-scroll"></div>
+        <div class="bn-log" id="bn-log"></div>
+      </div>
+      <div class="bn-overlay" id="bn-lb">
+        <div class="bn-overlay-top"><div class="bn-overlay-title">🏆 Ranking de 100 Ninjas + Tú (#101)</div><button class="bn-close" data-close="lb">✕</button></div>
+        <div style="font-size:10px;color:#ff8040;margin-top:4px">⏳ <span id="bn-lb-timer"></span></div>
+        <div class="bn-overlay-list" id="bn-lb-list"></div>
+      </div>
+      <div class="bn-overlay" id="bn-msg-ov">
+        <div class="bn-overlay-top"><div class="bn-overlay-title">💬 Noticias de combate</div><button class="bn-close" data-close="msg">✕</button></div>
+        <div class="bn-overlay-list" id="bn-msg-list"></div>
+      </div>
+      <div class="bn-battle" id="bn-battle">
+        <div class="bn-duel">
+          <div class="bn-f" id="bn-player-f"></div>
+          <div style="font-size:20px">⚔️</div>
+          <div class="bn-f" id="bn-enemy-f"></div>
+        </div>
+        <div id="bn-battle-log" style="height:45px;overflow:auto;font-size:9px;background:rgba(0,0,0,.25);padding:3px;border-radius:5px"></div>
+        <div class="bn-result" id="bn-result"></div>
+      </div>
+    `;
+    refs.center.appendChild(panel);
+
+    const namePool = [
+      'Naruto Uzumaki','Sasuke Uchiha','Kakashi Hatake','Sakura Haruno','Itachi Uchiha','Jiraiya','Hinata Hyuga','Gaara','Shikamaru Nara','Minato Namikaze','Madara Uchiha','Obito Uchiha','Orochimaru','Tsunade','Rock Lee','Neji Hyuga','Nagato (Pain)','Konan','Killer Bee','Temari','Kankuro','Ino Yamanaka','Choji Akimichi','Asuma Sarutobi','Hiruzen Sarutobi','Hashirama Senju','Tobirama Senju','Kushina Uzumaki','Sai','Yamato','Kisame Hoshigaki','Deidara','Sasori','Hidan','Kakuzu','Zetsu','Kabuto Yakushi','Kaguya Otsutsuki','Iruka Umino','Shino Aburame','Kiba Inuzuka','Akamaru','Tenten','Guy Might','Suigetsu Hozuki','Karin Uzumaki','Jugo','Danzo Shimura','Shisui Uchiha','Rin Nohara','Yahiko','Konohamaru Sarutobi','Hanabi Hyuga','Hiashi Hyuga','Hizashi Hyuga','Kimimaro','Haku','Zabuza Momochi','Cuarto Raikage','Onoki','Darui','Chojuro','Anko Mitarashi','Shizune','Kurenai Yuhi','Gamabunta','Katsuyu','Manda','Kurama','Shukaku','Hagoromo Otsutsuki','Hamura Otsutsuki','Indra Otsutsuki','Ashura Otsutsuki','Toneri Otsutsuki','Cuarto Kazekage','Chiyo','Ebizo','Utakata','Fuu','Roshi','Han','Yugito Nii','Yagura','Ibiki Morino'
+    ];
+    while (namePool.length < 100) namePool.push(`Ninja ${namePool.length + 1}`);
+    const uniqueNames = [...new Set(namePool)].slice(0, 100);
+    const formulas = [
+      { hp: l => 80 + (12 * (l - 1)), atk: l => 22 + (11 * (l - 1)), def: l => 5 + (4 * (l - 1)) },
+      { hp: l => 90 + (15 * (l - 1)), atk: l => 28 + (16 * (l - 1)), def: l => 6 + (3 * (l - 1)) },
+      { hp: l => 115 + (20 * (l - 1)), atk: l => 20 + (13 * (l - 1)), def: l => 8 + (7 * (l - 1)) },
+      { hp: l => 105 + (18 * (l - 1)), atk: l => 12 + (4 * (l - 1)), def: l => 12 + (9 * (l - 1)) },
+      { hp: l => 100 + (20 * (l - 1)), atk: l => 18 + (8 * (l - 1)), def: l => 8 + (5 * (l - 1)) }
+    ];
+    const emojis = ['🥷', '🔥', '⚡', '🌪️', '🐍', '🦊', '🗡️', '🌙', '💥', '❄️'];
+    const rangos = ['Genin', 'Chunin', 'Jonin', 'Ambu', 'Kage'];
+    const getReward = (rank) => {
+      if (rank === 1) return '💰15,000 + ⭐25 Jutsus';
+      if (rank === 2) return '💰10,000 + ⭐15 Jutsus';
+      if (rank === 3) return '💰7,000 + ⭐10 Jutsus';
+      if (rank <= 10) return '💰4,000 + ⭐6 Jutsus';
+      if (rank <= 25) return '💰1,000 + ⭐2 Jutsus';
+      if (rank <= 70) return '💰300 + ⭐0 Jutsus';
+      return '💰0 + ⭐0';
+    };
+    const bn = window.__batallaNinjaState || (() => {
+      const created = {
+        player: { name: 'Tú', rank: 101, level: Math.max(7, state.level), mp: state.mp, maxMp: Math.max(50, state.mpMax), emoji: '🥷' },
+        ninjas: [],
+        logs: [],
+        notifications: [],
+        remaining: 24 * 60 * 60,
+        mounted: false,
+        battleLock: false
+      };
+      for (let i = 1; i <= 100; i += 1) {
+        const level = Math.floor(Math.random() * (100 - created.player.level + 1)) + created.player.level;
+        const f = formulas[Math.floor(Math.random() * formulas.length)];
+        const hpBase = Math.floor(f.hp(level));
+        created.ninjas.push({
+          rank: i, name: uniqueNames[i - 1], level,
+          hp: hpBase, hpX6: hpBase * 6,
+          atk: Math.floor(f.atk(level)), def: Math.floor(f.def(level)),
+          emoji: emojis[Math.floor(Math.random() * emojis.length)],
+          ninjaRank: rangos[Math.floor(Math.random() * rangos.length)],
+          firstMs: (Math.floor(Math.random() * 60) + 1) * 60 * 1000,
+          intervalMs: 2 * 60 * 60 * 1000,
+          nextAt: Date.now() + (Math.floor(Math.random() * 60) + 1) * 60 * 1000
+        });
+      }
+      return created;
+    })();
+    window.__batallaNinjaState = bn;
+    const $ = (id) => panel.querySelector(id);
+
+    const pushLog = (msg, type = 'neu') => {
+      bn.logs.unshift({ msg, type, t: new Date().toLocaleTimeString('es-ES', { hour12: false }) });
+      if (bn.logs.length > 6) bn.logs.pop();
+    };
+    const pushNotif = (msg, type) => {
+      bn.notifications.unshift({ msg, type, read: false });
+    };
+    const rankTargets = () => [bn.player.rank - 1, bn.player.rank - 2, bn.player.rank - 3]
+      .filter((r) => r >= 1)
+      .map((r) => bn.ninjas.find((n) => n.rank === r))
+      .filter(Boolean);
+
+    const render = () => {
+      const cards = rankTargets();
+      const scroll = $('#bn-scroll');
+      const log = $('#bn-log');
+      const msgBadge = $('#bn-msg-badge');
+      scroll.innerHTML = cards.map((n) => `
+        <button class="bn-card" data-fight="${n.rank}">
+          <div class="bn-avatar">${n.emoji}</div>
+          <div class="bn-meta">
+            <div class="bn-name">${n.name}</div>
+            <div class="bn-sub">#${n.rank} · ${n.ninjaRank} · Lv.${n.level}</div>
+            <div class="bn-stats"><span class="bn-chip hp">❤️${n.hpX6}</span><span class="bn-chip atk">⚔️${n.atk}</span><span class="bn-chip def">🛡️${n.def}</span></div>
+          </div>
+        </button>`).join('') || '<div style="color:#8ea6c2;text-align:center;padding:20px">No hay objetivos disponibles.</div>';
+      log.innerHTML = `<div style="font-size:9px;color:#8ea6c2;margin-bottom:2px">📜 Últimos combates (máx 6)</div>${bn.logs.map((l) => `<div class="bn-line ${l.type}">${l.t} · ${l.msg}</div>`).join('')}`;
+      const unread = bn.notifications.filter((n) => !n.read).length;
+      msgBadge.textContent = unread;
+      msgBadge.style.display = unread > 0 ? 'flex' : 'none';
+      $('#bn-timer').textContent = formatTime(bn.remaining);
+      $('#bn-lb-timer').textContent = formatTime(bn.remaining);
+    };
+    const formatTime = (s) => {
+      const clamped = Math.max(0, s);
+      const h = Math.floor(clamped / 3600).toString().padStart(2, '0');
+      const m = Math.floor((clamped % 3600) / 60).toString().padStart(2, '0');
+      const sec = Math.floor(clamped % 60).toString().padStart(2, '0');
+      return `${h}:${m}:${sec}`;
+    };
+    const renderLB = () => {
+      const list = $('#bn-lb-list');
+      const merged = [...bn.ninjas.map((n) => ({ ...n, isPlayer: false })), { name: bn.player.name, rank: bn.player.rank, level: bn.player.level, emoji: bn.player.emoji, isPlayer: true }]
+        .sort((a, b) => a.rank - b.rank);
+      list.innerHTML = merged.map((n) => {
+        const c = n.rank === 1 ? 'bn-p1' : n.rank <= 3 ? (n.rank === 2 ? 'bn-p2' : 'bn-p3') : n.rank <= 10 ? 'bn-p10' : n.rank <= 25 ? 'bn-p25' : '';
+        return `<div class="bn-lb-entry ${n.isPlayer ? 'bn-lb-player' : ''}">
+          <span class="bn-pos ${c}">#${n.rank}</span><span>${n.emoji || '🥷'}</span><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${n.name}</span>
+          <span style="font-size:9px;color:#8ea6c2">Lv.${n.level}</span><span style="font-size:9px;color:#9bc1ff">${getReward(n.rank)}</span>
+        </div>`;
+      }).join('');
+    };
+    const openMsg = () => {
+      $('#bn-msg-ov').classList.add('active');
+      const list = $('#bn-msg-list');
+      list.innerHTML = bn.notifications.length ? bn.notifications.map((n) => `<div class="bn-notif" style="color:${n.type === 'win' ? '#45ff88' : '#ff5858'}">${n.type === 'win' ? '✅' : '❌'} ${n.msg}</div>`).join('') : '<div style="font-size:10px;color:#8ea6c2;padding:8px">Sin noticias todavía.</div>';
+      bn.notifications.forEach((n) => { n.read = true; });
+      render();
+    };
+    const canAttackPlayer = (attackerRank) => [bn.player.rank - 3, bn.player.rank - 2, bn.player.rank - 1].includes(attackerRank);
+    const fightResult = (a, d) => ((a.atk * 2 + a.level * 5 + Math.random() * 40) > (d.def * 2 + d.level * 4 + Math.random() * 40));
+    const aiTick = () => {
+      if (bn.remaining <= 0) return;
+      const now = Date.now();
+      bn.ninjas.forEach((n) => {
+        if (now < n.nextAt) return;
+        const targets = [n.rank - 1, n.rank - 2, n.rank - 3].filter((r) => r >= 1);
+        const targetRank = targets[Math.floor(Math.random() * targets.length)];
+        const def = bn.ninjas.find((x) => x.rank === targetRank);
+        if (!def) return;
+        if (fightResult(n, def)) {
+          const old = n.rank;
+          n.rank = def.rank;
+          def.rank = old;
+          pushLog(`${n.name} venció a ${def.name} y tomó #${n.rank}.`, 'win');
+          if (canAttackPlayer(old) && bn.player.rank === def.rank) pushNotif(`${n.name} te atacó y bajaste al rango #${Math.min(101, bn.player.rank + 1)}.`, 'lose');
+        } else {
+          pushLog(`${def.name} defendió su puesto contra ${n.name}.`, 'neu');
+          if (canAttackPlayer(n.rank) && bn.player.rank === def.rank) pushNotif(`${n.name} te atacó pero defendiste tu puesto.`, 'win');
+        }
+        if (Math.random() < 0.1) {
+          n.level = Math.min(100, n.level + 1);
+          pushLog(`${n.name} entrenó y subió a Lv.${n.level}.`, 'neu');
+        }
+        n.nextAt = now + n.intervalMs;
+      });
+      bn.ninjas.sort((a, b) => a.rank - b.rank);
+      render();
+    };
+    const playerFight = (enemyRank) => {
+      if (bn.battleLock) return;
+      const enemy = bn.ninjas.find((n) => n.rank === enemyRank);
+      if (!enemy) return;
+      bn.battleLock = true;
+      const playerFormula = formulas[Math.floor(Math.random() * formulas.length)];
+      const pBaseHp = Math.floor(playerFormula.hp(bn.player.level));
+      const pAtk = Math.floor(playerFormula.atk(bn.player.level));
+      const pDef = Math.floor(playerFormula.def(bn.player.level));
+      let pHp = pBaseHp * 6;
+      let eHp = enemy.hpX6;
+      const pMax = pHp;
+      const eMax = eHp;
+      const battle = $('#bn-battle');
+      const battleLog = $('#bn-battle-log');
+      const result = $('#bn-result');
+      battle.classList.add('active');
+      battleLog.innerHTML = '';
+      result.className = 'bn-result';
+      const renderFighter = (node, fighter, hp, maxHp, atk, def, isPlayer) => {
+        node.innerHTML = `<div class="bn-avatar">${fighter.emoji}</div><div style="font-weight:700">${fighter.name}</div><div style="font-size:9px;color:#f0c040">#${fighter.rank} · Lv.${fighter.level}</div>
+        <div class="bn-bar-wrap"><div class="bn-bar-txt"><span>HP x6</span><span>${Math.max(0, Math.floor(hp))}/${maxHp}</span></div><div class="bn-bar"><div class="bn-hp" style="width:${(Math.max(0, hp) / maxHp) * 100}%"></div></div></div>
+        <div class="bn-bar-wrap"><div class="bn-bar-txt"><span>MP</span><span>${isPlayer ? bn.player.mp : 50}/${isPlayer ? bn.player.maxMp : 50}</span></div><div class="bn-bar"><div class="bn-mp" style="width:${isPlayer ? (bn.player.mp / bn.player.maxMp) * 100 : 100}%"></div></div></div>
+        <div style="font-size:9px">⚔️${atk} · 🛡️${def}</div>`;
+      };
+      const pf = $('#bn-player-f');
+      const ef = $('#bn-enemy-f');
+      const step = () => {
+        const pDmg = Math.max(1, pAtk - Math.floor(enemy.def * 0.5) + Math.floor(Math.random() * 16));
+        eHp -= pDmg;
+        battleLog.innerHTML += `<div style="color:#ff9040">⚔️ Tú golpeas a ${enemy.name} por ${pDmg}</div>`;
+        if (eHp <= 0) return end(true);
+        const eDmg = Math.max(1, enemy.atk - Math.floor(pDef * 0.5) + Math.floor(Math.random() * 16));
+        pHp -= eDmg;
+        battleLog.innerHTML += `<div style="color:#ff6060">💥 ${enemy.name} te golpea por ${eDmg}</div>`;
+        renderFighter(pf, { ...bn.player }, pHp, pMax, pAtk, pDef, true);
+        renderFighter(ef, enemy, eHp, eMax, enemy.atk, enemy.def, false);
+        battleLog.scrollTop = battleLog.scrollHeight;
+        if (pHp <= 0) end(false);
+      };
+      const end = (win) => {
+        window.clearInterval(duel);
+        if (win) {
+          const oldPlayerRank = bn.player.rank;
+          const oldEnemyRank = enemy.rank;
+          bn.player.rank = oldEnemyRank;
+          enemy.rank = oldPlayerRank;
+          bn.ninjas.sort((a, b) => a.rank - b.rank);
+          pushLog(`Tú venciste a ${enemy.name} y subiste a #${bn.player.rank}.`, 'win');
+          pushNotif(`${enemy.name} te atacó pero defendiste tu puesto.`, 'win');
+          if (Math.random() < 0.1) {
+            enemy.level = Math.min(100, enemy.level + 1);
+            pushLog(`${enemy.name} entrenó y buscará revancha más fuerte.`, 'neu');
+          }
+        } else {
+          pushLog(`Perdiste vs ${enemy.name}. Tu rango se mantiene en #${bn.player.rank}.`, 'lose');
+          pushNotif(`${enemy.name} te atacó y bajaste al rango #${bn.player.rank}.`, 'lose');
+        }
+        result.className = `bn-result show ${win ? 'win' : 'lose'}`;
+        result.textContent = win ? '🏆 GANASTE' : '💀 PERDISTE';
+        window.setTimeout(() => {
+          battle.classList.remove('active');
+          bn.battleLock = false;
+          render();
+        }, 3000);
+      };
+      renderFighter(pf, { ...bn.player }, pHp, pMax, pAtk, pDef, true);
+      renderFighter(ef, enemy, eHp, eMax, enemy.atk, enemy.def, false);
+      const duel = window.setInterval(step, 650);
+    };
+
+    panel.addEventListener('click', (event) => {
+      const card = event.target.closest('[data-fight]');
+      if (card) playerFight(Number(card.dataset.fight));
+      if (event.target.closest('#bn-trophy')) { $('#bn-lb').classList.add('active'); renderLB(); }
+      if (event.target.closest('#bn-msg')) openMsg();
+      if (event.target.closest('[data-close="lb"]')) $('#bn-lb').classList.remove('active');
+      if (event.target.closest('[data-close="msg"]')) $('#bn-msg-ov').classList.remove('active');
+    }, { signal });
+
+    const clock = window.setInterval(() => {
+      if (bn.remaining > 0) bn.remaining -= 1;
+      render();
+    }, 1000);
+    const ai = window.setInterval(aiTick, 1500);
+    render();
+
+    batallasCleanup = () => {
+      window.clearInterval(clock);
+      window.clearInterval(ai);
+      panel.remove();
     };
   }
 
@@ -1189,6 +1507,13 @@
       stopHeroPassiveRegen();
       refs.overlay.classList.remove('visible');
       renderJutsusSection();
+      return;
+    }
+
+    if (sectionKey === 'batallas') {
+      stopHeroPassiveRegen();
+      refs.overlay.classList.remove('visible');
+      renderBatallasSection();
       return;
     }
 

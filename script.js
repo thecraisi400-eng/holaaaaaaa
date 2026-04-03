@@ -779,6 +779,59 @@
     jutsusCleanup = () => panel.remove();
   }
 
+  function renderBatallasSection() {
+    cleanupCenter();
+
+    const panel = document.createElement('div');
+    panel.className = 'batallas-system';
+    panel.innerHTML = `
+      <div class="section-label">── BATALLAS ──</div>
+      <div class="batallas-submenu" id="batallas-submenu"></div>
+      <div class="batallas-content" id="batallas-content"></div>
+    `;
+    refs.center.appendChild(panel);
+
+    const submenu = panel.querySelector('#batallas-submenu');
+    const content = panel.querySelector('#batallas-content');
+    const detachListeners = [];
+
+    const bindSafeClick = (btn, handler) => {
+      const cleanBtn = btn.cloneNode(true);
+      btn.replaceWith(cleanBtn);
+      cleanBtn.addEventListener('click', handler);
+      detachListeners.push(() => cleanBtn.removeEventListener('click', handler));
+      return cleanBtn;
+    };
+
+    const renderNinjaBattle = () => {
+      content.innerHTML = '';
+      const frame = document.createElement('iframe');
+      frame.className = 'batallas-ninja-frame';
+      frame.src = 'batallas-ninja.html';
+      frame.title = 'Batallas Ninja';
+      frame.loading = 'lazy';
+      content.appendChild(frame);
+    };
+
+    submenu.innerHTML = `
+      <button class="menu-button" id="btn-batallas-ninja">⚔️ BATALLAS NINJA</button>
+    `;
+    const ninjaBtn = submenu.querySelector('#btn-batallas-ninja');
+    bindSafeClick(ninjaBtn, renderNinjaBattle);
+
+    content.innerHTML = `
+      <div class="batallas-empty-state">
+        Selecciona <b>BATALLAS NINJA</b> para abrir el modo de ranking ninja.
+      </div>
+    `;
+
+    batallasCleanup = () => {
+      detachListeners.forEach((off) => off());
+      detachListeners.length = 0;
+      panel.remove();
+    };
+  }
+
 
   function renderMisionesSection() {
     cleanupCenter();

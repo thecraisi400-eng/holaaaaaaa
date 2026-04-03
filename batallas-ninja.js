@@ -554,6 +554,40 @@ body {
 </body>
 </html>`;
 
+  let persistentIframe = null;
+  let hiddenHost = null;
+
+  function ensurePersistentIframe() {
+    if (persistentIframe) return persistentIframe;
+
+    persistentIframe = document.createElement('iframe');
+    persistentIframe.title = 'Batallas Ninja';
+    persistentIframe.srcdoc = BATALLAS_NINJA_SRCDOC;
+    persistentIframe.style.width = '100%';
+    persistentIframe.style.height = '100%';
+    persistentIframe.style.border = '1px solid #1c2740';
+    persistentIframe.style.borderRadius = '8px';
+
+    hiddenHost = document.createElement('div');
+    hiddenHost.style.position = 'fixed';
+    hiddenHost.style.left = '-10000px';
+    hiddenHost.style.top = '-10000px';
+    hiddenHost.style.width = '1px';
+    hiddenHost.style.height = '1px';
+    hiddenHost.style.opacity = '0';
+    hiddenHost.style.pointerEvents = 'none';
+    hiddenHost.style.overflow = 'hidden';
+    hiddenHost.appendChild(persistentIframe);
+    document.body.appendChild(hiddenHost);
+
+    return persistentIframe;
+  }
+
+  function mountIframeInHost(hostElement) {
+    const iframe = ensurePersistentIframe();
+    hostElement.appendChild(iframe);
+  }
+
   function renderBatallasSection(centerEl) {
     centerEl.replaceChildren();
 
@@ -568,21 +602,37 @@ body {
     iframeHost.style.flex = '1';
     iframeHost.style.minHeight = '0';
 
-    const iframe = document.createElement('iframe');
-    iframe.title = 'Batallas Ninja';
-    iframe.srcdoc = BATALLAS_NINJA_SRCDOC;
-    iframe.style.width = '100%';
-    iframe.style.height = '100%';
-    iframe.style.border = '1px solid #1c2740';
-    iframe.style.borderRadius = '8px';
-
-    iframeHost.appendChild(iframe);
+    mountIframeInHost(iframeHost);
 
     wrapper.appendChild(iframeHost);
     centerEl.appendChild(wrapper);
   }
 
+  function parkBatallasSection() {
+    if (!persistentIframe || !hiddenHost) return;
+    hiddenHost.appendChild(persistentIframe);
+  }
+
+  function syncPlayerStats(payload) {
+    const iframe = ensurePersistentIframe();
+    const targetWindow = iframe.contentWindow;
+    if (!targetWindow) return false;
+
+    try {
+      targetWindow.postMessage({ type: 'BATALLAS_NINJA_SYNC_PLAYER_STATS', payload }, '*');
+      if (targetWindow.BatallasNinjaBridge?.syncPlayerStats) {
+        targetWindow.BatallasNinjaBridge.syncPlayerStats(payload);
+      }
+      return true;
+    } catch (error) {
+      console.warn('No se pudo sincronizar Batallas Ninja:', error);
+      return false;
+    }
+  }
+
   window.BatallasNinjaModule = {
-    renderBatallasSection
+    renderBatallasSection,
+    parkBatallasSection,
+    syncPlayerStats
   };
 })();

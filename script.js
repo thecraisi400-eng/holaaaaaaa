@@ -783,9 +783,7 @@
   function renderBatallasSection() {
     cleanupCenter();
     const panel = document.createElement('div');
-    panel.className = 'heroe-system batallas-system';
-    panel.style.padding = '0';
-    panel.style.height = '100%';
+    panel.className = 'batallas-system';
     refs.center.appendChild(panel);
 
     if (typeof window.createBatallasNinjaUI !== 'function') {

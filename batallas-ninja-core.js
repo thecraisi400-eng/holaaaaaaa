@@ -207,6 +207,65 @@ function setupAutoSave() {
 
 let gameState = defaultGameState();
 
+function normalizeIncomingPlayerStats(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+
+  const numeric = (value, fallback = 0) => {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return fallback;
+    return Math.floor(parsed);
+  };
+
+  const maxHp = Math.max(1, numeric(raw.maxHp, gameState.player.maxHp));
+  const hp = Math.max(0, Math.min(maxHp, numeric(raw.hp, gameState.player.hp)));
+  const maxMp = Math.max(1, numeric(raw.maxMp, gameState.player.maxMp));
+  const mp = Math.max(0, Math.min(maxMp, numeric(raw.mp, gameState.player.mp)));
+
+  return {
+    hp,
+    maxHp,
+    hpDisplay: maxHp > 0 ? hp * 6 : 0,
+    maxHpDisplay: maxHp * 6,
+    mp,
+    maxMp,
+    atk: Math.max(1, numeric(raw.atk, gameState.player.atk)),
+    def: Math.max(1, numeric(raw.def, gameState.player.def)),
+    level: Math.max(1, numeric(raw.level, gameState.player.level)),
+    name: typeof raw.name === 'string' && raw.name.trim() ? raw.name.trim() : gameState.player.name,
+    emoji: typeof raw.emoji === 'string' && raw.emoji.trim() ? raw.emoji.trim() : gameState.player.emoji
+  };
+}
+
+function applyExternalPlayerStats(rawStats) {
+  const synced = normalizeIncomingPlayerStats(rawStats);
+  if (!synced) return;
+
+  gameState.player = {
+    ...gameState.player,
+    ...synced
+  };
+
+  updatePlayerStatsDisplay();
+  updatePlayerDisplay();
+  renderChallengeCards();
+  saveBattleProgress();
+}
+
+window.addEventListener('message', (event) => {
+  const data = event?.data;
+  if (!data || data.type !== 'BATALLAS_NINJA_SYNC_PLAYER_STATS') return;
+  applyExternalPlayerStats(data.payload);
+});
+
+window.BatallasNinjaBridge = {
+  syncPlayerStats: applyExternalPlayerStats,
+  getSnapshot: () => ({
+    player: { ...gameState.player },
+    rank: gameState.player.rank,
+    combatLog: [...gameState.combatLog]
+  })
+};
+
 // ==================== INITIALIZATION ====================
 function init() {
   const loadedState = loadBattleProgress();

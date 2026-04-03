@@ -93,6 +93,7 @@
   let gameLaunched = false;
   let autoSaveIntervalId = null;
   let pendingAutoSaveTimeout = null;
+  let batallasSyncIntervalId = null;
   const uiCache = {
     hpPct: null,
     mpPct: null,
@@ -431,6 +432,7 @@
         def: Math.max(1, Math.round(stats.DEF || state.def))
       });
     }
+    syncBatallasNinjaPlayerStats();
   }
 
   function refreshResourceBars() {
@@ -481,6 +483,7 @@
     if (sharedState?.setState) {
       sharedState.setState({ hp: state.hp });
     }
+    syncBatallasNinjaPlayerStats();
   }
 
   function syncCombatResources() {
@@ -636,6 +639,44 @@
       jutsusCleanup = null;
     }
     refs.center.replaceChildren();
+  }
+
+  function buildBatallasSyncPayload() {
+    const stats = window.heroEngine.computeStats(window.gameCharacter);
+    const hp = Math.max(0, Math.round(state.hp));
+    const maxHp = Math.max(1, Math.round(state.hpMax));
+    const mp = Math.max(0, Math.round(state.mp));
+    const maxMp = Math.max(1, Math.round(state.mpMax));
+
+    return {
+      name: selectedCharacter?.name || 'Tú',
+      emoji: selectedCharacter?.emoji || '🥷',
+      level: Math.max(1, Math.round(state.level)),
+      hp,
+      maxHp,
+      mp,
+      maxMp,
+      atk: Math.max(1, Math.round(stats.ATK || state.atk)),
+      def: Math.max(1, Math.round(stats.DEF || state.def))
+    };
+  }
+
+  function syncBatallasNinjaPlayerStats() {
+    if (!window.BatallasNinjaModule?.syncPlayerStats) return;
+    window.BatallasNinjaModule.syncPlayerStats(buildBatallasSyncPayload());
+  }
+
+  function stopBatallasSync() {
+    if (batallasSyncIntervalId !== null) {
+      window.clearInterval(batallasSyncIntervalId);
+      batallasSyncIntervalId = null;
+    }
+  }
+
+  function startBatallasSync() {
+    stopBatallasSync();
+    syncBatallasNinjaPlayerStats();
+    batallasSyncIntervalId = window.setInterval(syncBatallasNinjaPlayerStats, 1000);
   }
 
   function renderPlaceholder(sectionKey) {
@@ -1155,6 +1196,9 @@
     spawnFloatText(cx, cy, `▶ ${labels[sectionKey] || sectionKey}`, '#e8923a');
 
     setActiveButton(buttonEl);
+    if (state.activeSection === 'batallas' && sectionKey !== 'batallas') {
+      window.BatallasNinjaModule?.parkBatallasSection?.();
+    }
     state.activeSection = sectionKey;
 
     if (sectionKey === 'heroe') {
@@ -1419,6 +1463,7 @@
 
     refreshResourceBars();
     syncTopStats();
+    startBatallasSync();
     startAutoSave();
 
     const heroBtn = document.getElementById('btn-heroe');
@@ -1456,6 +1501,7 @@
     cleanupCenter();
     unmountStartMenu();
     stopAutoSave();
+    stopBatallasSync();
     if (barsIntervalId !== null) window.clearInterval(barsIntervalId);
     barsIntervalId = null;
   }

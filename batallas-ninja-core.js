@@ -71,30 +71,158 @@ const STAT_FORMULAS = [
 ];
 
 // ==================== GAME STATE ====================
-let gameState = {
-  player: {
-    name: "Tú",
-    rank: 101,
-    level: 7,
-    hp: 200, maxHp: 200,
-    mp: 50, maxMp: 50,
-    atk: 30, def: 15, spd: 100, crt: 10, eva: 8, res: 60,
-    formulaIdx: 0,
-    emoji: "🥷"
-  },
-  ninjas: [],
-  selectedEnemy: null,
-  combatLog: [],
-  notifications: [],
-  notifCount: 0,
-  eventTime: 24 * 60 * 60,
-  battleActive: false,
-  ninjaFirstAttackDone: {},
-  battleIntervals: {}
-};
+
+const BATALLAS_NINJA_SAVE_KEY = 'naruto_idle_batallas_ninja_v1';
+const BATALLAS_NINJA_SAVE_VERSION = 1;
+
+function defaultGameState() {
+  return {
+    player: {
+      name: "Tú",
+      rank: 101,
+      level: 7,
+      hp: 200, maxHp: 200,
+      mp: 50, maxMp: 50,
+      atk: 30, def: 15, spd: 100, crt: 10, eva: 8, res: 60,
+      formulaIdx: 0,
+      emoji: "🥷"
+    },
+    ninjas: [],
+    selectedEnemy: null,
+    combatLog: [],
+    notifications: [],
+    notifCount: 0,
+    eventTime: 24 * 60 * 60,
+    battleActive: false,
+    ninjaFirstAttackDone: {},
+    battleIntervals: {}
+  };
+}
+
+function saveBattleProgress() {
+  try {
+    const payload = {
+      version: BATALLAS_NINJA_SAVE_VERSION,
+      savedAt: new Date().toISOString(),
+      gameState: {
+        ...gameState,
+        selectedEnemy: null,
+        battleActive: false,
+        battleIntervals: {},
+        notifCount: gameState.notifications.filter((n) => !n.read).length
+      }
+    };
+    window.localStorage.setItem(BATALLAS_NINJA_SAVE_KEY, JSON.stringify(payload));
+  } catch (error) {
+    console.warn('No se pudo guardar progreso de Batallas Ninja:', error);
+  }
+}
+
+function normalizeLoadedState(rawState) {
+  const base = defaultGameState();
+  if (!rawState || typeof rawState !== 'object') return base;
+
+  const player = rawState.player && typeof rawState.player === 'object'
+    ? { ...base.player, ...rawState.player }
+    : { ...base.player };
+
+  const ninjas = Array.isArray(rawState.ninjas)
+    ? rawState.ninjas
+      .filter((ninja) => ninja && typeof ninja === 'object')
+      .map((ninja) => ({
+        ...ninja,
+        rank: Math.max(1, Math.min(100, Math.floor(Number(ninja.rank) || 100))),
+        level: Math.max(1, Math.min(100, Math.floor(Number(ninja.level) || 1))),
+        hp: Math.max(1, Math.floor(Number(ninja.hp) || 1)),
+        maxHp: Math.max(1, Math.floor(Number(ninja.maxHp) || Number(ninja.hp) || 1)),
+        hpDisplay: Math.max(1, Math.floor(Number(ninja.hpDisplay) || (Number(ninja.hp) || 1) * 6)),
+        maxHpDisplay: Math.max(1, Math.floor(Number(ninja.maxHpDisplay) || (Number(ninja.maxHp) || Number(ninja.hp) || 1) * 6)),
+        nextAttackTime: Math.max(1, Math.floor(Number(ninja.nextAttackTime) || 1800)),
+        firstAttackDone: Boolean(ninja.firstAttackDone)
+      }))
+    : [];
+
+  ninjas.sort((a, b) => a.rank - b.rank);
+
+  const notifications = Array.isArray(rawState.notifications)
+    ? rawState.notifications
+      .filter((notification) => notification && typeof notification === 'object' && typeof notification.msg === 'string')
+      .slice(0, 100)
+      .map((notification) => ({
+        msg: notification.msg,
+        type: notification.type === 'lose' ? 'lose' : 'win',
+        read: Boolean(notification.read)
+      }))
+    : [];
+
+  const combatLog = Array.isArray(rawState.combatLog)
+    ? rawState.combatLog
+      .filter((entry) => entry && typeof entry === 'object' && typeof entry.msg === 'string')
+      .slice(0, 8)
+      .map((entry) => ({
+        time: typeof entry.time === 'string' ? entry.time : '--:--:--',
+        msg: entry.msg,
+        type: entry.type || 'neutral'
+      }))
+    : [];
+
+  return {
+    ...base,
+    ...rawState,
+    player,
+    ninjas,
+    notifications,
+    combatLog,
+    selectedEnemy: null,
+    battleActive: false,
+    battleIntervals: {},
+    eventTime: Math.max(0, Math.floor(Number(rawState.eventTime) || base.eventTime)),
+    notifCount: notifications.filter((n) => !n.read).length
+  };
+}
+
+function loadBattleProgress() {
+  try {
+    const raw = window.localStorage.getItem(BATALLAS_NINJA_SAVE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || parsed.version !== BATALLAS_NINJA_SAVE_VERSION || !parsed.gameState) {
+      return null;
+    }
+    return normalizeLoadedState(parsed.gameState);
+  } catch (error) {
+    console.warn('No se pudo cargar progreso de Batallas Ninja:', error);
+    return null;
+  }
+}
+
+function setupAutoSave() {
+  setInterval(saveBattleProgress, 5000);
+  window.addEventListener('beforeunload', saveBattleProgress);
+  window.addEventListener('pagehide', saveBattleProgress);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') saveBattleProgress();
+  });
+}
+
+let gameState = defaultGameState();
 
 // ==================== INITIALIZATION ====================
 function init() {
+  const loadedState = loadBattleProgress();
+  if (loadedState && loadedState.ninjas.length > 0) {
+    gameState = loadedState;
+
+    updatePlayerStatsDisplay();
+    renderChallengeCards();
+    updatePlayerDisplay();
+    renderCombatLog();
+    setupAutoSave();
+    startEventTimer();
+    startNinjaAI();
+    return;
+  }
+
   let usedNames = new Set();
   for (let i = 1; i <= 100; i++) {
     let nameIdx = (i - 1) % NINJA_NAMES.length;
@@ -156,6 +284,8 @@ function init() {
   updatePlayerStatsDisplay();
   renderChallengeCards();
   updatePlayerDisplay();
+  setupAutoSave();
+  saveBattleProgress();
   startEventTimer();
   startNinjaAI();
 }
@@ -409,6 +539,7 @@ function endBattle(won, enemy) {
   updatePlayerDisplay();
   updatePlayerStatsDisplay();
   renderChallengeCards();
+  saveBattleProgress();
 
   setTimeout(() => {
     document.getElementById('battle-screen').classList.remove('active');
@@ -427,6 +558,7 @@ function addCombatLog(msg, type) {
   if (gameState.combatLog.length > 8) gameState.combatLog.pop();
 
   renderCombatLog();
+  saveBattleProgress();
 }
 
 function renderCombatLog() {
@@ -475,6 +607,7 @@ function toggleMessages() {
 
     gameState.notifCount = 0;
     document.getElementById('msg-badge').style.display = 'none';
+    saveBattleProgress();
   }
 }
 
@@ -619,4 +752,6 @@ function simulateNinjaFight(attacker, defender) {
     loser.def = Math.floor(f.def(loser.level));
     addCombatLog(`📚 ${loser.name} entrenó → Lv.${loser.level}!`, 'neutral');
   }
+
+  saveBattleProgress();
 }

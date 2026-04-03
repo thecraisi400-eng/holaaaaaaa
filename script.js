@@ -1296,8 +1296,12 @@
           <button class="menu-btn btn-primary" id="load-confirm-btn" data-action="confirm-load" style="display:none;max-width:220px;margin-top:8px;">▶ CARGAR GUARDADO</button>
           <button class="load-back-btn" data-action="back-menu">← VOLVER</button>
         </div>
+        <div id="s-clan" class="screen">
+          <div class="hdr"><button class="hdr-back" data-action="back-menu">← Atrás</button><div class="hdr-title">Elige tu Clan</div></div>
+          <div class="char-scroll" id="clan-grid"></div>
+        </div>
         <div id="s-char" class="screen">
-          <div class="hdr"><button class="hdr-back" data-action="back-menu">← Atrás</button><div class="hdr-title">Elige tu Personaje</div></div>
+          <div class="hdr"><button class="hdr-back" data-action="back-clans">← Atrás</button><div class="hdr-title" id="char-screen-title">Elige tu Personaje</div></div>
           <div class="char-scroll" id="char-grid"></div>
         </div>
       </div>`;
@@ -1309,38 +1313,69 @@
     const summaryClass = (val) => ({ 'Muy Alto': 's-muy-alto', Alto: 's-alto', Medio: 's-medio', Bajo: 's-bajo', 'Muy Bajo': 's-muyBajo' }[val] || 's-medio');
     const loadMessage = root.querySelector('#load-message');
     const loadConfirmBtn = root.querySelector('#load-confirm-btn');
+    const clanGrid = root.querySelector('#clan-grid');
     const showScreen = (id) => {
       root.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
       root.querySelector(`#${id}`)?.classList.add('active');
     };
 
     const charGrid = root.querySelector('#char-grid');
-    for (const char of window.PERSONAJES_DATA) {
+    const charScreenTitle = root.querySelector('#char-screen-title');
+    const renderCharactersByClan = (clanId) => {
+      charGrid.innerHTML = '';
+      const characters = window.PERSONAJES_DATA.filter((char) => char.clanId === clanId);
+      for (const char of characters) {
+        const card = document.createElement('div');
+        card.className = 'char-sel-card';
+        const keyStats = ['HP', 'MP', 'ATK', 'DEF', 'Vel', 'REGEN'];
+        const barsHtml = keyStats.map((k) => {
+          const value = char.summary[k];
+          return `<div class="cbar-row"><span>${summaryIcons[k]} ${k}</span><span class="${summaryClass(value)}">${value}</span></div>`;
+        }).join('');
+
+        card.innerHTML = `
+          <div class="char-sel-ava" style="border-color:${char.color}">${char.emoji}</div>
+          <div class="char-sel-info">
+            <div class="char-sel-name">${char.name}</div>
+            <div class="char-sel-role">${char.role}</div>
+            <div class="char-sel-bars">${barsHtml}</div>
+          </div>`;
+
+        card.addEventListener('click', () => onChooseCharacter(char), { once: true });
+        charGrid.appendChild(card);
+      }
+      showScreen('s-char');
+    };
+
+    for (const clan of (window.CLANES_DATA || [])) {
       const card = document.createElement('div');
       card.className = 'char-sel-card';
       const keyStats = ['HP', 'MP', 'ATK', 'DEF', 'Vel', 'REGEN'];
       const barsHtml = keyStats.map((k) => {
-        const value = char.summary[k];
+        const value = clan.summary[k];
         return `<div class="cbar-row"><span>${summaryIcons[k]} ${k}</span><span class="${summaryClass(value)}">${value}</span></div>`;
       }).join('');
 
       card.innerHTML = `
-        <div class="char-sel-ava" style="border-color:${char.color}">${char.emoji}</div>
+        <div class="char-sel-ava" style="border-color:${clan.color}">${clan.emoji}</div>
         <div class="char-sel-info">
-          <div class="char-sel-name">${char.name}</div>
-          <div class="char-sel-role">${char.role}</div>
+          <div class="char-sel-name">${clan.name}</div>
+          <div class="char-sel-role">Selecciona este clan</div>
           <div class="char-sel-bars">${barsHtml}</div>
         </div>`;
 
-      card.addEventListener('click', () => onChooseCharacter(char), { once: true });
-      charGrid.appendChild(card);
+      card.addEventListener('click', () => {
+        charScreenTitle.textContent = `${clan.name} · Personajes`;
+        renderCharactersByClan(clan.id);
+      });
+      clanGrid.appendChild(card);
     }
 
     root.addEventListener('click', (event) => {
       const target = event.target.closest('[data-action]');
       if (!target) return;
       const action = target.getAttribute('data-action');
-      if (action === 'new-game') showScreen('s-char');
+      if (action === 'new-game') showScreen('s-clan');
       if (action === 'load-game') {
         if (hasSavedGame()) {
           loadMessage.innerHTML = '<span>📂</span>Partida detectada. Puedes continuar tu progreso.';
@@ -1353,6 +1388,10 @@
       }
       if (action === 'confirm-load') onLoadSavedGame();
       if (action === 'back-menu') showScreen('s-menu');
+      if (action === 'back-clans') {
+        charGrid.innerHTML = '';
+        showScreen('s-clan');
+      }
     }, { signal });
   }
 

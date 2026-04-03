@@ -89,6 +89,7 @@
   let misionesCleanup = null;
   let arbolCleanup = null;
   let jutsusCleanup = null;
+  let batallasCleanup = null;
   let selectedCharacter = null;
   let gameLaunched = false;
   let autoSaveIntervalId = null;
@@ -635,6 +636,10 @@
       jutsusCleanup();
       jutsusCleanup = null;
     }
+    if (typeof batallasCleanup === 'function') {
+      batallasCleanup();
+      batallasCleanup = null;
+    }
     refs.center.replaceChildren();
   }
 
@@ -843,6 +848,29 @@
       panel.remove();
       refs.nav.style.pointerEvents = '';
       refs.nav.style.opacity = '';
+    };
+  }
+
+
+  function renderBatallasSection() {
+    cleanupCenter();
+
+    const panel = document.createElement('div');
+    panel.className = 'batallas-ninja-container';
+    refs.center.appendChild(panel);
+
+    if (typeof window.createBatallasNinjaUI !== 'function') {
+      renderPlaceholder('batallas');
+      return;
+    }
+
+    const ui = window.createBatallasNinjaUI({
+      container: panel
+    });
+
+    batallasCleanup = () => {
+      ui.destroy();
+      panel.remove();
     };
   }
 
@@ -1192,6 +1220,13 @@
       return;
     }
 
+    if (sectionKey === 'batallas') {
+      stopHeroPassiveRegen();
+      refs.overlay.classList.remove('visible');
+      renderBatallasSection();
+      return;
+    }
+
     stopHeroPassiveRegen();
     renderPlaceholder(sectionKey);
     refs.overlayTitle.textContent = `${info.icon} ${info.title}`;
@@ -1358,6 +1393,10 @@
     }
     unmountStartMenu();
     showMainHud();
+
+    refs.nav.removeEventListener('click', handleNavClick);
+    refs.overlay.removeEventListener('click', handleOverlayClick);
+    document.removeEventListener('keydown', handleKeyDown);
 
     refs.nav.addEventListener('click', handleNavClick, { signal });
     refs.overlay.addEventListener('click', handleOverlayClick, { signal });

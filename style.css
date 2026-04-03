@@ -765,3 +765,29 @@ html, body {
 .jutsu-desc { color: #89a8cd; font-size: .58rem; line-height: 1.4; }
 .jutsu-actions { display: flex; gap: 6px; }
 .jutsu-actions button { flex: 1; border: 1px solid #355989; background: #1f3352; color: #d3e7ff; border-radius: 6px; padding: 5px; font-size: .6rem; font-weight: 700; }
+
+.batallas-ninja-container {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  padding: 8px;
+}
+
+.batallas-ninja-host {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: #0d1117;
+}
+
+.batallas-ninja-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  background: transparent;
+}

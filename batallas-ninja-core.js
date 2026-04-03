@@ -93,14 +93,25 @@ function defaultGameState() {
     notifications: [],
     notifCount: 0,
     eventTime: 24 * 60 * 60,
+    eventEndAt: null,
+    lastProcessedAt: null,
     battleActive: false,
     ninjaFirstAttackDone: {},
     battleIntervals: {}
   };
 }
 
+function nowMs() {
+  return Date.now();
+}
+
+function getRandomAttackCooldown() {
+  return Math.floor(Math.random() * 1501) + 300; // 5 a 30 minutos
+}
+
 function saveBattleProgress() {
   try {
+    gameState.lastProcessedAt = nowMs();
     const payload = {
       version: BATALLAS_NINJA_SAVE_VERSION,
       savedAt: new Date().toISOString(),
@@ -137,7 +148,8 @@ function normalizeLoadedState(rawState) {
         maxHp: Math.max(1, Math.floor(Number(ninja.maxHp) || Number(ninja.hp) || 1)),
         hpDisplay: Math.max(1, Math.floor(Number(ninja.hpDisplay) || (Number(ninja.hp) || 1) * 6)),
         maxHpDisplay: Math.max(1, Math.floor(Number(ninja.maxHpDisplay) || (Number(ninja.maxHp) || Number(ninja.hp) || 1) * 6)),
-        nextAttackTime: Math.max(1, Math.floor(Number(ninja.nextAttackTime) || 1800)),
+        nextAttackTime: Math.max(1, Math.floor(Number(ninja.nextAttackTime) || getRandomAttackCooldown())),
+        nextAttackAt: Math.max(1, Math.floor(Number(ninja.nextAttackAt) || (nowMs() + (Math.floor(Number(ninja.nextAttackTime) || getRandomAttackCooldown()) * 1000)))),
         firstAttackDone: Boolean(ninja.firstAttackDone)
       }))
     : [];
@@ -177,6 +189,8 @@ function normalizeLoadedState(rawState) {
     battleActive: false,
     battleIntervals: {},
     eventTime: Math.max(0, Math.floor(Number(rawState.eventTime) || base.eventTime)),
+    eventEndAt: Number(rawState.eventEndAt) > 0 ? Number(rawState.eventEndAt) : null,
+    lastProcessedAt: Number(rawState.lastProcessedAt) > 0 ? Number(rawState.lastProcessedAt) : null,
     notifCount: notifications.filter((n) => !n.read).length
   };
 }
@@ -206,6 +220,63 @@ function setupAutoSave() {
 }
 
 let gameState = defaultGameState();
+
+function ensureTemporalState() {
+  const now = nowMs();
+
+  if (!Number.isFinite(gameState.eventEndAt) || gameState.eventEndAt <= 0) {
+    gameState.eventEndAt = now + (Math.max(0, gameState.eventTime) * 1000);
+  }
+
+  gameState.ninjas.forEach((ninja) => {
+    if (!Number.isFinite(ninja.nextAttackAt) || ninja.nextAttackAt <= 0) {
+      const fallback = Math.max(1, Math.floor(Number(ninja.nextAttackTime) || getRandomAttackCooldown()));
+      ninja.nextAttackAt = now + (fallback * 1000);
+    }
+  });
+
+  gameState.lastProcessedAt = Number.isFinite(gameState.lastProcessedAt) && gameState.lastProcessedAt > 0
+    ? gameState.lastProcessedAt
+    : now;
+}
+
+function recalcEventTime() {
+  const remainingMs = Math.max(0, gameState.eventEndAt - nowMs());
+  gameState.eventTime = Math.floor(remainingMs / 1000);
+}
+
+function processOfflineProgress() {
+  ensureTemporalState();
+  const now = nowMs();
+  const last = Math.min(gameState.lastProcessedAt || now, now);
+  if (now <= last) {
+    recalcEventTime();
+    return;
+  }
+
+  const processUntil = Math.min(now, gameState.eventEndAt);
+
+  gameState.ninjas.forEach((ninja) => {
+    while (ninja.nextAttackAt <= processUntil) {
+      let validTargets = gameState.ninjas.filter(n =>
+        n.rank >= ninja.rank - 3 && n.rank < ninja.rank && n.rank !== ninja.rank
+      );
+
+      if (validTargets.length > 0) {
+        let target = validTargets[Math.floor(Math.random() * validTargets.length)];
+        simulateNinjaFight(ninja, target, { deferSave: true });
+      }
+
+      ninja.firstAttackDone = true;
+      ninja.nextAttackAt += getRandomAttackCooldown() * 1000;
+    }
+
+    ninja.nextAttackTime = Math.max(1, Math.ceil((ninja.nextAttackAt - now) / 1000));
+  });
+
+  gameState.lastProcessedAt = now;
+  recalcEventTime();
+}
 
 function normalizeIncomingPlayerStats(raw) {
   if (!raw || typeof raw !== 'object') return null;
@@ -271,6 +342,7 @@ function init() {
   const loadedState = loadBattleProgress();
   if (loadedState && loadedState.ninjas.length > 0) {
     gameState = loadedState;
+    processOfflineProgress();
 
     updatePlayerStatsDisplay();
     renderChallengeCards();
@@ -305,6 +377,7 @@ function init() {
 
     let baseHp = Math.floor(formula.hp(level));
     
+    const initialCooldown = getRandomAttackCooldown();
     let ninja = {
       rank: i,
       name: name,
@@ -323,7 +396,8 @@ function init() {
       rankClass: RANKS[rankClassIdx],
       rankClassIdx: rankClassIdx,
       emoji: emoji,
-      nextAttackTime: Math.floor(Math.random() * 1200) + 5,
+      nextAttackTime: initialCooldown,
+      nextAttackAt: nowMs() + (initialCooldown * 1000),
       firstAttackDone: false
     };
 
@@ -340,6 +414,7 @@ function init() {
   gameState.player.atk = Math.floor(pf.atk(gameState.player.level));
   gameState.player.def = Math.floor(pf.def(gameState.player.level));
 
+  ensureTemporalState();
   updatePlayerStatsDisplay();
   renderChallengeCards();
   updatePlayerDisplay();
@@ -721,9 +796,7 @@ function getRewards(rank) {
 // ==================== EVENT TIMER ====================
 function startEventTimer() {
   setInterval(() => {
-    if (gameState.eventTime > 0) {
-      gameState.eventTime--;
-    }
+    recalcEventTime();
 
     let h = Math.floor(gameState.eventTime / 3600);
     let m = Math.floor((gameState.eventTime % 3600) / 60);
@@ -742,10 +815,13 @@ function startEventTimer() {
 // ==================== NINJA AI ====================
 function startNinjaAI() {
   setInterval(() => {
-    gameState.ninjas.forEach(ninja => {
-      ninja.nextAttackTime--;
+    const now = nowMs();
+    if (now > gameState.lastProcessedAt + 1500) {
+      processOfflineProgress();
+    }
 
-      if (ninja.nextAttackTime <= 0) {
+    gameState.ninjas.forEach(ninja => {
+      if (ninja.nextAttackAt <= now) {
         let validTargets = gameState.ninjas.filter(n =>
           n.rank >= ninja.rank - 3 && n.rank < ninja.rank && n.rank !== ninja.rank
         );
@@ -755,14 +831,14 @@ function startNinjaAI() {
           simulateNinjaFight(ninja, target);
         }
 
-        if (!ninja.firstAttackDone) {
-          ninja.firstAttackDone = true;
-          ninja.nextAttackTime = 1800;
-        } else {
-          ninja.nextAttackTime = 1800;
-        }
+        ninja.firstAttackDone = true;
+        ninja.nextAttackAt = now + (getRandomAttackCooldown() * 1000);
       }
+
+      ninja.nextAttackTime = Math.max(1, Math.ceil((ninja.nextAttackAt - now) / 1000));
     });
+
+    gameState.lastProcessedAt = now;
 
     if (!gameState.battleActive) {
       renderChallengeCards();
@@ -770,7 +846,8 @@ function startNinjaAI() {
   }, 1000);
 }
 
-function simulateNinjaFight(attacker, defender) {
+function simulateNinjaFight(attacker, defender, options = {}) {
+  const { deferSave = false } = options;
   let attackPower = attacker.atk * 2 + attacker.spd * 0.3 + attacker.crt * 0.5;
   let defensePower = defender.def * 2 + defender.res * 0.3 + defender.eva * 0.5;
 
@@ -812,5 +889,7 @@ function simulateNinjaFight(attacker, defender) {
     addCombatLog(`📚 ${loser.name} entrenó → Lv.${loser.level}!`, 'neutral');
   }
 
-  saveBattleProgress();
+  if (!deferSave) {
+    saveBattleProgress();
+  }
 }

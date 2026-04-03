@@ -74,6 +74,7 @@ const STAT_FORMULAS = [
 
 const BATALLAS_NINJA_SAVE_KEY = 'naruto_idle_batallas_ninja_v1';
 const BATALLAS_NINJA_SAVE_VERSION = 1;
+const BATALLAS_NINJA_EVENT_END_KEY = 'naruto_idle_batallas_ninja_event_end_at_v1';
 
 function defaultGameState() {
   return {
@@ -109,9 +110,32 @@ function getRandomAttackCooldown() {
   return Math.floor(Math.random() * 1501) + 300; // 5 a 30 minutos
 }
 
+function persistEventEndAt() {
+  try {
+    if (Number.isFinite(gameState.eventEndAt) && gameState.eventEndAt > 0) {
+      window.localStorage.setItem(BATALLAS_NINJA_EVENT_END_KEY, String(Math.floor(gameState.eventEndAt)));
+    }
+  } catch (error) {
+    console.warn('No se pudo guardar el fin del evento de Batallas Ninja:', error);
+  }
+}
+
+function readStoredEventEndAt() {
+  try {
+    const raw = window.localStorage.getItem(BATALLAS_NINJA_EVENT_END_KEY);
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed) || parsed <= 0) return null;
+    return Math.floor(parsed);
+  } catch (error) {
+    console.warn('No se pudo leer el fin del evento de Batallas Ninja:', error);
+    return null;
+  }
+}
+
 function saveBattleProgress() {
   try {
     gameState.lastProcessedAt = nowMs();
+    persistEventEndAt();
     const payload = {
       version: BATALLAS_NINJA_SAVE_VERSION,
       savedAt: new Date().toISOString(),
@@ -225,8 +249,12 @@ function ensureTemporalState() {
   const now = nowMs();
 
   if (!Number.isFinite(gameState.eventEndAt) || gameState.eventEndAt <= 0) {
-    gameState.eventEndAt = now + (Math.max(0, gameState.eventTime) * 1000);
+    const storedEventEndAt = readStoredEventEndAt();
+    gameState.eventEndAt = Number.isFinite(storedEventEndAt) && storedEventEndAt > 0
+      ? storedEventEndAt
+      : now + (Math.max(0, gameState.eventTime) * 1000);
   }
+  persistEventEndAt();
 
   gameState.ninjas.forEach((ninja) => {
     if (!Number.isFinite(ninja.nextAttackAt) || ninja.nextAttackAt <= 0) {

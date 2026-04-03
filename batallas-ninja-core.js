@@ -107,7 +107,29 @@ function nowMs() {
 }
 
 function getRandomAttackCooldown() {
-  return Math.floor(Math.random() * 1501) + 300; // 5 a 30 minutos
+  return Math.floor(Math.random() * 1741) + 60; // 1 a 30 minutos
+}
+
+function persistEventEndAt() {
+  try {
+    if (Number.isFinite(gameState.eventEndAt) && gameState.eventEndAt > 0) {
+      window.localStorage.setItem(BATALLAS_NINJA_EVENT_END_KEY, String(Math.floor(gameState.eventEndAt)));
+    }
+  } catch (error) {
+    console.warn('No se pudo guardar el fin del evento de Batallas Ninja:', error);
+  }
+}
+
+function readStoredEventEndAt() {
+  try {
+    const raw = window.localStorage.getItem(BATALLAS_NINJA_EVENT_END_KEY);
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed) || parsed <= 0) return null;
+    return Math.floor(parsed);
+  } catch (error) {
+    console.warn('No se pudo leer el fin del evento de Batallas Ninja:', error);
+    return null;
+  }
 }
 
 function persistEventEndAt() {
@@ -244,6 +266,7 @@ function setupAutoSave() {
 }
 
 let gameState = defaultGameState();
+let gameInitialized = false;
 
 function ensureTemporalState() {
   const now = nowMs();
@@ -347,7 +370,9 @@ function applyExternalPlayerStats(rawStats) {
   updatePlayerStatsDisplay();
   updatePlayerDisplay();
   renderChallengeCards();
-  saveBattleProgress();
+  if (gameInitialized && gameState.ninjas.length > 0) {
+    saveBattleProgress();
+  }
 }
 
 window.addEventListener('message', (event) => {
@@ -371,6 +396,7 @@ function init() {
   if (loadedState && loadedState.ninjas.length > 0) {
     gameState = loadedState;
     processOfflineProgress();
+    gameInitialized = true;
 
     updatePlayerStatsDisplay();
     renderChallengeCards();
@@ -443,6 +469,7 @@ function init() {
   gameState.player.def = Math.floor(pf.def(gameState.player.level));
 
   ensureTemporalState();
+  gameInitialized = true;
   updatePlayerStatsDisplay();
   renderChallengeCards();
   updatePlayerDisplay();

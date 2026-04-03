@@ -564,22 +564,9 @@ body {
     wrapper.style.width = '100%';
     wrapper.style.height = '100%';
 
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.textContent = '⚔️ BATALLAS NINJA';
-    button.style.alignSelf = 'center';
-    button.style.padding = '10px 14px';
-    button.style.border = '1px solid #f0c040';
-    button.style.background = '#131a26';
-    button.style.color = '#f0c040';
-    button.style.borderRadius = '8px';
-    button.style.fontWeight = '700';
-    button.style.cursor = 'pointer';
-
     const iframeHost = document.createElement('div');
     iframeHost.style.flex = '1';
     iframeHost.style.minHeight = '0';
-    iframeHost.style.display = 'none';
 
     const iframe = document.createElement('iframe');
     iframe.title = 'Batallas Ninja';
@@ -589,14 +576,8 @@ body {
     iframe.style.border = '1px solid #1c2740';
     iframe.style.borderRadius = '8px';
 
-    button.addEventListener('click', () => {
-      iframeHost.style.display = 'block';
-      if (!iframe.parentNode) {
-        iframeHost.appendChild(iframe);
-      }
-    });
+    iframeHost.appendChild(iframe);
 
-    wrapper.appendChild(button);
     wrapper.appendChild(iframeHost);
     centerEl.appendChild(wrapper);
   }

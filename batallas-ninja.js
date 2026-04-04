@@ -351,18 +351,27 @@ body {
   background: #131a26;
   border-radius: 4px;
 }
-/* BATTLE SCREEN (misma estructura visual de Misiones/Bingo) */
-#battle-screen {
+/* BATTLE SCREEN (estructura Misiones/Bingo) */
+#battle-screen.screen {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
   background: rgba(8, 12, 20, 0.95);
-  display: none;
+  display: flex;
   flex-direction: column;
   z-index: 200;
   padding: 6px;
   gap: 6px;
 }
-#battle-screen.active { display: flex; }
+#battle-screen.hidden { display: none !important; }
+.battle-only #battle-screen.screen {
+  position: relative;
+  inset: auto;
+  height: 100%;
+  padding: 8px;
+}
+.battle-only > :not(#battle-screen) {
+  display: none !important;
+}
 .battle-arena { display: flex; justify-content: space-between; gap: 10px; height: 128px; }
 .character-card,
 .enemy-card {
@@ -396,7 +405,7 @@ body {
   margin-top: 2px;
 }
 .fighter-stats .stat-chip { font-size: 7px; }
-#battle-log {
+.combat-log {
   flex: 1;
   min-height: 48px;
   overflow-y: auto;
@@ -405,8 +414,8 @@ body {
   background: rgba(0,0,0,0.3);
   border-radius: 6px;
 }
-#battle-log::-webkit-scrollbar { width: 2px; }
-#battle-log::-webkit-scrollbar-thumb { background: #1c2740; }
+.combat-log::-webkit-scrollbar { width: 2px; }
+.combat-log::-webkit-scrollbar-thumb { background: #1c2740; }
 .battle-msg { padding: 1px 0; border-bottom: 1px solid rgba(255,255,255,.05); }
 .battle-msg.dmg { color: #ff7a60; }
 .battle-msg.heal { color: #40ff80; }
@@ -520,12 +529,12 @@ body {
     </div>
 
     <!-- BATTLE SCREEN -->
-    <div id="battle-screen">
+    <div id="battle-screen" class="screen hidden">
       <div class="battle-arena">
         <div class="character-card" id="player-fighter"></div>
         <div class="enemy-card" id="enemy-fighter"></div>
       </div>
-      <div id="battle-log"></div>
+      <div id="battle-log" class="combat-log"></div>
       <div id="result-overlay"></div>
     </div>
   </div>

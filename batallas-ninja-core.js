@@ -713,16 +713,13 @@ function endBattle(won, enemy) {
       addCombatLog(`📚 ${enemy.name} entrenó → Lv.${enemy.level}!`, 'neutral');
     }
 
-    addCombatLog(`✅ ${gameState.player.name} venció a ${enemy.name} (#${oldEnemyRank}→#${gameState.player.rank})`, 'win');
-    addNotification(`${enemy.name} te atacó pero defendiste tu puesto al rango #${gameState.player.rank}`, 'win');
+    addCombatLog(`✅ ${gameState.player.name} venció a ${enemy.name} (Rango #${oldPlayerRank}→#${gameState.player.rank})`, 'win');
   } else {
     resultOverlay.className = 'lose active';
     resultOverlay.textContent = '💀 PERDISTE 💀';
     resultOverlay.style.display = 'block';
 
-    let newRank = Math.min(101, gameState.player.rank + Math.floor(Math.random() * 5) + 1);
-    addCombatLog(`❌ ${gameState.player.name} perdió vs ${enemy.name} → Rango #${newRank}`, 'lose');
-    addNotification(`${enemy.name} te atacó y bajaste al rango #${newRank}`, 'lose');
+    addCombatLog(`❌ ${gameState.player.name} perdió vs ${enemy.name} y mantuvo el rango #${gameState.player.rank}`, 'lose');
   }
 
   updatePlayerDisplay();
@@ -903,6 +900,8 @@ function startNinjaAI() {
 
 function simulateNinjaFight(attacker, defender, options = {}) {
   const { deferSave = false } = options;
+  const wasPlayerDefender = defender.rank === gameState.player.rank;
+  const oldPlayerRank = gameState.player.rank;
   let attackPower = attacker.atk * 2 + attacker.spd * 0.3 + attacker.crt * 0.5;
   let defensePower = defender.def * 2 + defender.res * 0.3 + defender.eva * 0.5;
 
@@ -918,15 +917,15 @@ function simulateNinjaFight(attacker, defender, options = {}) {
 
     addCombatLog(`⚔️ ${attacker.emoji} ${attacker.name} venció a ${defender.emoji} ${defender.name} (#${tempRank}→#${attacker.rank})`, 'win');
 
-    if (defender.rank === gameState.player.rank) {
-      let newPlayerRank = Math.min(101, gameState.player.rank + 1);
-      addNotification(`${attacker.name} te atacó y bajaste al rango #${newPlayerRank}`, 'lose');
+    if (wasPlayerDefender) {
+      gameState.player.rank = defender.rank;
+      addNotification(`${attacker.name} te atacó y bajaste de #${oldPlayerRank} a #${gameState.player.rank}`, 'lose');
     }
   } else {
     addCombatLog(`🛡️ ${defender.emoji} ${defender.name} defendió su puesto vs ${attacker.emoji} ${attacker.name}`, 'neutral');
 
-    if (defender.rank === gameState.player.rank) {
-      addNotification(`${attacker.name} te atacó pero defendiste tu puesto #${gameState.player.rank}`, 'win');
+    if (wasPlayerDefender) {
+      addNotification(`${attacker.name} te atacó, defendiste tu puesto y conservaste el rango #${gameState.player.rank}`, 'win');
     }
   }
 

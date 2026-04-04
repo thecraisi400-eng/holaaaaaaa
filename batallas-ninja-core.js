@@ -572,6 +572,7 @@ function startBattle() {
   let enemy = gameState.selectedEnemy;
   let player = gameState.player;
   gameState.battleActive = true;
+  // Mantiene visible únicamente el panel de lucha durante el combate.
   document.getElementById('game-content').classList.add('battle-only');
 
   let playerBattleHp = player.hpDisplay;
@@ -730,6 +731,7 @@ function endBattle(won, enemy) {
 
   setTimeout(() => {
     document.getElementById('battle-screen').classList.add('hidden');
+    // Restaura toda la interfaz al finalizar la pelea.
     document.getElementById('game-content').classList.remove('battle-only');
     resultOverlay.className = '';
     resultOverlay.style.display = 'none';

@@ -369,6 +369,7 @@ body {
   height: 100%;
   padding: 8px;
 }
+/* En modo batalla ocultamos el resto de paneles para replicar Misiones/Bingo. */
 .battle-only > :not(#battle-screen) {
   display: none !important;
 }

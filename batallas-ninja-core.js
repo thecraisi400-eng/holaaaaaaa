@@ -578,7 +578,7 @@ function startBattle() {
   let enemyBattleHp = enemy.hpDisplay;
   let enemyMaxBattleHp = enemy.maxHpDisplay;
 
-  document.getElementById('battle-screen').classList.add('active');
+  document.getElementById('battle-screen').classList.remove('hidden');
   document.getElementById('result-overlay').className = '';
   document.getElementById('result-overlay').style.display = 'none';
 
@@ -728,7 +728,7 @@ function endBattle(won, enemy) {
   saveBattleProgress();
 
   setTimeout(() => {
-    document.getElementById('battle-screen').classList.remove('active');
+    document.getElementById('battle-screen').classList.add('hidden');
     resultOverlay.className = '';
     resultOverlay.style.display = 'none';
     gameState.selectedEnemy = null;

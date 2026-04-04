@@ -730,11 +730,13 @@ html, body {
 .misiones-rango .enemy-card { width: 48%; border-radius: 14px; padding: 8px; text-align: center; }
 .misiones-rango .character-card { background: #112240; border: 2px solid #1e4d8c; }
 .misiones-rango .enemy-card { background: #2a0a0a; border: 2px solid #b71c1c; }
+.misiones-rango .card-name { font-size: .7rem; font-weight: 800; letter-spacing: .4px; opacity: .9; }
 .misiones-rango .card-emoji { font-size: 36px; }
 .misiones-rango .hp-bar,
 .misiones-rango .mp-bar { height: 8px; margin: 4px 0; background: rgba(255,255,255,.08); border-radius: 8px; overflow: hidden; }
 .misiones-rango .hp-fill { width: 100%; height: 100%; background: #d32f2f; transition: width .2s; }
 .misiones-rango .mp-fill { width: 100%; height: 100%; background: #1565c0; transition: width .2s; }
+.misiones-rango .card-stats { font-size: .62rem; color: rgba(255,255,255,.85); margin-top: 2px; }
 
 .misiones-rango .combat-log {
   flex: 1;

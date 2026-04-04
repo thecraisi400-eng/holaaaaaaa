@@ -62,16 +62,21 @@
         <button id="back-from-battle-to-main" class="back-button">⬅️ Abandonar misión</button>
         <div class="battle-arena">
           <div class="character-card" id="character-card">
+            <div class="card-name">🥷 Jugador</div>
             <div class="card-emoji">🥷</div>
             <div class="hp-bar"><div class="hp-fill" id="character-hp-fill"></div></div>
             <div class="mp-bar"><div class="mp-fill" id="character-mp-fill"></div></div>
+            <div class="card-stats" id="character-stats">HP 0/0 · MP 0/0</div>
           </div>
           <div class="enemy-card" id="enemy-card">
+            <div class="card-name">👹 Enemigo</div>
             <div class="card-emoji" id="enemy-emoji">👹</div>
             <div class="hp-bar"><div class="hp-fill" id="enemy-hp-fill"></div></div>
             <div class="mp-bar"><div class="mp-fill" id="enemy-mp-fill"></div></div>
+            <div class="card-stats" id="enemy-stats">HP 0/0 · MP 0/0</div>
           </div>
         </div>
+        <div class="section-label">📜 Registro de combate</div>
         <div class="combat-log" id="combat-log"></div>
         <button id="stop-battle-btn" class="stop-button">⏹️ DETENER</button>
       </div>
@@ -106,7 +111,11 @@
       onBars: (player, enemy) => {
         root.querySelector('#character-hp-fill').style.width = `${Math.max(0, (player.hp / player.maxHp) * 100)}%`;
         root.querySelector('#character-mp-fill').style.width = `${Math.max(0, (player.mp / player.maxMp) * 100)}%`;
-        if (enemy) root.querySelector('#enemy-hp-fill').style.width = `${Math.max(0, (enemy.hp / enemy.maxHp) * 100)}%`;
+        root.querySelector('#character-stats').textContent = `HP ${Math.max(0, Math.round(player.hp))}/${Math.max(1, Math.round(player.maxHp))} · MP ${Math.max(0, Math.round(player.mp))}/${Math.max(1, Math.round(player.maxMp))}`;
+        if (enemy) {
+          root.querySelector('#enemy-hp-fill').style.width = `${Math.max(0, (enemy.hp / enemy.maxHp) * 100)}%`;
+          root.querySelector('#enemy-stats').textContent = `HP ${Math.max(0, Math.round(enemy.hp))}/${Math.max(1, Math.round(enemy.maxHp))} · MP ${Math.max(0, Math.round(enemy.mp || 0))}/${Math.max(1, Math.round(enemy.maxMp || 0))}`;
+        }
         root.querySelector('#enemy-mp-fill').style.width = '100%';
       },
       onLog: (message) => {

@@ -411,6 +411,24 @@ body {
 .battle-msg.dmg { color: #ff7a60; }
 .battle-msg.heal { color: #40ff80; }
 .battle-msg.info { color: #80a0c0; }
+body.battle-only #top-bar,
+body.battle-only #event-timer-bar,
+body.battle-only #player-stats-bar,
+body.battle-only #main-content,
+body.battle-only #bottom-section {
+  display: none !important;
+}
+body.battle-only #battle-screen.screen {
+  position: static;
+  inset: auto;
+  background: #0d1117;
+  height: 100%;
+  min-height: 0;
+  border-radius: 0;
+}
+body.battle-only #game-content {
+  height: 100%;
+}
 /* WIN/LOSE OVERLAY */
 #result-overlay {
   position: absolute;

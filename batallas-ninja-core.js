@@ -565,6 +565,20 @@ function updatePlayerDisplay() {
   document.getElementById('player-name').textContent = gameState.player.name;
 }
 
+function showScreen(screenKey) {
+  const battleScreen = document.getElementById('battle-screen');
+  if (!battleScreen) return;
+
+  if (screenKey === 'battle') {
+    battleScreen.classList.remove('hidden');
+    document.body.classList.add('battle-only');
+    return;
+  }
+
+  battleScreen.classList.add('hidden');
+  document.body.classList.remove('battle-only');
+}
+
 // ==================== BATTLE SYSTEM ====================
 function startBattle() {
   if (!gameState.selectedEnemy || gameState.battleActive) return;
@@ -578,7 +592,7 @@ function startBattle() {
   let enemyBattleHp = enemy.hpDisplay;
   let enemyMaxBattleHp = enemy.maxHpDisplay;
 
-  document.getElementById('battle-screen').classList.remove('hidden');
+  showScreen('battle');
   document.getElementById('result-overlay').className = '';
   document.getElementById('result-overlay').style.display = 'none';
 
@@ -728,7 +742,7 @@ function endBattle(won, enemy) {
   saveBattleProgress();
 
   setTimeout(() => {
-    document.getElementById('battle-screen').classList.add('hidden');
+    showScreen('main');
     resultOverlay.className = '';
     resultOverlay.style.display = 'none';
     gameState.selectedEnemy = null;

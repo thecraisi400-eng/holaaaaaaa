@@ -586,13 +586,13 @@ function startBattle() {
   battleLog.innerHTML = '';
 
   document.getElementById('player-fighter').innerHTML = `
-    <div class="ninja-avatar">${player.emoji}</div>
     <div class="fighter-name">${player.name}</div>
-    <div class="fighter-rank">#${player.rank} · ${player.level} Lv.</div>
+    <div class="fighter-rank">#${player.rank} · Lv.${player.level}</div>
+    <div class="card-emoji">${player.emoji}</div>
     <div class="bar-label"><span>HP x6</span><span id="p-hp-text">${playerBattleHp}/${playerMaxBattleHp}</span></div>
-    <div class="bar-container"><div class="bar-hp" id="p-hp-bar" style="width:100%"></div></div>
+    <div class="hp-bar"><div class="hp-fill" id="p-hp-bar" style="width:100%"></div></div>
     <div class="bar-label"><span>MP</span><span id="p-mp-text">${player.mp}/${player.maxMp}</span></div>
-    <div class="bar-container"><div class="bar-mp" id="p-mp-bar" style="width:${(player.mp/player.maxMp)*100}%"></div></div>
+    <div class="mp-bar"><div class="mp-fill" id="p-mp-bar" style="width:${(player.mp/player.maxMp)*100}%"></div></div>
     <div class="fighter-stats">
       <span class="stat-chip atk">⚔️ ${player.atk}</span>
       <span class="stat-chip def">🛡️ ${player.def}</span>
@@ -600,13 +600,13 @@ function startBattle() {
   `;
 
   document.getElementById('enemy-fighter').innerHTML = `
-    <div class="ninja-avatar">${enemy.emoji}</div>
     <div class="fighter-name">${enemy.name}</div>
     <div class="fighter-rank">#${enemy.rank} · ${enemy.rankClass} · Lv.${enemy.level}</div>
+    <div class="card-emoji">${enemy.emoji}</div>
     <div class="bar-label"><span>HP x6</span><span id="e-hp-text">${enemyBattleHp}/${enemyMaxBattleHp}</span></div>
-    <div class="bar-container"><div class="bar-hp" id="e-hp-bar" style="width:100%"></div></div>
+    <div class="hp-bar"><div class="hp-fill" id="e-hp-bar" style="width:100%"></div></div>
     <div class="bar-label"><span>MP</span><span id="e-mp-text">${enemy.maxMp||50}/50</span></div>
-    <div class="bar-container"><div class="bar-mp" id="e-mp-bar" style="width:100%"></div></div>
+    <div class="mp-bar"><div class="mp-fill" id="e-mp-bar" style="width:100%"></div></div>
     <div class="fighter-stats">
       <span class="stat-chip atk">⚔️ ${enemy.atk}</span>
       <span class="stat-chip def">🛡️ ${enemy.def}</span>

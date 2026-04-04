@@ -351,7 +351,7 @@ body {
   background: #131a26;
   border-radius: 4px;
 }
-/* BATTLE SCREEN */
+/* BATTLE SCREEN (misma estructura visual de Misiones/Bingo) */
 #battle-screen {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
@@ -359,73 +359,56 @@ body {
   display: none;
   flex-direction: column;
   z-index: 200;
-  padding: 5px;
-}
-#battle-screen.active { display: flex; }
-.battle-field {
-  flex: 1;
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
+  padding: 6px;
   gap: 6px;
 }
-.battle-fighter {
+#battle-screen.active { display: flex; }
+.battle-arena { display: flex; justify-content: space-between; gap: 10px; height: 128px; }
+.character-card,
+.enemy-card {
+  width: 48%;
+  border-radius: 12px;
+  padding: 8px;
   text-align: center;
-  width: 45%;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
-.battle-fighter .ninja-avatar {
-  width: 50px;
-  height: 50px;
-  font-size: 28px;
-  margin: 0 auto 3px auto;
-}
-.battle-fighter .fighter-name {
-  font-size: 9px;
-  font-weight: bold;
-  margin-bottom: 1px;
-}
-.battle-fighter .fighter-rank {
-  font-size: 8px;
-  color: #f0c040;
-  margin-bottom: 3px;
-}
-.bar-container {
-  width: 100%;
-  height: 8px;
-  background: #0d1117;
-  border-radius: 4px;
-  overflow: hidden;
-  margin-bottom: 1.5px;
-  border: 1px solid rgba(255,255,255,0.1);
-}
-.bar-hp { height: 100%; background: linear-gradient(90deg, #ff4040, #ff8060); transition: width 0.3s; }
-.bar-mp { height: 100%; background: linear-gradient(90deg, #4060ff, #80a0ff); transition: width 0.3s; }
+.character-card { background: #112240; border: 2px solid #1e4d8c; }
+.enemy-card { background: #2a0a0a; border: 2px solid #b71c1c; }
+.fighter-name { font-size: 9px; font-weight: bold; }
+.fighter-rank { font-size: 7px; color: #f0c040; }
+.card-emoji { font-size: 36px; line-height: 1; }
 .bar-label {
   font-size: 7px;
-  color: #a0b0c0;
+  color: #c0d0e0;
   display: flex;
   justify-content: space-between;
 }
+.hp-bar,
+.mp-bar { height: 8px; background: rgba(255,255,255,.08); border-radius: 8px; overflow: hidden; }
+.hp-fill { width: 100%; height: 100%; background: #d32f2f; transition: width .2s; }
+.mp-fill { width: 100%; height: 100%; background: #1565c0; transition: width .2s; }
 .fighter-stats {
   display: flex;
   gap: 3px;
   justify-content: center;
-  margin-top: 3px;
+  margin-top: 2px;
 }
 .fighter-stats .stat-chip { font-size: 7px; }
 #battle-log {
-  height: 45px;
+  flex: 1;
+  min-height: 48px;
   overflow-y: auto;
   font-size: 7.5px;
-  padding: 2px;
+  padding: 4px;
   background: rgba(0,0,0,0.3);
-  border-radius: 4px;
-  margin-top: 3px;
+  border-radius: 6px;
 }
 #battle-log::-webkit-scrollbar { width: 2px; }
 #battle-log::-webkit-scrollbar-thumb { background: #1c2740; }
-.battle-msg { padding: 0.5px 0; }
-.battle-msg.dmg { color: #ff6040; }
+.battle-msg { padding: 1px 0; border-bottom: 1px solid rgba(255,255,255,.05); }
+.battle-msg.dmg { color: #ff7a60; }
 .battle-msg.heal { color: #40ff80; }
 .battle-msg.info { color: #80a0c0; }
 /* WIN/LOSE OVERLAY */
@@ -538,10 +521,9 @@ body {
 
     <!-- BATTLE SCREEN -->
     <div id="battle-screen">
-      <div class="battle-field">
-        <div class="battle-fighter" id="player-fighter"></div>
-        <div style="font-size:20px;color:#ff4040">⚔️</div>
-        <div class="battle-fighter" id="enemy-fighter"></div>
+      <div class="battle-arena">
+        <div class="character-card" id="player-fighter"></div>
+        <div class="enemy-card" id="enemy-fighter"></div>
       </div>
       <div id="battle-log"></div>
       <div id="result-overlay"></div>

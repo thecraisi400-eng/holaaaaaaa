@@ -60,19 +60,40 @@
       </div>
       <div id="battle-screen" class="screen hidden">
         <button id="back-from-battle-to-main" class="back-button">⬅️ Abandonar misión</button>
-        <div class="battle-arena">
-          <div class="character-card" id="character-card">
-            <div class="card-emoji">🥷</div>
-            <div class="hp-bar"><div class="hp-fill" id="character-hp-fill"></div></div>
-            <div class="mp-bar"><div class="mp-fill" id="character-mp-fill"></div></div>
+        <div class="battle-wrapper" id="game-container">
+          <div id="battle-scene">
+            <div class="bg-layer bg-layer-1"></div>
+            <div class="bg-layer bg-layer-2"></div>
+            <div class="bg-layer bg-layer-3"></div>
           </div>
-          <div class="enemy-card" id="enemy-card">
-            <div class="card-emoji" id="enemy-emoji">👹</div>
-            <div class="hp-bar"><div class="hp-fill" id="enemy-hp-fill"></div></div>
-            <div class="mp-bar"><div class="mp-fill" id="enemy-mp-fill"></div></div>
+          <div id="ground"></div>
+          <div id="hud">
+            <div class="hud-unit hero">
+              <div class="avatar hero-avatar"><div class="avatar-inner">🍥</div></div>
+              <div class="hp-info">
+                <div class="unit-name">Naruto Uzumaki</div>
+                <div class="hp-bar-container"><div class="hp-bar hero-hp" id="hero-hp-bar" style="width:100%"></div></div>
+                <div class="hp-text" id="hero-hp-text">1000 / 1000</div>
+                <div class="chakra-bar-container"><div class="chakra-bar-fill" id="chakra-bar" style="width:100%"></div></div>
+              </div>
+            </div>
+            <div class="hud-unit enemy">
+              <div class="avatar enemy-avatar"><div class="avatar-inner" id="enemy-emoji">👹</div></div>
+              <div class="hp-info">
+                <div class="unit-name" id="enemy-name">Enemigo</div>
+                <div class="hp-bar-container"><div class="hp-bar enemy-hp" id="enemy-hp-bar" style="width:100%"></div></div>
+                <div class="hp-text" id="enemy-hp-text">800 / 800</div>
+              </div>
+            </div>
+          </div>
+          <div id="turn-indicator">⚔ Combate Iniciado</div>
+          <div id="hero" class="character"><div class="fighter">🍥</div></div>
+          <div id="enemy" class="character"><div class="fighter" id="enemy-fighter">👹</div></div>
+          <div id="combat-log">
+            <div class="log-line" id="log-1">⚔ ¡El combate ha comenzado!</div>
+            <div class="log-line" id="log-2"></div>
           </div>
         </div>
-        <div class="combat-log" id="combat-log"></div>
         <button id="stop-battle-btn" class="stop-button">⏹️ DETENER</button>
       </div>
     `;
@@ -102,20 +123,23 @@
       getPlayerStats,
       onEnemy: (_, emoji) => {
         root.querySelector('#enemy-emoji').textContent = emoji;
+        root.querySelector('#enemy-fighter').textContent = emoji;
+        root.querySelector('#enemy-name').textContent = _.name;
       },
       onBars: (player, enemy) => {
-        root.querySelector('#character-hp-fill').style.width = `${Math.max(0, (player.hp / player.maxHp) * 100)}%`;
-        root.querySelector('#character-mp-fill').style.width = `${Math.max(0, (player.mp / player.maxMp) * 100)}%`;
-        if (enemy) root.querySelector('#enemy-hp-fill').style.width = `${Math.max(0, (enemy.hp / enemy.maxHp) * 100)}%`;
-        root.querySelector('#enemy-mp-fill').style.width = '100%';
+        root.querySelector('#hero-hp-bar').style.width = `${Math.max(0, (player.hp / player.maxHp) * 100)}%`;
+        root.querySelector('#chakra-bar').style.width = `${Math.max(0, (player.mp / player.maxMp) * 100)}%`;
+        root.querySelector('#hero-hp-text').textContent = `${Math.max(0, Math.floor(player.hp))} / ${Math.max(1, Math.floor(player.maxHp))}`;
+        if (enemy) {
+          root.querySelector('#enemy-hp-bar').style.width = `${Math.max(0, (enemy.hp / enemy.maxHp) * 100)}%`;
+          root.querySelector('#enemy-hp-text').textContent = `${Math.max(0, Math.floor(enemy.hp))} / ${Math.max(1, Math.floor(enemy.maxHp))}`;
+        }
       },
       onLog: (message) => {
-        const logDiv = root.querySelector('#combat-log');
-        const entry = document.createElement('div');
-        entry.className = 'log-entry';
-        entry.textContent = message;
-        logDiv.insertBefore(entry, logDiv.firstChild);
-        if (logDiv.children.length > 15) logDiv.removeChild(logDiv.lastChild);
+        const line1 = root.querySelector('#log-1');
+        const line2 = root.querySelector('#log-2');
+        line2.textContent = line1.textContent;
+        line1.textContent = message;
       },
       onRewards: (rewards) => {
         onRewardGain({
@@ -185,7 +209,8 @@
             const current = getPlayerStats();
             current.hp = current.maxHp;
             current.mp = current.maxMp;
-            root.querySelector('#combat-log').innerHTML = '';
+            root.querySelector('#log-1').textContent = '⚔ ¡El combate ha comenzado!';
+            root.querySelector('#log-2').textContent = '';
             onCombatStateChange(true);
             activeBattleMode = 'rank';
             showScreen('battle');

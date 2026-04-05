@@ -78,6 +78,7 @@
     statDef: document.getElementById('statDef'),
     statGold: document.getElementById('statGold'),
     charName: document.getElementById('charName'),
+    charClanSprite: document.getElementById('charClanSprite'),
     charRank: document.getElementById('charRank'),
     avatarFrame: document.getElementById('avatarFrame')
   };
@@ -160,6 +161,17 @@
       script.onerror = () => reject(new Error('No se pudo cargar personajes.js'));
       document.head.appendChild(script);
     });
+  }
+
+
+  // Puedes asignar una URL global en window.UCHIHA_SPRITE_URL o por personaje en char.sprite
+  function getCharacterSpriteUrl(char) {
+    if (!char || char.clan !== 'uchiha') return '';
+    if (typeof char.sprite === 'string' && char.sprite.trim()) return char.sprite.trim();
+    if (typeof window.UCHIHA_SPRITE_URL === 'string' && window.UCHIHA_SPRITE_URL.trim()) {
+      return window.UCHIHA_SPRITE_URL.trim();
+    }
+    return '';
   }
 
   function sanitizeMissionProgress(raw) {
@@ -402,6 +414,20 @@
 
     refs.charName.textContent = char.name.toUpperCase();
     refs.charRank.textContent = char.rank;
+
+    const clanSprite = refs.charClanSprite;
+    if (clanSprite) {
+      const spriteUrl = getCharacterSpriteUrl(char);
+      if (spriteUrl) {
+        clanSprite.src = spriteUrl;
+        clanSprite.hidden = false;
+        clanSprite.classList.add('visible');
+      } else {
+        clanSprite.removeAttribute('src');
+        clanSprite.hidden = true;
+        clanSprite.classList.remove('visible');
+      }
+    }
 
     const avatar = refs.avatarFrame.querySelector('.avatar-placeholder');
     if (avatar) avatar.textContent = char.emoji;
@@ -1250,7 +1276,10 @@
       #ninja-start-root .char-scroll{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:10px}
       #ninja-start-root .char-sel-card{background:#131a26;border:1px solid rgba(77,184,255,.18);border-radius:4px;padding:10px 12px;cursor:pointer;display:flex;gap:12px;align-items:flex-start}
       #ninja-start-root .char-sel-ava{width:44px;height:44px;border-radius:50%;background:#1c2740;border:2px solid #e8a020;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
-      #ninja-start-root .char-sel-name{font-family:'Cinzel',serif;font-size:11px;color:#c8d8f0;font-weight:600;letter-spacing:.5px;margin-bottom:2px}
+      #ninja-start-root .char-sel-name-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:2px}
+      #ninja-start-root .char-sel-name{font-family:'Cinzel',serif;font-size:11px;color:#c8d8f0;font-weight:600;letter-spacing:.5px}
+      #ninja-start-root .char-sel-sprite{width:16px;height:16px;object-fit:cover;border-radius:50%;border:1px solid rgba(232,64,64,.85);box-shadow:0 0 8px rgba(232,64,64,.7);flex-shrink:0;display:none}
+      #ninja-start-root .char-sel-sprite.visible{display:block}
       #ninja-start-root .char-sel-role{font-size:8px;color:#6a82a0;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px}
       #ninja-start-root .char-sel-bars{display:grid;grid-template-columns:1fr 1fr;gap:2px 10px}
       #ninja-start-root .cbar-row{font-size:8px;color:#6a82a0;display:flex;justify-content:space-between;line-height:1.5}
@@ -1315,7 +1344,10 @@
       card.innerHTML = `
         <div class="char-sel-ava" style="border-color:${char.color}">${char.emoji}</div>
         <div class="char-sel-info">
-          <div class="char-sel-name">${char.name}</div>
+          <div class="char-sel-name-row">
+            <div class="char-sel-name">${char.name}</div>
+            <img class="char-sel-sprite ${getCharacterSpriteUrl(char) ? 'visible' : ''}" src="${getCharacterSpriteUrl(char)}" alt="Sprite del clan" ${getCharacterSpriteUrl(char) ? '' : 'hidden'} />
+          </div>
           <div class="char-sel-role">${char.role}</div>
           <div class="char-sel-bars">${barsHtml}</div>
         </div>`;

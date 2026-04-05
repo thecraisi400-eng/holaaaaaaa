@@ -121,6 +121,28 @@ html, body {
   justify-content: flex-start;
   gap: 2px;
 }
+
+.char-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.char-clan-sprite {
+  width: 18px;
+  height: 18px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 1px solid rgba(232, 64, 64, 0.85);
+  box-shadow: 0 0 10px rgba(232, 64, 64, 0.7);
+  flex-shrink: 0;
+}
+.char-clan-sprite.visible {
+  display: block;
+}
+.char-clan-sprite[hidden] {
+  display: none !important;
+}
 .char-name {
   font-family: var(--font-title);
   font-size: .9rem;

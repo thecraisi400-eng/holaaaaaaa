@@ -87,8 +87,33 @@
             </div>
           </div>
           <div id="turn-indicator">⚔ Combate Iniciado</div>
-          <div id="hero" class="character"><div class="fighter">🍥</div></div>
-          <div id="enemy" class="character"><div class="fighter" id="enemy-fighter">👹</div></div>
+          <div id="hero" class="character">
+            <div class="hero-body">
+              <div class="hero-head">
+                <div class="hero-headband"></div>
+                <div class="hero-eyes"><div class="hero-eye"></div><div class="hero-eye"></div></div>
+              </div>
+              <div class="hero-cape"></div>
+              <div class="hero-torso"></div>
+              <div class="hero-legs"><div class="hero-leg"></div><div class="hero-leg"></div></div>
+            </div>
+          </div>
+          <div id="enemy" class="character">
+            <div class="enemy-body">
+              <div class="enemy-head">
+                <div class="enemy-horns"><div class="enemy-horn left"></div><div class="enemy-horn right"></div></div>
+                <div class="enemy-eyes"><div class="enemy-eye"></div><div class="enemy-eye"></div></div>
+              </div>
+              <div class="enemy-cape"></div>
+              <div class="enemy-torso"></div>
+              <div class="enemy-legs"><div class="enemy-leg"></div><div class="enemy-leg"></div></div>
+            </div>
+          </div>
+          <div id="kawarimi-log"><div class="kawarimi-log"></div></div>
+          <div id="jutsu-overlay">
+            <div class="jutsu-kanji" id="jutsu-kanji">忍</div>
+            <div class="jutsu-name" id="jutsu-name"></div>
+          </div>
           <div id="combat-log">
             <div class="log-line" id="log-1">⚔ ¡El combate ha comenzado!</div>
             <div class="log-line" id="log-2"></div>
@@ -121,10 +146,9 @@
 
     const combat = window.createMisionesRangoCombat({
       getPlayerStats,
-      onEnemy: (_, emoji) => {
+      onEnemy: (enemy, emoji) => {
         root.querySelector('#enemy-emoji').textContent = emoji;
-        root.querySelector('#enemy-fighter').textContent = emoji;
-        root.querySelector('#enemy-name').textContent = _.name;
+        root.querySelector('#enemy-name').textContent = enemy.name;
       },
       onBars: (player, enemy) => {
         root.querySelector('#hero-hp-bar').style.width = `${Math.max(0, (player.hp / player.maxHp) * 100)}%`;
@@ -135,11 +159,16 @@
           root.querySelector('#enemy-hp-text').textContent = `${Math.max(0, Math.floor(enemy.hp))} / ${Math.max(1, Math.floor(enemy.maxHp))}`;
         }
       },
-      onLog: (message) => {
+      onLog: (line1Html, line2Html) => {
         const line1 = root.querySelector('#log-1');
         const line2 = root.querySelector('#log-2');
-        line2.textContent = line1.textContent;
-        line1.textContent = message;
+        if (line2Html !== undefined) {
+          line1.innerHTML = line1Html || '';
+          line2.innerHTML = line2Html || '';
+          return;
+        }
+        line2.innerHTML = line1.innerHTML;
+        line1.innerHTML = line1Html || '';
       },
       onRewards: (rewards) => {
         onRewardGain({

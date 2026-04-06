@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shinobi Sheet</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="top-menu">
+    <button id="hero-option" class="menu-btn" type="button">HÉROE</button>
+    <div class="loop-state">Loop: <span id="loopStatus">RUNNING</span></div>
+  </header>
+
+  <main class="sheet" id="sheet">
+    <section class="col-identity">
+      <div class="avatar-wrap"><div class="avatar">🥷</div></div>
+      <div class="char-name">KAGE RYUU</div>
+      <div class="char-clan">Clan Uchiha</div>
+      <div class="level-display">
+        <div class="level-lbl">Nivel</div>
+        <div class="level-num" id="levelNum">54</div>
+      </div>
+    </section>
+
+    <section class="col-stats">
+      <div class="stats-title">▸ Recursos</div>
+      <div id="vitalBars"></div>
+      <div class="stats-divider"></div>
+      <div class="game-loop-indicator">Ticks: <span id="tickCount">0</span></div>
+    </section>
+  </main>
+
+  <section id="hero-screen" aria-hidden="true">
+    <div class="hero-backdrop"></div>
+    <div class="hero-panel" role="dialog" aria-modal="true" aria-labelledby="hero-title">
+      <h2 id="hero-title">Panel de HÉROE</h2>
+      <div class="hero-row">
+        <label for="hero-level">Nivel</label>
+        <input id="hero-level" type="number" min="1" step="1" />
+      </div>
+      <div class="hero-row">
+        <label for="hero-xp">XP</label>
+        <input id="hero-xp" type="number" min="0" step="1" />
+      </div>
+      <div class="hero-actions">
+        <button id="hero-save" type="button">Guardar</button>
+        <button id="hero-cancel" type="button">Cancelar cambios</button>
+        <button id="hero-close" type="button">Cerrar</button>
+      </div>
+    </div>
+  </section>
+
+  <script type="module" src="script.js"></script>
+</body>
+</html>

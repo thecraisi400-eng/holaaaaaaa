@@ -122,6 +122,20 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.classList.add('active');
     state.activeSection = sec;
 
+    if (sec === 'heroe') {
+      overlay.classList.remove('visible');
+      if (typeof window.renderHeroSystem === 'function') {
+        window.renderHeroSystem();
+      }
+      return;
+    }
+
+    const hudCenter = document.getElementById('hud-center');
+    if (hudCenter) {
+      hudCenter.innerHTML = '';
+      hudCenter.dataset.activeView = sec;
+    }
+
     const info = sections[sec];
     if (info) {
       overlayTitle.innerHTML = `${info.icon} ${info.title}`;
@@ -136,3 +150,8 @@ overlayClose.addEventListener('click', () => {
   const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
   spawnParticles(cx, cy, 'amber-spark');
 });
+
+
+if (typeof window.renderHeroSystem === 'function') {
+  window.renderHeroSystem();
+}

@@ -102,6 +102,18 @@ const overlayTitle = document.getElementById('overlayTitle');
 const overlayDesc  = document.getElementById('overlayDesc');
 const overlayClose = document.getElementById('overlayClose');
 
+const heroSystem = window.HeroSystem ? new window.HeroSystem('heroSystemRoot') : null;
+
+function setHeroViewVisibility(sectionKey) {
+  if (!heroSystem) return;
+  if (sectionKey === 'heroe') {
+    heroSystem.show();
+    overlay.classList.remove('visible');
+  } else {
+    heroSystem.hide();
+  }
+}
+
 document.querySelectorAll('.nav-btn').forEach(btn => {
   btn.addEventListener('click', e => {
     const rect = btn.getBoundingClientRect();
@@ -122,6 +134,12 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.classList.add('active');
     state.activeSection = sec;
 
+    setHeroViewVisibility(sec);
+
+    if (sec === 'heroe') {
+      return;
+    }
+
     const info = sections[sec];
     if (info) {
       overlayTitle.innerHTML = `${info.icon} ${info.title}`;
@@ -136,3 +154,5 @@ overlayClose.addEventListener('click', () => {
   const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
   spawnParticles(cx, cy, 'amber-spark');
 });
+
+setHeroViewVisibility(state.activeSection);

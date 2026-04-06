@@ -78,7 +78,57 @@
     </div>
   </section>
 
-  <section id="hud-center"></section>
+  <section id="hud-center">
+    <div id="heroSystemRoot" class="hero-system-shell">
+      <div class="hs-sheet" id="hsSheet">
+        <div class="hs-corner hs-tl"></div>
+        <div class="hs-corner hs-tr"></div>
+        <div class="hs-corner hs-bl"></div>
+        <div class="hs-corner hs-br"></div>
+
+        <div class="hs-col-identity">
+          <div class="hs-avatar-wrap"><div class="hs-avatar-ring"></div><div class="hs-avatar"><div class="hs-avatar-inner">🥷</div></div></div>
+          <div class="hs-char-name">KAGE<br>RYUU</div>
+          <div class="hs-char-clan"><span class="hs-clan-dot"></span><span>Clan Uchiha</span><span class="hs-clan-dot"></span></div>
+          <div class="hs-rank-badge">ANBU</div>
+          <div class="hs-identity-divider"></div>
+          <div class="hs-level-display"><div class="hs-level-lbl">Nivel</div><div class="hs-level-num">54</div><div class="hs-xp-mini-bar"><div class="hs-xp-mini-fill" style="width:67%"></div></div><div class="hs-level-sub">67,400 / 100K</div></div>
+        </div>
+
+        <div class="hs-col-gear">
+          <div class="hs-gear-header"><div class="hs-gear-title">⚔ Equipamiento</div><div class="hs-gold-display"><span>◆</span><span id="hsGoldAmount">24,850</span></div></div>
+          <div class="hs-gear-grid" id="hsGearGrid"></div>
+          <div class="hs-extra-stats-area">
+            <div class="hs-transparent-line"></div>
+            <div class="hs-stats-extra-title">⚡ ESTADÍSTICAS BASE ⚡</div>
+            <div id="hsExtraStatsContainer" class="hs-stats-extra-grid"></div>
+          </div>
+        </div>
+
+        <div class="hs-col-stats">
+          <div class="hs-stats-title">▸ Recursos</div>
+          <div class="hs-vital-bar-wrap" id="hsVitalBars"></div>
+          <div class="hs-stats-divider"></div>
+          <div class="hs-sprite-box">
+            <div class="hs-sprite-preview">
+              <img id="hsSpriteImage" alt="personaje sprite" style="display:none;" />
+              <div class="hs-sprite-placeholder" id="hsSpritePlaceholder">🎴<br>SIN SPRITE</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hs-modal-overlay" id="hsModalOverlay">
+          <div class="hs-modal" id="hsModal">
+            <button class="hs-modal-close" id="hsModalClose">✕</button>
+            <div class="hs-modal-header"><div class="hs-modal-icon" id="hsMIcon">⚔</div><div><div class="hs-modal-item-name" id="hsMName"></div><div class="hs-modal-rarity" id="hsMRarity"></div></div></div>
+            <div class="hs-modal-section"><div class="hs-modal-section-title">Costo Mejora</div><div class="hs-cost-row"><span>◆</span><span id="hsMCost"></span><span>ORO</span></div></div>
+            <div class="hs-modal-section"><div class="hs-modal-section-title">Comparativa</div><div class="hs-compare-grid" id="hsCompareGrid"></div></div>
+            <button class="hs-btn-upgrade" id="hsBtnUpgrade">▲ MEJORAR</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <nav id="hud-bottom">
     <button class="nav-btn active" data-section="heroe"        id="btn-heroe">
@@ -133,6 +183,7 @@
   </div>
 </div>
 
+<script src="hero-system.js"></script>
 <script src="script.js"></script>
 </body>
 </html>

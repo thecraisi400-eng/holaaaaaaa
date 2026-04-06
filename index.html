@@ -9,7 +9,64 @@
 </head>
 <body>
 
-<div id="app">
+
+<div id="ngsIntroRoot" class="ngs-intro-root">
+  <div class="ngs-parallax-bg" aria-hidden="true">
+    <div class="ngs-layer ngs-layer1"></div>
+    <div class="ngs-layer ngs-layer2"></div>
+    <div class="ngs-layer ngs-layer3"></div>
+  </div>
+
+  <div class="ngs-app-container">
+    <div id="ngsStartScreen" class="ngs-screen">
+      <div class="ngs-welcome-grid">
+        <div class="ngs-logo-area">
+          <h1>🍥 NINJA IDLE 🍥</h1>
+          <p class="ngs-subtitle">El destino de los clanes ancestrales</p>
+        </div>
+        <div class="ngs-main-buttons">
+          <button id="ngsNewGameBtn" class="ngs-btn">✨ NUEVA PARTIDA</button>
+          <button id="ngsLoadGameBtn" class="ngs-btn">📀 CARGAR PARTIDA</button>
+          <button id="ngsOptionsBtn" class="ngs-btn ngs-btn-secondary">⚙️ OPCIONES</button>
+        </div>
+        <div id="ngsLoadPreviewPanel" class="ngs-load-preview">
+          <span>📁 Última partida guardada</span>
+          <div id="ngsSavePreviewData" class="ngs-save-preview">Ningún guardado encontrado</div>
+        </div>
+        <div class="ngs-footnote">✨ Sonidos placeholder | Efectos ambientales ✨</div>
+      </div>
+    </div>
+
+    <div id="ngsClanScreen" class="ngs-screen ngs-hidden">
+      <div class="ngs-nav-header">
+        <button id="ngsBackFromClan" class="ngs-btn ngs-btn-back">← Volver</button>
+        <h2>Elige tu Clan</h2>
+        <div></div>
+      </div>
+      <div id="ngsClanContainer" class="ngs-clan-grid"></div>
+    </div>
+
+    <div id="ngsCharacterScreen" class="ngs-screen ngs-hidden">
+      <div class="ngs-nav-header">
+        <button id="ngsBackFromChar" class="ngs-btn ngs-btn-back">← Volver a Clanes</button>
+        <h2 id="ngsSelectedClanTitle">Clan: --</h2>
+        <div></div>
+      </div>
+      <div id="ngsCharactersGrid" class="ngs-characters-grid"></div>
+    </div>
+
+    <div id="ngsOptionsModal" class="ngs-options-modal" aria-hidden="true">
+      <div class="ngs-options-card">
+        <h3>Opciones de audio</h3>
+        <p>🎵 Sonidos ambientales (placeholder)</p>
+        <p>🔊 Efectos UI (simulados)</p>
+        <button id="ngsCloseOptions" class="ngs-btn ngs-options-close">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="app" class="game-shell-hidden">
 
   <section id="hud-top">
     <div class="hud-corner tl"></div>
@@ -248,6 +305,7 @@
 </template>
 
 <script src="hero-system.js"></script>
+<script src="ninja-game-start.js"></script>
 <script src="script.js"></script>
 </body>
 </html>

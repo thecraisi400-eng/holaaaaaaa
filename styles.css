@@ -1,0 +1,122 @@
+:root {
+  --bg-void: #070a0f;
+  --bg-glass: rgba(10,16,26,0.82);
+  --border-glass: rgba(0,255,255,0.12);
+  --cyan: #00f5ff;
+  --text-primary: #e8f4ff;
+  --font-main: 'Rajdhani', sans-serif;
+  --font-display: 'Orbitron', sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg-void);
+  color: var(--text-primary);
+  font-family: var(--font-main);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+}
+
+.top-menu {
+  width: min(600px, 100%);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.menu-btn {
+  border: 1px solid var(--cyan);
+  background: transparent;
+  color: var(--cyan);
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.sheet {
+  width: min(600px, 100%);
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: 12px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.avatar-wrap { margin-bottom: 8px; }
+.avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 1px solid var(--cyan);
+  display: grid;
+  place-items: center;
+}
+
+.level-num { font: 700 28px var(--font-display); }
+.stats-divider { margin: 10px 0; border-top: 1px solid var(--border-glass); }
+
+/* Namespace estricto del sistema de héroe */
+#hero-screen {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+#hero-screen.is-open {
+  display: flex;
+}
+
+#hero-screen .hero-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+}
+
+#hero-screen .hero-panel {
+  position: relative;
+  z-index: 1001;
+  width: min(420px, 92vw);
+  background: #0a1220;
+  border: 1px solid rgba(0,245,255,0.35);
+  border-radius: 12px;
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+#hero-screen .hero-row {
+  display: grid;
+  gap: 4px;
+}
+
+#hero-screen input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid rgba(0,245,255,0.4);
+  background: #050b14;
+  color: var(--text-primary);
+}
+
+#hero-screen .hero-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+#hero-screen button {
+  border: 1px solid var(--cyan);
+  color: var(--cyan);
+  background: transparent;
+  padding: 8px 10px;
+  cursor: pointer;
+}

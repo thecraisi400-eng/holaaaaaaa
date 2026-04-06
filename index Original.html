@@ -42,6 +42,88 @@
     overflow: hidden;
   }
 
+  .hud-center {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    min-height: 0;
+  }
+  .center-mode-switch {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+  }
+  .mode-btn {
+    border: 1px solid var(--glass-border);
+    background: rgba(0, 0, 0, 0.35);
+    color: var(--text-main);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: 0.2s ease;
+  }
+  .mode-btn.active {
+    border-color: var(--neon-cyan);
+    color: var(--neon-cyan);
+    box-shadow: 0 0 10px rgba(0, 243, 255, 0.2);
+  }
+
+  #hud-center {
+    width: 100%;
+    height: 100%;
+  }
+  .hud-center-inner {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .hud-center-inner img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+  .hud-center-inner .text-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .default-center-view,
+  .heroe-panel {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+  }
+  .default-center-view {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .heroe-panel {
+    display: none;
+  }
+  .heroe-panel.active {
+    display: block;
+  }
+  .heroe-frame {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    border-radius: 8px;
+    background: #050508;
+  }
+
   /* Glassmorphism Base */
   .glass-panel {
     background: var(--glass);
@@ -106,7 +188,6 @@
 
   /* --- COLUMNA DERECHA/INFERIOR (Stats) --- */
   .col-stats {
-    grid-column: 2;
     display: flex; flex-direction: column; gap: 6px;
   }
   .vitals { display: flex; flex-direction: column; gap: 4px; }
@@ -192,26 +273,39 @@
     <div class="char-rank">JONIN</div>
   </div>
 
-  <!-- COLUMNA CENTRAL: GEAR -->
-  <div class="col-gear" id="gearGrid">
-    <!-- Slots generados por JS -->
-  </div>
-
-  <!-- COLUMNA DERECHA: STATS & VITALS -->
-  <div class="col-stats">
-    <div class="vitals glass-panel" style="padding: 6px 10px;">
-      <div class="bar-row"><span class="bar-label" style="color:#00ff88">HP</span><div class="bar-track"><div class="bar-fill fill-hp"></div></div></div>
-      <div class="bar-row"><span class="bar-label" style="color:#00bfff">CHA</span><div class="bar-track"><div class="bar-fill fill-ch"></div></div></div>
-      <div class="bar-row"><span class="bar-label" style="color:#fff">EXP</span><div class="bar-track"><div class="bar-fill fill-exp"></div></div></div>
+  <div id="hud-center" class="hud-center">
+    <div class="center-mode-switch">
+      <button class="mode-btn active" id="btnEquipo" type="button">EQUIPO</button>
+      <button class="mode-btn" id="btnHeroe" type="button">HEROE</button>
     </div>
+    <div class="hud-center-inner">
+      <div class="default-center-view" id="defaultCenterView">
+        <!-- COLUMNA CENTRAL: GEAR -->
+        <div class="col-gear" id="gearGrid">
+          <!-- Slots generados por JS -->
+        </div>
 
-    <div class="combat-stats glass-panel" style="padding: 6px;">
-      <div class="stat-box"><span class="stat-val">245</span><span class="stat-lbl">STR</span></div>
-      <div class="stat-box"><span class="stat-val">310</span><span class="stat-lbl">AGI</span></div>
-      <div class="stat-box"><span class="stat-val">180</span><span class="stat-lbl">INT</span></div>
-      <div class="stat-box"><span class="stat-val">42</span><span class="stat-lbl">DEF</span></div>
-      <div class="stat-box"><span class="stat-val">15</span><span class="stat-lbl">RES</span></div>
-      <div class="stat-box"><span class="stat-val">8.5%</span><span class="stat-lbl">CRI</span></div>
+        <!-- COLUMNA DERECHA: STATS & VITALS -->
+        <div class="col-stats">
+          <div class="vitals glass-panel" style="padding: 6px 10px;">
+            <div class="bar-row"><span class="bar-label" style="color:#00ff88">HP</span><div class="bar-track"><div class="bar-fill fill-hp"></div></div></div>
+            <div class="bar-row"><span class="bar-label" style="color:#00bfff">CHA</span><div class="bar-track"><div class="bar-fill fill-ch"></div></div></div>
+            <div class="bar-row"><span class="bar-label" style="color:#fff">EXP</span><div class="bar-track"><div class="bar-fill fill-exp"></div></div></div>
+          </div>
+
+          <div class="combat-stats glass-panel" style="padding: 6px;">
+            <div class="stat-box"><span class="stat-val">245</span><span class="stat-lbl">STR</span></div>
+            <div class="stat-box"><span class="stat-val">310</span><span class="stat-lbl">AGI</span></div>
+            <div class="stat-box"><span class="stat-val">180</span><span class="stat-lbl">INT</span></div>
+            <div class="stat-box"><span class="stat-val">42</span><span class="stat-lbl">DEF</span></div>
+            <div class="stat-box"><span class="stat-val">15</span><span class="stat-lbl">RES</span></div>
+            <div class="stat-box"><span class="stat-val">8.5%</span><span class="stat-lbl">CRI</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="heroe-panel" id="heroePanel">
+        <iframe class="heroe-frame" src="./heroe/index.html" title="Panel de héroe"></iframe>
+      </div>
     </div>
   </div>
 
@@ -269,6 +363,20 @@
   const mCost = document.getElementById('mCost');
   const sCurr = document.getElementById('sCurr');
   const sNext = document.getElementById('sNext');
+  const btnEquipo = document.getElementById('btnEquipo');
+  const btnHeroe = document.getElementById('btnHeroe');
+  const defaultCenterView = document.getElementById('defaultCenterView');
+  const heroePanel = document.getElementById('heroePanel');
+
+  function setCenterMode(mode) {
+    const isHeroe = mode === 'heroe';
+    defaultCenterView.style.display = isHeroe ? 'none' : 'flex';
+    heroePanel.classList.toggle('active', isHeroe);
+    btnEquipo.classList.toggle('active', !isHeroe);
+    btnHeroe.classList.toggle('active', isHeroe);
+  }
+  btnEquipo.addEventListener('click', () => setCenterMode('equipo'));
+  btnHeroe.addEventListener('click', () => setCenterMode('heroe'));
 
   function openModal(idx) {
     currentSlot = idx;

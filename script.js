@@ -102,37 +102,54 @@ const overlayTitle = document.getElementById('overlayTitle');
 const overlayDesc  = document.getElementById('overlayDesc');
 const overlayClose = document.getElementById('overlayClose');
 
+function renderCenterSection(sectionKey) {
+  const isHero = sectionKey === 'heroe';
+
+  if (isHero) {
+    overlay.classList.remove('visible');
+    if (window.HeroSystem && !window.HeroSystem.isMounted()) {
+      window.HeroSystem.mount();
+    }
+    return;
+  }
+
+  if (window.HeroSystem && window.HeroSystem.isMounted()) {
+    window.HeroSystem.unmount();
+  }
+
+  const info = sections[sectionKey];
+  if (info) {
+    overlayTitle.innerHTML = `${info.icon} ${info.title}`;
+    overlayDesc.textContent = info.desc;
+    overlay.classList.add('visible');
+  }
+}
+
 document.querySelectorAll('.nav-btn').forEach(btn => {
-  btn.addEventListener('click', e => {
+  btn.addEventListener('click', () => {
     const rect = btn.getBoundingClientRect();
     const cx = rect.left + rect.width / 2;
-    const cy = rect.top  + rect.height / 2;
+    const cy = rect.top + rect.height / 2;
 
     spawnParticles(cx, cy, 'smoke');
     spawnParticles(cx, cy, 'chakra');
 
     const sec = btn.dataset.section;
-
-    const labels = { heroe:'HÉROE', misiones:'MISIONES', clanes:'CLANES',
-                     eventos:'EVENTOS', jutsus:'JUTSUS', batallas:'BATALLAS',
-                     invocaciones:'INVOCAR', habilidades:'ÁRBOL', ajustes:'AJUSTES' };
+    const labels = { heroe:'HÉROE', misiones:'MISIONES', clanes:'CLANES', eventos:'EVENTOS', jutsus:'JUTSUS', batallas:'BATALLAS', invocaciones:'INVOCAR', habilidades:'ÁRBOL', ajustes:'AJUSTES' };
     spawnFloatText(cx, cy, '▶ ' + (labels[sec] || sec), '#e8923a');
 
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     state.activeSection = sec;
-
-    const info = sections[sec];
-    if (info) {
-      overlayTitle.innerHTML = `${info.icon} ${info.title}`;
-      overlayDesc.textContent = info.desc;
-      overlay.classList.add('visible');
-    }
+    renderCenterSection(sec);
   });
 });
 
 overlayClose.addEventListener('click', () => {
   overlay.classList.remove('visible');
-  const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+  const cx = window.innerWidth / 2;
+  const cy = window.innerHeight / 2;
   spawnParticles(cx, cy, 'amber-spark');
 });
+
+renderCenterSection(state.activeSection);

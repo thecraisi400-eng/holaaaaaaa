@@ -78,7 +78,7 @@
     </div>
   </section>
 
-  <section id="hud-center"></section>
+  <section id="hud-center"><div id="hero-system-host" class="hero-system-host"></div></section>
 
   <nav id="hud-bottom">
     <button class="nav-btn active" data-section="heroe"        id="btn-heroe">
@@ -133,6 +133,121 @@
   </div>
 </div>
 
+
+
+<template id="heroSystemTemplate">
+  <div class="hs-sheet" id="hsSheet">
+    <div class="hs-corner hs-tl"></div>
+    <div class="hs-corner hs-tr"></div>
+    <div class="hs-corner hs-bl"></div>
+    <div class="hs-corner hs-br"></div>
+
+    <div class="hs-col-identity">
+      <div class="hs-avatar-wrap">
+        <div class="hs-avatar-ring"></div>
+        <div class="hs-avatar">
+          <div class="hs-avatar-inner">🥷</div>
+        </div>
+      </div>
+
+      <div class="hs-char-name">KAGE<br>RYUU</div>
+      <div class="hs-char-clan">
+        <span class="hs-clan-dot"></span>
+        <span class="hs-char-clan-name">Clan Uchiha</span>
+        <span class="hs-clan-dot"></span>
+      </div>
+      <div class="hs-rank-badge">ANBU</div>
+      <div class="hs-identity-divider"></div>
+
+      <div class="hs-vital-bar-wrap">
+        <div class="hs-vital-row">
+          <div class="hs-vital-label hs-hp-label">HP</div>
+          <div class="hs-vital-bar"><div class="hs-vital-fill hs-hp-fill" style="width:78%"></div></div>
+          <div class="hs-vital-val">7,820</div>
+        </div>
+        <div class="hs-vital-row">
+          <div class="hs-vital-label hs-mp-label">MP</div>
+          <div class="hs-vital-bar"><div class="hs-vital-fill hs-chakra-fill" style="width:55%"></div></div>
+          <div class="hs-vital-val">2,750</div>
+        </div>
+        <div class="hs-vital-row">
+          <div class="hs-vital-label hs-exp-label">EXP</div>
+          <div class="hs-vital-bar"><div class="hs-vital-fill hs-exp-fill" style="width:67%"></div></div>
+          <div class="hs-vital-val">67.4k</div>
+        </div>
+      </div>
+
+      <div class="hs-level-display">
+        <div class="hs-level-lbl">Nivel</div>
+        <div class="hs-level-num">54</div>
+        <div class="hs-xp-mini-bar">
+          <div class="hs-xp-mini-fill" style="width:67%"></div>
+        </div>
+        <div class="hs-level-progress">67,400 / 100K EXP</div>
+      </div>
+    </div>
+
+    <div class="hs-col-gear">
+      <div class="hs-gear-header">
+        <div class="hs-gear-title">⚔ Equipamiento</div>
+        <div class="hs-gold-display">
+          <span class="hs-gold-icon">◆</span>
+          <span id="hsGoldAmount">24,850</span>
+        </div>
+      </div>
+
+      <div class="hs-gear-grid" id="hsGearGrid"></div>
+
+      <div class="hs-gear-stats-divider"></div>
+
+      <div class="hs-char-stats-panel" id="hsCharStats"></div>
+    </div>
+
+    <div class="hs-col-sprite">
+      <div class="hs-sprite-title">✦ Sprite</div>
+      <div class="hs-sprite-box" id="hsSpriteBox">
+        <div class="hs-sprite-placeholder" id="hsSpritePlaceholder">
+          <div class="hs-sprite-placeholder-icon">🎭</div>
+          <div>Arrastra tu sprite aquí<br>o haz clic para cargar</div>
+        </div>
+        <img class="hs-sprite-img" id="hsSpriteImg" alt="Sprite del personaje">
+        <input type="file" id="hsSpriteInput" class="hs-sprite-input" accept="image/*">
+      </div>
+      <div class="hs-vitals-divider"></div>
+    </div>
+
+    <div class="hs-modal-overlay" id="hsModalOverlay">
+      <div class="hs-modal" id="hsModal">
+        <button class="hs-modal-close" id="hsModalClose">✕</button>
+        <div class="hs-modal-header">
+          <div class="hs-modal-icon" id="hsMIcon">⚔</div>
+          <div class="hs-modal-title-group">
+            <div class="hs-modal-item-name" id="hsMName">Katana Oscura</div>
+            <div class="hs-modal-rarity" id="hsMRarity">ANBU</div>
+          </div>
+        </div>
+
+        <div class="hs-modal-section">
+          <div class="hs-modal-section-title">Costo de Mejora</div>
+          <div class="hs-cost-row">
+            <span class="hs-cost-icon">◆</span>
+            <span class="hs-cost-val" id="hsMCost">3,200</span>
+            <span class="hs-cost-lbl">ORO</span>
+          </div>
+        </div>
+
+        <div class="hs-modal-section">
+          <div class="hs-modal-section-title">Estadísticas a Mejorar</div>
+          <div class="hs-upgrade-stats-grid" id="hsUpgradeStats"></div>
+        </div>
+
+        <button class="hs-btn-upgrade" id="hsBtnUpgrade">▲ MEJORAR</button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script src="hero-system.js"></script>
 <script src="script.js"></script>
 </body>
 </html>

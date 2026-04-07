@@ -6,29 +6,29 @@
       id: 'uchiha',
       name: 'CLAN UCHIHA',
       emoji: '🔥',
-      desc: 'Ojos carmesí que dominan las llamas del infierno, poseedores del Sharingan.',
-      lore: 'Legado de la hoja oculta, el poder del odio y el amor se entrelazan.'
+      desc: 'El Clan Uchiha es un linaje legendario de ninjas con el Sharingan, conocidos por su dominio del fuego y trágico destino.',
+      lore: ''
     },
     {
       id: 'uzumaki',
       name: 'CLAN UZUMAKI',
       emoji: '🌀',
-      desc: 'Vitalidad inagotable y sellos prohibidos, espirales de destino.',
-      lore: 'Sangre de la longevidad, guardianes del sello del nueve colas.'
+      desc: 'El Clan Uzumaki es un linaje famoso por su enorme vitalidad, dominio del sellado y distintivo cabello rojo en sus miembros.',
+      lore: ''
     },
     {
       id: 'senju',
       name: 'CLAN SENJU',
       emoji: '🌳',
-      desc: 'Herederos del bosque, voluntad de fuego y sabiduría milenaria.',
-      lore: 'Fundadores de Konoha, su fuerza es la unión y la estrategia.'
+      desc: 'El Clan Senju es un linaje legendario de ninjas con gran vitalidad, conocidos por su dominio del bosque y voluntad de fuego.',
+      lore: ''
     },
     {
       id: 'otsutsuki',
       name: 'CLAN ŌTSUTSUKI',
       emoji: '🌙',
-      desc: 'Seres divinos llegados del cosmos, devoradores de chakra.',
-      lore: 'Origen del poder divino, sus ojos ven más allá de los reinos.'
+      desc: 'El Clan Otsutsuki es una estirpe celestial de seres poderosos que viajan entre mundos para cosechar energía y alcanzar la divinidad.',
+      lore: ''
     }
   ];
 
@@ -112,12 +112,16 @@
       card.setAttribute('data-clan-id', clan.id);
       const clanColor = getClanColor(clan.id);
 
+      const loreHtml = clan.lore
+        ? `<p class="ngs-clan-lore">${clan.lore}</p>`
+        : '';
+
       card.innerHTML = `
         <div class="ngs-clan-emblema" style="color: ${clanColor};">${clan.emoji}</div>
         <h3>${clan.name}</h3>
         <p class="ngs-clan-desc">${clan.desc}</p>
-        <p style="font-size:0.7rem; font-style:italic;">${clan.lore}</p>
-        <button class="ngs-btn ngs-select-clan-btn" style="margin-top:1rem; padding:0.5rem 1rem;">Elegir Clan</button>
+        ${loreHtml}
+        <button class="ngs-btn ngs-select-clan-btn ngs-select-clan-card-btn">Elegir Clan</button>
       `;
 
       const btn = card.querySelector('.ngs-select-clan-btn');

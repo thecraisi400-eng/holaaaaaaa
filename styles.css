@@ -771,7 +771,7 @@ html, body {
 .ngs-clan-card {
   background: var(--ngs-panel);
   border-radius: 1.5rem;
-  padding: 1.14rem;
+  padding: 0.8rem;
   text-align: center;
   transition: var(--ngs-transition);
   cursor: pointer;
@@ -801,6 +801,17 @@ html, body {
   font-size: 0.8rem;
   color: var(--ngs-text-dim);
   margin: 0.6rem 0;
+  line-height: 1.3;
+}
+
+.ngs-clan-lore {
+  font-size: 0.7rem;
+  font-style: italic;
+}
+
+.ngs-select-clan-card-btn {
+  margin-top: 0.7rem;
+  padding: 0.35rem 0.85rem;
 }
 
 .ngs-characters-grid {

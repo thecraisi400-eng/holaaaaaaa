@@ -162,38 +162,6 @@
     return el;
   }
 
-  function bindSpriteHandlers() {
-    refs.spriteBox.addEventListener('click', () => refs.spriteInput.click());
-
-    refs.spriteInput.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      if (file.size > 2 * 1024 * 1024) { alert('El archivo es demasiado grande. Máximo 2MB.'); return; }
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        selectedSpriteSrc = event.target.result;
-        applySpriteToPanel();
-      };
-      reader.readAsDataURL(file);
-    });
-
-    refs.spriteBox.addEventListener('dragover', (e) => { e.preventDefault(); refs.spriteBox.style.borderColor = 'var(--hs-cyan)'; });
-    refs.spriteBox.addEventListener('dragleave', (e) => { e.preventDefault(); refs.spriteBox.style.borderColor = ''; });
-    refs.spriteBox.addEventListener('drop', (e) => {
-      e.preventDefault();
-      refs.spriteBox.style.borderColor = '';
-      const file = e.dataTransfer.files[0];
-      if (!file || !file.type.startsWith('image/')) return;
-      if (file.size > 2 * 1024 * 1024) { alert('El archivo es demasiado grande. Máximo 2MB.'); return; }
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        selectedSpriteSrc = event.target.result;
-        applySpriteToPanel();
-      };
-      reader.readAsDataURL(file);
-    });
-  }
-
   function applySpriteToPanel() {
     if (!refs?.spriteImg || !refs?.spritePlaceholder) return;
     if (selectedSpriteSrc) {
@@ -321,10 +289,8 @@
       grid: root.querySelector('#hsGearGrid'),
       charStats: root.querySelector('#hsCharStats'),
       goldAmount: root.querySelector('#hsGoldAmount'),
-      spriteBox: root.querySelector('#hsSpriteBox'),
       spriteImg: root.querySelector('#hsSpriteImg'),
       spritePlaceholder: root.querySelector('#hsSpritePlaceholder'),
-      spriteInput: root.querySelector('#hsSpriteInput'),
       heroName: root.querySelector('#hsHeroName'),
       heroClanName: root.querySelector('#hsHeroClanName'),
       heroRank: root.querySelector('#hsHeroRank'),
@@ -366,7 +332,6 @@
     renderCharStats();
     renderHeroIdentity();
     applySpriteToPanel();
-    bindSpriteHandlers();
     bindModalHandlers();
     mounted = true;
   }

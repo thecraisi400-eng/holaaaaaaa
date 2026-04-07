@@ -101,6 +101,17 @@ function syncStateFromHero(snapshot) {
   if (defEl) defEl.textContent = state.def.toLocaleString();
 }
 
+function getSyncedHeroSnapshot(snapshot) {
+  const heroFromPanel = window.HeroSystem && typeof window.HeroSystem.getHeroSnapshot === 'function'
+    ? window.HeroSystem.getHeroSnapshot()
+    : null;
+
+  if (!heroFromPanel || !snapshot) return snapshot || heroFromPanel;
+  if (heroFromPanel.characterId !== snapshot.characterId) return snapshot;
+
+  return heroFromPanel;
+}
+
 /* ─────────────────────────────────────────────
    ACTUALIZACIÓN DE BARRAS - VALORES ESTÁTICOS
    ✅ Sin incremento automático de EXP, Gold, HP o MP
@@ -254,7 +265,7 @@ window.addEventListener('ngs:game-entered', (event) => {
     );
     if (snapshot) {
       window.CharacterStatsSystem.setActiveHero(snapshot);
-      syncStateFromHero(snapshot);
+      syncStateFromHero(getSyncedHeroSnapshot(snapshot));
       updateBars();
     }
   }
@@ -263,6 +274,6 @@ window.addEventListener('ngs:game-entered', (event) => {
 window.addEventListener('ngs:hero-stats-updated', (event) => {
   const snapshot = event?.detail?.hero;
   if (!snapshot) return;
-  syncStateFromHero(snapshot);
+  syncStateFromHero(getSyncedHeroSnapshot(snapshot));
   updateBars();
 });

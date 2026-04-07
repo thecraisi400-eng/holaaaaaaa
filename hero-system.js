@@ -1,30 +1,36 @@
 (function () {
-  const ALL_STATS = [
-    { key: 'STR', name: 'Fuerza', icon: '⚔', base: 284, color: '' },
-    { key: 'AGI', name: 'Agilidad', icon: '💨', base: 197, color: 'speed' },
-    { key: 'INT', name: 'Inteligencia', icon: '🧠', base: 156, color: '' },
-    { key: 'LUK', name: 'Suerte', icon: '✦', base: 88, color: '' },
-    { key: 'DEF', name: 'Defensa', icon: '🛡', base: 312, color: 'good' },
-    { key: 'RES', name: 'Resistencia', icon: '♾', base: 241, color: '' },
-    { key: 'CRI', name: 'Crítico', icon: '◎', base: 34, color: 'crit', suffix: '%' },
-    { key: 'CD', name: 'Daño Crít.', icon: '💥', base: 218, color: 'crit', suffix: '%' },
-    { key: 'EVA', name: 'Evasión', icon: '〇', base: 22, color: 'speed', suffix: '%' },
-    { key: 'RgHP', name: 'Regen HP', icon: '♥', base: 145, color: 'good', prefix: '+' }
-  ];
+  const DEFAULT_HERO = window.CharacterStatsSystem
+    ? window.CharacterStatsSystem.buildHeroSnapshot('naruto', 1, 0, window.CharacterStatsSystem.DEFAULT_RANK)
+    : null;
+
+  const STAT_ICON_MAP = { HP: '❤️', MP: '🔵', ATK: '⚔', DEF: '🛡', AGI: '💨', INT: '🧠', CRT: '◎', CDMG: '💥', EVA: '〇', REGEN: '♥', RES: '♾', LCK: '✦' };
+  function getAllStatsMeta() {
+    const meta = window.CharacterStatsSystem?.STAT_META || [];
+    return meta.map((item) => ({
+      key: item.key,
+      name: item.label,
+      icon: STAT_ICON_MAP[item.key] || '✦',
+      suffix: item.suffix || ''
+    }));
+  }
 
   const SLOTS = [
-    { id: 'weapon1', icon: '⚔', name: 'Katana', level: 1, stats: { STR: 680, AGI: 45, CRI: 5, CD: 8 }, statIcons: { STR: '⚔', AGI: '💨', CRI: '◎', CD: '💥' }, costBase: 2800 },
-    { id: 'weapon2', icon: '✦', name: 'Shurikens', level: 1, stats: { AGI: 195, LUK: 12, EVA: 8, STR: 30 }, statIcons: { AGI: '💨', LUK: '✦', EVA: '〇', STR: '⚔' }, costBase: 1200 },
-    { id: 'head', icon: '👹', name: 'Máscara', level: 1, stats: { RES: 220, DEF: 380, INT: 25, RgHP: 15 }, statIcons: { RES: '♾', DEF: '🛡', INT: '🧠', RgHP: '♥' }, costBase: 450 },
-    { id: 'chest', icon: '🥋', name: 'Túnica ANBU', level: 1, stats: { DEF: 312, RgHP: 280, RES: 150, STR: 80 }, statIcons: { DEF: '🛡', RgHP: '♥', RES: '♾', STR: '⚔' }, costBase: 5200 },
-    { id: 'gloves', icon: '🧤', name: 'Guanteletes', level: 1, stats: { CRI: 87, DEF: 34, AGI: 20, STR: 45 }, statIcons: { CRI: '◎', DEF: '🛡', AGI: '💨', STR: '⚔' }, costBase: 1900 },
-    { id: 'boots', icon: '👟', name: 'Botas Ninja', level: 1, stats: { AGI: 197, EVA: 22, INT: 18, LUK: 10 }, statIcons: { AGI: '💨', EVA: '〇', INT: '🧠', LUK: '✦' }, costBase: 780 }
+    { id: 'weapon1', icon: '⚔', name: 'Katana', level: 1, stats: { ATK: 68, AGI: 10, CRT: 2, CDMG: 4 }, statIcons: { ATK: '⚔', AGI: '💨', CRT: '◎', CDMG: '💥' }, costBase: 2800 },
+    { id: 'weapon2', icon: '✦', name: 'Shurikens', level: 1, stats: { AGI: 20, LCK: 8, EVA: 2, ATK: 12 }, statIcons: { AGI: '💨', LCK: '✦', EVA: '〇', ATK: '⚔' }, costBase: 1200 },
+    { id: 'head', icon: '👹', name: 'Máscara', level: 1, stats: { RES: 4, DEF: 24, INT: 8, REGEN: 1 }, statIcons: { RES: '♾', DEF: '🛡', INT: '🧠', REGEN: '♥' }, costBase: 450 },
+    { id: 'chest', icon: '🥋', name: 'Túnica ANBU', level: 1, stats: { DEF: 28, REGEN: 1, RES: 3, HP: 65 }, statIcons: { DEF: '🛡', REGEN: '♥', RES: '♾', HP: '❤️' }, costBase: 5200 },
+    { id: 'gloves', icon: '🧤', name: 'Guanteletes', level: 1, stats: { CRT: 3, DEF: 10, AGI: 8, ATK: 24 }, statIcons: { CRT: '◎', DEF: '🛡', AGI: '💨', ATK: '⚔' }, costBase: 1900 },
+    { id: 'boots', icon: '👟', name: 'Botas Ninja', level: 1, stats: { AGI: 24, EVA: 2, INT: 6, LCK: 5 }, statIcons: { AGI: '💨', EVA: '〇', INT: '🧠', LCK: '✦' }, costBase: 780 }
   ];
 
   let mounted = false;
   let refs = null;
-  const character = { gold: 24850, stats: {} };
-  ALL_STATS.forEach((stat) => { character.stats[stat.key] = stat.base; });
+  const character = { gold: 24850, stats: {}, hero: DEFAULT_HERO };
+  function refreshCharacterFromHero(heroSnapshot) {
+    character.hero = heroSnapshot || character.hero || DEFAULT_HERO;
+    character.stats = { ...(character.hero?.stats || {}) };
+  }
+  refreshCharacterFromHero(DEFAULT_HERO);
 
   function getRarity(lvl) {
     if (lvl <= 5) return { label: 'Madera', border: '#8b5e3c', bg: 'linear-gradient(145deg, rgba(139,94,60,0.35), rgba(101,67,33,0.25))', glow: 'rgba(139,94,60,0.5)', textColor: '#d4a574', extra: false };
@@ -39,7 +45,7 @@
   function calcStatBonus(baseValue, level) { return Math.round(baseValue * (1 + level * 0.028)); }
 
   function getStatDisplay(statKey, value) {
-    const stat = ALL_STATS.find((s) => s.key === statKey);
+    const stat = getAllStatsMeta().find((s) => s.key === statKey);
     if (!stat) return value;
     let display = stat.prefix || '';
     display += Math.round(value);
@@ -49,12 +55,33 @@
 
   function renderCharStats() {
     refs.charStats.innerHTML = '';
-    ALL_STATS.forEach((stat) => {
+    getAllStatsMeta().forEach((stat) => {
       const item = document.createElement('div');
       item.className = 'hs-char-stat-item';
       item.innerHTML = `<span class="hs-char-stat-icon">${stat.icon}</span><span class="hs-char-stat-key">${stat.name}</span><span class="hs-char-stat-val ${stat.color || ''}">${getStatDisplay(stat.key, character.stats[stat.key])}</span>`;
       refs.charStats.appendChild(item);
     });
+  }
+
+  function renderHeroIdentity() {
+    const hero = character.hero;
+    if (!hero || !refs.root) return;
+    const levelProgressBase = hero.expCurrentLevelStart || 0;
+    const expSpan = Math.max(1, (hero.expNextLevelTarget || 0) - levelProgressBase);
+    const progress = Math.min(100, Math.max(0, ((hero.exp - levelProgressBase) / expSpan) * 100));
+
+    refs.heroName.innerHTML = hero.name.toUpperCase().replace(/\s+/g, '<br>');
+    refs.heroClanName.textContent = hero.clanName;
+    refs.heroRank.textContent = hero.rank || 'GENIN';
+    refs.leftHpValue.textContent = hero.stats.HP.toLocaleString();
+    refs.leftMpValue.textContent = hero.stats.MP.toLocaleString();
+    refs.leftExpValue.textContent = `${Math.round(progress)}%`;
+    refs.leftHpFill.style.width = '100%';
+    refs.leftMpFill.style.width = '100%';
+    refs.leftExpFill.style.width = `${progress}%`;
+    refs.heroLevel.textContent = hero.level;
+    refs.xpMiniFill.style.width = `${progress}%`;
+    refs.levelProgress.textContent = `${hero.exp.toLocaleString()} / ${hero.expNextLevelTarget.toLocaleString()} EXP`;
   }
 
   function createParticles(slotEl) {
@@ -131,7 +158,7 @@
     refs.upgradeStats.innerHTML = '';
 
     Object.entries(slot.stats).forEach(([statKey, baseValue]) => {
-      const stat = ALL_STATS.find((s) => s.key === statKey);
+      const stat = getAllStatsMeta().find((s) => s.key === statKey);
       if (!stat) return;
       const current = calcStatBonus(baseValue, slot.level);
       const next = calcStatBonus(baseValue, slot.level + 1);
@@ -230,6 +257,18 @@
       spriteImg: root.querySelector('#hsSpriteImg'),
       spritePlaceholder: root.querySelector('#hsSpritePlaceholder'),
       spriteInput: root.querySelector('#hsSpriteInput'),
+      heroName: root.querySelector('#hsHeroName'),
+      heroClanName: root.querySelector('#hsHeroClanName'),
+      heroRank: root.querySelector('#hsHeroRank'),
+      leftHpFill: root.querySelector('#hsLeftHpFill'),
+      leftMpFill: root.querySelector('#hsLeftMpFill'),
+      leftExpFill: root.querySelector('#hsLeftExpFill'),
+      leftHpValue: root.querySelector('#hsLeftHpValue'),
+      leftMpValue: root.querySelector('#hsLeftMpValue'),
+      leftExpValue: root.querySelector('#hsLeftExpValue'),
+      heroLevel: root.querySelector('#hsHeroLevel'),
+      xpMiniFill: root.querySelector('#hsXpMiniFill'),
+      levelProgress: root.querySelector('#hsLevelProgress'),
       overlay: root.querySelector('#hsModalOverlay'),
       btnClose: root.querySelector('#hsModalClose'),
       btnUpgrade: root.querySelector('#hsBtnUpgrade'),
@@ -252,8 +291,10 @@
     cacheRefs(root);
     refs.grid.innerHTML = '';
     SLOTS.forEach((slot) => refs.grid.appendChild(createSlotElement(slot)));
+    refreshCharacterFromHero(window.CharacterStatsSystem?.getActiveHero() || DEFAULT_HERO);
     refs.goldAmount.textContent = character.gold.toLocaleString();
     renderCharStats();
+    renderHeroIdentity();
     bindSpriteHandlers();
     bindModalHandlers();
     mounted = true;
@@ -268,4 +309,12 @@
   }
 
   window.HeroSystem = { mount, unmount, isMounted: () => mounted };
+
+  window.addEventListener('ngs:hero-stats-updated', (event) => {
+    const hero = event?.detail?.hero;
+    refreshCharacterFromHero(hero || DEFAULT_HERO);
+    if (!mounted || !refs) return;
+    renderCharStats();
+    renderHeroIdentity();
+  });
 })();

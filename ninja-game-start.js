@@ -141,7 +141,12 @@
     charactersGrid.innerHTML = '';
 
     characters.forEach((character) => {
-      const { str, agi, int } = character.stats;
+      const heroSnapshot = window.CharacterStatsSystem
+        ? window.CharacterStatsSystem.buildHeroSnapshot(character.id, 1, 0, window.CharacterStatsSystem.DEFAULT_RANK)
+        : null;
+      const previewATK = heroSnapshot?.stats?.ATK ?? character.stats.str;
+      const previewHP = heroSnapshot?.stats?.HP ?? 100;
+      const previewMP = heroSnapshot?.stats?.MP ?? 100;
       const card = document.createElement('div');
       card.className = 'ngs-character-card';
 
@@ -156,16 +161,16 @@
         <div class="ngs-sprite-idle">${spriteContent}</div>
         <div class="ngs-character-name">${character.name}</div>
         <div class="ngs-stat-item">
-          <div class="ngs-stat-label"><span>💪 Fuerza</span><span>${str}</span></div>
-          <div class="ngs-stat-bar-container"><div class="ngs-stat-fill ngs-str" style="width: ${str}%;"></div></div>
+          <div class="ngs-stat-label"><span>⚔️ ATK</span><span>${previewATK}</span></div>
+          <div class="ngs-stat-bar-container"><div class="ngs-stat-fill ngs-str" style="width: ${Math.min(100, previewATK)}%;"></div></div>
         </div>
         <div class="ngs-stat-item">
-          <div class="ngs-stat-label"><span>🍃 Agilidad</span><span>${agi}</span></div>
-          <div class="ngs-stat-bar-container"><div class="ngs-stat-fill ngs-agi" style="width: ${agi}%;"></div></div>
+          <div class="ngs-stat-label"><span>❤️ HP</span><span>${previewHP}</span></div>
+          <div class="ngs-stat-bar-container"><div class="ngs-stat-fill ngs-agi" style="width: ${Math.min(100, Math.round((previewHP / 250) * 100))}%;"></div></div>
         </div>
         <div class="ngs-stat-item">
-          <div class="ngs-stat-label"><span>🔮 Inteligencia</span><span>${int}</span></div>
-          <div class="ngs-stat-bar-container"><div class="ngs-stat-fill ngs-int" style="width: ${int}%;"></div></div>
+          <div class="ngs-stat-label"><span>🔵 MP</span><span>${previewMP}</span></div>
+          <div class="ngs-stat-bar-container"><div class="ngs-stat-fill ngs-int" style="width: ${Math.min(100, Math.round((previewMP / 250) * 100))}%;"></div></div>
         </div>
         <button class="ngs-btn ngs-select-char-btn">Iniciar Aventura</button>
       `;
@@ -174,10 +179,13 @@
       selectCharBtn.addEventListener('click', () => {
         const selectedClan = CLANS.find((c) => c.id === clanId);
         const saveObject = {
+          characterId: character.id,
           character: character.name,
           clan: clanId,
           clanName: selectedClan?.name || clanId,
           level: 1,
+          rank: window.CharacterStatsSystem?.DEFAULT_RANK || 'GENIN',
+          exp: 0,
           timestamp: Date.now(),
           playTime: '00:12:34'
         };

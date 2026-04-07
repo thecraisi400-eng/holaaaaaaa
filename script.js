@@ -2,12 +2,14 @@
    ESTADO DEL JUEGO - VALORES FIJOS SOLICITADOS
 ───────────────────────────────────────────── */
 const state = {
-  hp: 1000, hpMax: 1000,    // ✅ HP completo y fijo
-  mp: 500, mpMax: 500,      // ✅ MP completo y fijo
-  exp: 0, expMax: 1000,     // ✅ EXP en 0 y fijo (ajustado para nivel 1)
-  gold: 100,                // ✅ Oro fijo en 100
-  atk: 120, def: 80,        // ✅ Stats ajustados para nivel 1
-  level: 1,                 // ✅ Nivel cambiado a 1
+  hp: 100, hpMax: 100,
+  mp: 100, mpMax: 100,
+  exp: 0, expMax: 1000,
+  gold: 100,
+  atk: 10, def: 10,
+  level: 1,
+  rank: 'GENIN',
+  heroSnapshot: null,
   activeSection: 'heroe',
 };
 
@@ -42,6 +44,28 @@ function syncCharacterIdentity(saveData) {
   }
 }
 
+function syncStateFromHero(snapshot) {
+  if (!snapshot) return;
+  state.heroSnapshot = snapshot;
+  state.hp = snapshot.stats.HP;
+  state.hpMax = snapshot.stats.HP;
+  state.mp = snapshot.stats.MP;
+  state.mpMax = snapshot.stats.MP;
+  state.exp = snapshot.exp;
+  state.expMax = snapshot.expNextLevelTarget;
+  state.level = snapshot.level;
+  state.atk = snapshot.stats.ATK;
+  state.def = snapshot.stats.DEF;
+  state.rank = snapshot.rank || 'GENIN';
+
+  const rankEl = document.getElementById('charRank');
+  if (rankEl) rankEl.textContent = state.rank;
+  const atkEl = document.getElementById('statAtk');
+  if (atkEl) atkEl.textContent = state.atk.toLocaleString();
+  const defEl = document.getElementById('statDef');
+  if (defEl) defEl.textContent = state.def.toLocaleString();
+}
+
 /* ─────────────────────────────────────────────
    ACTUALIZACIÓN DE BARRAS - VALORES ESTÁTICOS
    ✅ Sin incremento automático de EXP, Gold, HP o MP
@@ -62,7 +86,7 @@ function updateBars() {
   document.getElementById('mpPct').textContent  = mpPct  + '%';
   
   document.getElementById('expNext').textContent =
-    `${state.exp.toLocaleString()} / ${state.expMax.toLocaleString()} EXP — Próx. nivel: ${(state.expMax - state.exp).toLocaleString()}`;
+    `${state.exp.toLocaleString()} / ${state.expMax.toLocaleString()} EXP — Próx. nivel: ${Math.max(0, state.expMax - state.exp).toLocaleString()}`;
   
   document.getElementById('statGold').textContent = state.gold.toLocaleString();
 }
@@ -176,4 +200,25 @@ renderCenterSection(state.activeSection);
 window.addEventListener('ngs:game-entered', (event) => {
   const saveData = event?.detail?.saveData;
   syncCharacterIdentity(saveData);
+
+  if (window.CharacterStatsSystem && saveData?.characterId) {
+    const snapshot = window.CharacterStatsSystem.buildHeroSnapshot(
+      saveData.characterId,
+      saveData.level || 1,
+      saveData.exp || 0,
+      saveData.rank || window.CharacterStatsSystem.DEFAULT_RANK
+    );
+    if (snapshot) {
+      window.CharacterStatsSystem.setActiveHero(snapshot);
+      syncStateFromHero(snapshot);
+      updateBars();
+    }
+  }
+});
+
+window.addEventListener('ngs:hero-stats-updated', (event) => {
+  const snapshot = event?.detail?.hero;
+  if (!snapshot) return;
+  syncStateFromHero(snapshot);
+  updateBars();
 });

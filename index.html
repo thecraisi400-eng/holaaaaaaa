@@ -200,13 +200,32 @@
     <div class="hs-corner hs-bl"></div>
     <div class="hs-corner hs-br"></div>
 
-    <div class="hs-col-identity">
-      <div class="hs-avatar-wrap">
-        <div class="hs-avatar-ring"></div>
-        <div class="hs-avatar">
-          <div class="hs-avatar-inner">🥷</div>
+    <div class="hs-col-main">
+      <div class="hs-gear-header">
+        <div class="hs-gear-title">⚔ Equipamiento</div>
+        <div class="hs-gold-display">
+          <span class="hs-gold-icon">◆</span>
+          <span id="hsGoldAmount">24,850</span>
         </div>
       </div>
+
+      <div class="hs-gear-grid" id="hsGearGrid"></div>
+
+      <div class="hs-gear-stats-divider"></div>
+
+      <div class="hs-char-stats-panel" id="hsCharStats"></div>
+    </div>
+
+    <div class="hs-col-side">
+      <div class="hs-sprite-title">✦ Sprite</div>
+      <div class="hs-sprite-box" id="hsSpriteBox">
+        <div class="hs-sprite-placeholder" id="hsSpritePlaceholder">
+          <div class="hs-sprite-placeholder-icon">🎭</div>
+          <div>Sprite automático<br>según personaje</div>
+        </div>
+        <img class="hs-sprite-img" id="hsSpriteImg" alt="Sprite del personaje">
+      </div>
+      <div class="hs-vitals-divider"></div>
 
       <div class="hs-char-name" id="hsHeroName">KAGE<br>RYUU</div>
       <div class="hs-char-clan">
@@ -243,34 +262,6 @@
         </div>
         <div class="hs-level-progress" id="hsLevelProgress">0 / 0 EXP</div>
       </div>
-    </div>
-
-    <div class="hs-col-gear">
-      <div class="hs-gear-header">
-        <div class="hs-gear-title">⚔ Equipamiento</div>
-        <div class="hs-gold-display">
-          <span class="hs-gold-icon">◆</span>
-          <span id="hsGoldAmount">24,850</span>
-        </div>
-      </div>
-
-      <div class="hs-gear-grid" id="hsGearGrid"></div>
-
-      <div class="hs-gear-stats-divider"></div>
-
-      <div class="hs-char-stats-panel" id="hsCharStats"></div>
-    </div>
-
-    <div class="hs-col-sprite">
-      <div class="hs-sprite-title">✦ Sprite</div>
-      <div class="hs-sprite-box" id="hsSpriteBox">
-        <div class="hs-sprite-placeholder" id="hsSpritePlaceholder">
-          <div class="hs-sprite-placeholder-icon">🎭</div>
-          <div>Sprite automático<br>según personaje</div>
-        </div>
-        <img class="hs-sprite-img" id="hsSpriteImg" alt="Sprite del personaje">
-      </div>
-      <div class="hs-vitals-divider"></div>
     </div>
 
     <div class="hs-modal-overlay" id="hsModalOverlay">

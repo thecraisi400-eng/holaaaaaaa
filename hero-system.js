@@ -104,7 +104,7 @@
 
   function renderCharStats() {
     refs.charStats.innerHTML = '';
-    getAllStatsMeta().forEach((stat) => {
+    getAllStatsMeta().slice(0, 10).forEach((stat) => {
       const item = document.createElement('div');
       item.className = 'hs-char-stat-item';
       item.innerHTML = `<span class="hs-char-stat-icon">${stat.icon}</span><span class="hs-char-stat-key">${stat.name}</span><span class="hs-char-stat-val ${stat.color || ''}">${getStatDisplay(stat.key, character.stats[stat.key])}</span>`;

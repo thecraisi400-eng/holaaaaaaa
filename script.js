@@ -10,6 +10,7 @@ const state = {
   level: 1,
   rank: 'GENIN',
   heroSnapshot: null,
+  expCurrentLevelStart: 0,
   activeSection: 'heroe',
 };
 
@@ -52,6 +53,7 @@ function syncStateFromHero(snapshot) {
   state.mp = snapshot.stats.MP;
   state.mpMax = snapshot.stats.MP;
   state.exp = snapshot.exp;
+  state.expCurrentLevelStart = snapshot.expCurrentLevelStart || 0;
   state.expMax = snapshot.expNextLevelTarget;
   state.level = snapshot.level;
   state.atk = snapshot.stats.ATK;
@@ -72,21 +74,29 @@ function syncStateFromHero(snapshot) {
 ───────────────────────────────────────────── */
 function updateBars() {
   // 🔒 Valores fijos - sin cambios automáticos
-  const hpPct  = Math.round(state.hp  / state.hpMax  * 100);
-  const mpPct  = Math.round(state.mp  / state.mpMax  * 100);
-  const expPct = Math.round(state.exp / state.expMax * 100);
+  const hpPct  = Math.round((state.hpMax > 0 ? state.hp / state.hpMax : 0) * 100);
+  const mpPct  = Math.round((state.mpMax > 0 ? state.mp / state.mpMax : 0) * 100);
+  const expSpan = Math.max(1, state.expMax - state.expCurrentLevelStart);
+  const expPct = Math.round(Math.min(100, Math.max(0, ((state.exp - state.expCurrentLevelStart) / expSpan) * 100)));
 
   document.getElementById('hpFill').style.width  = hpPct  + '%';
   document.getElementById('mpFill').style.width  = mpPct  + '%';
   document.getElementById('expFill').style.width = expPct + '%';
 
-  document.getElementById('hpCur').textContent  = state.hp;
+  document.getElementById('hpCur').textContent  = state.hp.toLocaleString();
+  document.getElementById('hpMax').textContent  = state.hpMax.toLocaleString();
   document.getElementById('hpPct').textContent  = hpPct  + '%';
-  document.getElementById('mpCur').textContent  = state.mp;
+  document.getElementById('mpCur').textContent  = state.mp.toLocaleString();
+  document.getElementById('mpMax').textContent  = state.mpMax.toLocaleString();
   document.getElementById('mpPct').textContent  = mpPct  + '%';
+
+  const expNowInLevel = Math.max(0, state.exp - state.expCurrentLevelStart);
+  const expNeededInLevel = Math.max(1, state.expMax - state.expCurrentLevelStart);
+  const levelEl = document.getElementById('expLevel');
+  if (levelEl) levelEl.textContent = state.level;
   
   document.getElementById('expNext').textContent =
-    `${state.exp.toLocaleString()} / ${state.expMax.toLocaleString()} EXP — Próx. nivel: ${Math.max(0, state.expMax - state.exp).toLocaleString()}`;
+    `${expNowInLevel.toLocaleString()} / ${expNeededInLevel.toLocaleString()} EXP — Próx. nivel: ${Math.max(0, state.expMax - state.exp).toLocaleString()}`;
   
   document.getElementById('statGold').textContent = state.gold.toLocaleString();
 }

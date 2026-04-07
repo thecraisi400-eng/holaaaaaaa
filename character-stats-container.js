@@ -16,24 +16,13 @@
     { key: 'LCK', label: 'LCK', suffix: '' }
   ];
 
-  const XP_CHECKPOINTS = {
-    madara: { 1: 0, 10: 7200, 20: 28500, 30: 64000, 40: 114500, 50: 180000, 60: 262000, 70: 358500, 80: 471000, 90: 598500, 100: 742000 },
-    itachi: { 1: 50, 10: 5800, 20: 24000, 30: 58000, 40: 105000, 50: 165000, 60: 240000, 70: 328000, 80: 425000, 90: 540000, 100: 680000 },
-    sasuke: { 1: 65, 10: 6500, 20: 26500, 30: 60000, 40: 107000, 50: 167500, 60: 241500, 70: 329000, 80: 430000, 90: 544500, 100: 672500 },
-    obito: { 1: 75, 10: 7100, 20: 28000, 30: 62500, 40: 110000, 50: 172000, 60: 248000, 70: 338500, 80: 442000, 90: 558000, 100: 688000 },
-    naruto: { 1: 80, 10: 7500, 20: 29000, 30: 63000, 40: 110500, 50: 171000, 60: 245000, 70: 332500, 80: 433500, 90: 548000, 100: 676000 },
-    nagato: { 1: 90, 10: 8500, 20: 32000, 30: 68000, 40: 115000, 50: 175000, 60: 252000, 70: 345000, 80: 455000, 90: 582000, 100: 715000 },
-    kushina: { 1: 70, 10: 7000, 20: 27500, 30: 61500, 40: 109000, 50: 169500, 60: 243500, 70: 331000, 80: 432000, 90: 546500, 100: 674000 },
-    karin: { 1: 55, 10: 6200, 20: 25500, 30: 59500, 40: 106000, 50: 166500, 60: 240000, 70: 327000, 80: 425000, 90: 540500, 100: 670000 },
-    hashirama: { 1: 95, 10: 8800, 20: 33500, 30: 71000, 40: 120000, 50: 182500, 60: 258000, 70: 348500, 80: 454000, 90: 576000, 100: 712500 },
-    tobirama: { 1: 72, 10: 6950, 20: 27200, 30: 61000, 40: 108500, 50: 169000, 60: 243500, 70: 331250, 80: 432500, 90: 547000, 100: 675500 },
-    tsunade: { 1: 78, 10: 7200, 20: 28500, 30: 64000, 40: 112000, 50: 173500, 60: 248000, 70: 336500, 80: 438000, 90: 552500, 100: 680000 },
-    itama: { 1: 60, 10: 6000, 20: 25000, 30: 58000, 40: 105000, 50: 165000, 60: 240000, 70: 328000, 80: 428000, 90: 542000, 100: 670000 },
-    kaguya: { 1: 98, 10: 8900, 20: 35000, 30: 72500, 40: 125000, 50: 190000, 60: 265000, 70: 355000, 80: 460000, 90: 580000, 100: 720000 },
-    hagoromo: { 1: 105, 10: 9000, 20: 36000, 30: 73500, 40: 126500, 50: 192000, 60: 267500, 70: 358000, 80: 463500, 90: 584000, 100: 725000 },
-    indra: { 1: 75, 10: 7100, 20: 27500, 30: 61500, 40: 109000, 50: 170000, 60: 244500, 70: 332000, 80: 433500, 90: 548500, 100: 678000 },
-    asura: { 1: 85, 10: 7500, 20: 29000, 30: 63000, 40: 110500, 50: 171500, 60: 246000, 70: 334000, 80: 435500, 90: 550500, 100: 680000 }
-  };
+  function calcularXP(nivel) {
+    if (nivel <= 1) return 68;
+    const base = 67.5;
+    const exponente = 2.0;
+    const xpAcumulada = Math.round(base * Math.pow(nivel, exponente));
+    return xpAcumulada;
+  }
 
   const CHARACTER_PROFILES = {
     madara: { name: 'Madara Uchiha', clanName: 'CLAN UCHIHA', formulas: { CDMG: ['percent', 50, 1.5], MP: ['flat', 120, 12], INT: ['flat', 18, 1.2], ATK: ['flat', 20, 9], HP: ['flat', 150, 15], DEF: ['flat', 12, 5], AGI: ['flat', 10, 2.5], RES: ['percent', 8, 0.15], CRT: ['percent', 4, 0.1], EVA: ['percent', 1, 0.1], REGEN: ['percent', 1, 0.02], LCK: ['flat', 1, 0.05] } },
@@ -69,23 +58,8 @@
   }
 
   function getXpAtLevel(characterId, level) {
-    const table = XP_CHECKPOINTS[characterId];
     const targetLevel = clampLevel(level);
-    if (!table) return Math.max(0, (targetLevel - 1) * 1000);
-    if (table[targetLevel] !== undefined) return table[targetLevel];
-
-    const checkpoints = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
-    const lower = checkpoints.filter((checkpoint) => checkpoint < targetLevel).pop() || 1;
-    const upper = checkpoints.find((checkpoint) => checkpoint > targetLevel) || 100;
-    const lowerXp = table[lower] ?? 0;
-    const upperXp = table[upper] ?? lowerXp;
-
-    if (upper === lower) return lowerXp;
-
-    const levelsInSegment = upper - lower;
-    const progressInsideSegment = targetLevel - lower;
-    const xpPerLevel = (upperXp - lowerXp) / levelsInSegment;
-    return Math.round(lowerXp + xpPerLevel * progressInsideSegment);
+    return calcularXP(targetLevel);
   }
 
   function buildHeroSnapshot(characterId, level = 1, exp = null, rank = DEFAULT_RANK) {

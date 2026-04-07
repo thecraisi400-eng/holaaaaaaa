@@ -213,6 +213,10 @@
     applySpriteToPanel();
   }
 
+  function getHeroSnapshot() {
+    return character.hero ? { ...character.hero, stats: { ...character.hero.stats } } : null;
+  }
+
   let currentSlot = null;
 
   function openModal(slot, rar) {
@@ -375,7 +379,7 @@
     refs = null;
   }
 
-  window.HeroSystem = { mount, unmount, isMounted: () => mounted, setCharacterSprite };
+  window.HeroSystem = { mount, unmount, isMounted: () => mounted, setCharacterSprite, getHeroSnapshot };
 
   window.addEventListener('ngs:hero-stats-updated', (event) => {
     const hero = event?.detail?.hero;

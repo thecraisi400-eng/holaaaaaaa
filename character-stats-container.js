@@ -17,10 +17,10 @@
   ];
 
   function calcularXP(nivel) {
-    if (nivel <= 1) return 68;
+    if (nivel <= 1) return 0;
     const base = 67.5;
     const exponente = 2.0;
-    const xpAcumulada = Math.round(base * Math.pow(nivel, exponente));
+    const xpAcumulada = Math.round(base * Math.pow(nivel - 1, exponente));
     return xpAcumulada;
   }
 

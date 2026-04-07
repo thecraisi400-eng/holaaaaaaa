@@ -238,7 +238,6 @@
       if (window.GameState && typeof window.GameState.setGold === 'function') {
         window.GameState.setGold(character.gold);
       }
-      refs.goldAmount.textContent = character.gold.toLocaleString();
       currentSlot.level += 1;
       refreshCharacterFromHero(character.baseHero);
       syncHeroToGlobalState();
@@ -288,7 +287,6 @@
       root,
       grid: root.querySelector('#hsGearGrid'),
       charStats: root.querySelector('#hsCharStats'),
-      goldAmount: root.querySelector('#hsGoldAmount'),
       spriteImg: root.querySelector('#hsSpriteImg'),
       spritePlaceholder: root.querySelector('#hsSpritePlaceholder'),
       heroName: root.querySelector('#hsHeroName'),
@@ -328,7 +326,6 @@
     refreshCharacterFromHero(window.CharacterStatsSystem?.getActiveHero() || DEFAULT_HERO);
     syncHeroToGlobalState();
     syncGoldFromGlobalState();
-    refs.goldAmount.textContent = character.gold.toLocaleString();
     renderCharStats();
     renderHeroIdentity();
     applySpriteToPanel();
@@ -358,6 +355,5 @@
     const latestGold = event?.detail?.gold;
     character.gold = Math.max(0, Number(latestGold) || 0);
     if (!mounted || !refs) return;
-    refs.goldAmount.textContent = character.gold.toLocaleString();
   });
 })();

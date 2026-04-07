@@ -466,7 +466,7 @@ html, body {
   width: 100%;
   height: 100%;
   display: grid;
-  grid-template-columns: 114px 1fr 124px;
+  grid-template-columns: minmax(0, 1fr) 132px;
   background: var(--hs-bg-glass);
   border: 1px solid var(--hs-border-glass);
   overflow: hidden;
@@ -482,16 +482,10 @@ html, body {
   width: 1px;
   background: linear-gradient(to bottom, transparent 0%, var(--hs-border-glass) 20%, rgba(0,245,255,0.2) 50%, var(--hs-border-glass) 80%, transparent 100%);
 }
-.hs-sheet::before { left: 114px; }
-.hs-sheet::after { right: 124px; }
+.hs-sheet::before { left: auto; right: 132px; opacity: .35; }
+.hs-sheet::after { display: none; }
 
-.hs-col-identity { width:95%; justify-self:center; display:flex; flex-direction:column; align-items:center; padding:10px 8px 8px; gap:5px; }
-.hs-avatar-wrap { width:64px; height:64px; position:relative; }
-.hs-avatar-ring { position:absolute; inset:-4px; border-radius:50%; border:1.5px solid var(--hs-cyan); opacity:.6; animation: hs-spin 8s linear infinite; }
-.hs-avatar-ring::after { content:''; position:absolute; top:-3px; left:50%; transform:translateX(-50%); width:6px; height:6px; background:var(--hs-cyan); border-radius:50%; box-shadow:0 0 8px var(--hs-cyan); }
-@keyframes hs-spin { to { transform: rotate(360deg); } }
-.hs-avatar { width:100%; height:100%; border-radius:50%; background: linear-gradient(145deg,#0a1525 0%,#1a2840 60%,#0d1e35 100%); border:2px solid rgba(0,245,255,.3); display:flex; align-items:center; justify-content:center; }
-.hs-avatar-inner { font-size:30px; filter: drop-shadow(0 0 8px rgba(0,245,255,.5)); }
+.hs-col-main { width:97%; justify-self:center; display:flex; flex-direction:column; padding:8px 8px 6px; gap:4px; min-width:0; }
 .hs-char-name { font-family:var(--font-title); font-size:9px; font-weight:700; color:var(--hs-cyan); letter-spacing:1.4px; text-align:center; text-transform:uppercase; }
 .hs-char-clan { font-size:9px; color:var(--hs-text-secondary); display:flex; align-items:center; gap:3px; }
 .hs-char-clan-name { font-size:8px; }
@@ -517,7 +511,6 @@ html, body {
 .hs-xp-mini-fill { height:100%; background: linear-gradient(to right, rgba(220,220,220,.5), #fff); }
 .hs-level-progress { font-size:7px; color:var(--hs-text-dim); }
 
-.hs-col-gear { width:95%; justify-self:center; display:flex; flex-direction:column; padding:8px 6px 6px; gap:4px; min-width:0; }
 .hs-gear-header { display:flex; align-items:center; justify-content:space-between; }
 .hs-gear-title { font-family: var(--font-title); font-size:7.5px; font-weight:700; color:var(--hs-gold); letter-spacing:2px; }
 .hs-gold-display { font-size:8.5px; color:var(--hs-gold); display:flex; align-items:center; gap:3px; }
@@ -537,7 +530,7 @@ html, body {
 .hs-char-stat-val.good { color: var(--hs-green-neon); }
 .hs-char-stat-val.speed { color: var(--hs-cyan); }
 
-.hs-col-sprite { width:95%; justify-self:center; display:flex; flex-direction:column; padding:9px 7px 8px; gap:5px; }
+.hs-col-side { width:95%; justify-self:center; display:flex; flex-direction:column; align-items:center; padding:9px 7px 8px; gap:5px; }
 .hs-sprite-title { font-family: var(--font-title); font-size:7px; color:var(--hs-cyan); text-align:center; letter-spacing:2px; }
 .hs-sprite-box { width:109px; height:142px; border-radius:8px; border:1.5px solid rgba(0,245,255,.25); background: linear-gradient(145deg, rgba(10,18,30,.4), rgba(14,24,42,.3)); margin:0 auto; display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative; }
 .hs-sprite-placeholder { text-align:center; color:var(--hs-text-dim); font-size:8px; padding:8px; }
@@ -576,9 +569,8 @@ html, body {
 @keyframes hs-particle-float { from { transform:translate(var(--tx), var(--ty)); opacity:.4; } to { transform:translate(calc(var(--tx) + var(--dx)), calc(var(--ty) - 10px)); opacity:1; } }
 
 @media (max-width: 480px) {
-  .hs-sheet { grid-template-columns:95px 1fr 104px; }
-  .hs-sheet::before { left: 95px; }
-  .hs-sheet::after { right: 104px; }
+  .hs-sheet { grid-template-columns:minmax(0, 1fr) 108px; }
+  .hs-sheet::before { right: 108px; }
   .hs-sprite-box { width:95px; height:124px; }
 }
 

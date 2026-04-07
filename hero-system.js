@@ -26,7 +26,12 @@
   let mounted = false;
   let refs = null;
   let selectedSpriteSrc = '';
-  const character = { gold: 24850, stats: {}, hero: DEFAULT_HERO };
+  const character = { gold: 0, stats: {}, hero: DEFAULT_HERO };
+  function syncGoldFromGlobalState() {
+    if (window.GameState && typeof window.GameState.getGold === 'function') {
+      character.gold = window.GameState.getGold();
+    }
+  }
   function refreshCharacterFromHero(heroSnapshot) {
     character.hero = heroSnapshot || character.hero || DEFAULT_HERO;
     character.stats = { ...(character.hero?.stats || {}) };
@@ -215,6 +220,9 @@
       }
 
       character.gold -= cost;
+      if (window.GameState && typeof window.GameState.setGold === 'function') {
+        window.GameState.setGold(character.gold);
+      }
       refs.goldAmount.textContent = character.gold.toLocaleString();
       Object.entries(currentSlot.stats).forEach(([statKey, baseValue]) => {
         const currentBonus = calcStatBonus(baseValue, currentSlot.level);
@@ -310,6 +318,7 @@
     refs.grid.innerHTML = '';
     SLOTS.forEach((slot) => refs.grid.appendChild(createSlotElement(slot)));
     refreshCharacterFromHero(window.CharacterStatsSystem?.getActiveHero() || DEFAULT_HERO);
+    syncGoldFromGlobalState();
     refs.goldAmount.textContent = character.gold.toLocaleString();
     renderCharStats();
     renderHeroIdentity();
@@ -335,5 +344,12 @@
     if (!mounted || !refs) return;
     renderCharStats();
     renderHeroIdentity();
+  });
+
+  window.addEventListener('ngs:gold-updated', (event) => {
+    const latestGold = event?.detail?.gold;
+    character.gold = Math.max(0, Number(latestGold) || 0);
+    if (!mounted || !refs) return;
+    refs.goldAmount.textContent = character.gold.toLocaleString();
   });
 })();

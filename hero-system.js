@@ -15,26 +15,69 @@
   }
 
   const SLOTS = [
-    { id: 'weapon1', icon: '⚔', name: 'Katana', level: 1, stats: { ATK: 68, AGI: 10, CRT: 2, CDMG: 4 }, statIcons: { ATK: '⚔', AGI: '💨', CRT: '◎', CDMG: '💥' }, costBase: 2800 },
-    { id: 'weapon2', icon: '✦', name: 'Shurikens', level: 1, stats: { AGI: 20, LCK: 8, EVA: 2, ATK: 12 }, statIcons: { AGI: '💨', LCK: '✦', EVA: '〇', ATK: '⚔' }, costBase: 1200 },
-    { id: 'head', icon: '👹', name: 'Máscara', level: 1, stats: { RES: 4, DEF: 24, INT: 8, REGEN: 1 }, statIcons: { RES: '♾', DEF: '🛡', INT: '🧠', REGEN: '♥' }, costBase: 450 },
-    { id: 'chest', icon: '🥋', name: 'Túnica ANBU', level: 1, stats: { DEF: 28, REGEN: 1, RES: 3, HP: 65 }, statIcons: { DEF: '🛡', REGEN: '♥', RES: '♾', HP: '❤️' }, costBase: 5200 },
-    { id: 'gloves', icon: '🧤', name: 'Guanteletes', level: 1, stats: { CRT: 3, DEF: 10, AGI: 8, ATK: 24 }, statIcons: { CRT: '◎', DEF: '🛡', AGI: '💨', ATK: '⚔' }, costBase: 1900 },
-    { id: 'boots', icon: '👟', name: 'Botas Ninja', level: 1, stats: { AGI: 24, EVA: 2, INT: 6, LCK: 5 }, statIcons: { AGI: '💨', EVA: '〇', INT: '🧠', LCK: '✦' }, costBase: 780 }
+    { id: 'weapon1', icon: '⚔', name: 'KATANA', level: 1, stats: { ATK: 2.5, CRT: 0.12, INT: 1.0, LCK: 0.5 }, statIcons: { ATK: '⚔', CRT: '◎', INT: '🧠', LCK: '✦' } },
+    { id: 'weapon2', icon: '✦', name: 'SHURIKEN', level: 1, stats: { AGI: 2.0, CRT: 0.10, ATK: 1.5, EVA: 0.08 }, statIcons: { AGI: '💨', CRT: '◎', ATK: '⚔', EVA: '〇' } },
+    { id: 'head', icon: '👹', name: 'MÁSCARA', level: 1, stats: { MP: 6.0, INT: 1.5, RES: 0.12, REGEN: 0.05 }, statIcons: { MP: '🔵', INT: '🧠', RES: '♾', REGEN: '♥' } },
+    { id: 'chest', icon: '🥋', name: 'TÚNICA AMBU', level: 1, stats: { HP: 12.0, DEF: 3.0, RES: 0.15, EVA: 0.10 }, statIcons: { HP: '❤️', DEF: '🛡', RES: '♾', EVA: '〇' } },
+    { id: 'gloves', icon: '🧤', name: 'GUANTELETES', level: 1, stats: { DEF: 2.0, ATK: 1.0, CDMG: 0.10, LCK: 1.0 }, statIcons: { DEF: '🛡', ATK: '⚔', CDMG: '💥', LCK: '✦' } },
+    { id: 'boots', icon: '👟', name: 'BOTAS NINJA', level: 1, stats: { AGI: 3.0, EVA: 0.15, HP: 5.0, REGEN: 0.08 }, statIcons: { AGI: '💨', EVA: '〇', HP: '❤️', REGEN: '♥' } }
   ];
 
   let mounted = false;
   let refs = null;
   let selectedSpriteSrc = '';
-  const character = { gold: 0, stats: {}, hero: DEFAULT_HERO };
+  const character = { gold: 0, stats: {}, hero: DEFAULT_HERO, baseHero: DEFAULT_HERO, equipmentBonuses: {} };
   function syncGoldFromGlobalState() {
     if (window.GameState && typeof window.GameState.getGold === 'function') {
       character.gold = window.GameState.getGold();
     }
   }
+  function buildEmptyStats() {
+    return getAllStatsMeta().reduce((acc, meta) => {
+      acc[meta.key] = 0;
+      return acc;
+    }, {});
+  }
+  function calcCostByLevel(level) {
+    if (level <= 7) return 100 * Math.pow(1.5, level - 1);
+    if (level <= 45) return 1200 + (level - 7) * 185;
+    return 8225 + (level - 45) * 55;
+  }
+  function calcTotalSlotStat(levelStat, level) { return levelStat * level; }
+  function calcEquipmentBonuses() {
+    const totals = buildEmptyStats();
+    SLOTS.forEach((slot) => {
+      Object.entries(slot.stats).forEach(([statKey, valuePerLevel]) => {
+        totals[statKey] = (totals[statKey] || 0) + calcTotalSlotStat(valuePerLevel, slot.level);
+      });
+    });
+    return totals;
+  }
+  function applyEquipmentToHero(heroSnapshot, equipmentBonuses) {
+    if (!heroSnapshot) return null;
+    const baseStats = { ...(heroSnapshot.baseStats || heroSnapshot.stats || {}) };
+    const statsWithEquipment = { ...baseStats };
+    Object.entries(equipmentBonuses).forEach(([key, value]) => {
+      statsWithEquipment[key] = (statsWithEquipment[key] || 0) + value;
+    });
+    return {
+      ...heroSnapshot,
+      baseStats,
+      equipmentBonuses: { ...equipmentBonuses },
+      stats: statsWithEquipment
+    };
+  }
   function refreshCharacterFromHero(heroSnapshot) {
-    character.hero = heroSnapshot || character.hero || DEFAULT_HERO;
+    character.baseHero = heroSnapshot
+      ? { ...heroSnapshot, stats: { ...(heroSnapshot.baseStats || heroSnapshot.stats || {}) } }
+      : (character.baseHero || character.hero || DEFAULT_HERO);
+    character.equipmentBonuses = calcEquipmentBonuses();
+    character.hero = applyEquipmentToHero(character.baseHero, character.equipmentBonuses);
     character.stats = { ...(character.hero?.stats || {}) };
+  }
+  function syncHeroToGlobalState() {
+    if (!window.CharacterStatsSystem || typeof window.CharacterStatsSystem.setActiveHero !== 'function' || !character.hero) return;
+    window.CharacterStatsSystem.setActiveHero(character.hero);
   }
   refreshCharacterFromHero(DEFAULT_HERO);
 
@@ -47,14 +90,14 @@
     return { label: 'Legendario', border: '#e74c3c', bg: 'linear-gradient(145deg, rgba(231,76,60,0.35), rgba(139,0,0,0.30), rgba(255,200,60,0.15))', glow: 'rgba(231,76,60,0.7)', textColor: '#ffc83c', extra: true };
   }
 
-  function calcCost(slot) { return Math.round(slot.costBase + slot.level * (slot.level * 12)); }
-  function calcStatBonus(baseValue, level) { return Math.round(baseValue * (1 + level * 0.028)); }
+  function calcCost(slot) { return Math.round(calcCostByLevel(slot.level)); }
+  function calcStatBonus(baseValue, level) { return calcTotalSlotStat(baseValue, level); }
 
   function getStatDisplay(statKey, value) {
     const stat = getAllStatsMeta().find((s) => s.key === statKey);
     if (!stat) return value;
     let display = stat.prefix || '';
-    display += Math.round(value);
+    display += stat.suffix === '%' ? Number(value || 0).toFixed(2) : Math.round(value);
     display += stat.suffix || '';
     return display;
   }
@@ -188,7 +231,7 @@
       const diff = next - current;
       const row = document.createElement('div');
       row.className = 'hs-upgrade-stat-row';
-      row.innerHTML = `<span>${slot.statIcons[statKey] || stat.icon}</span><span>${stat.name}</span><span class="hs-upgrade-stat-current">${getStatDisplay(statKey, current)}</span><span>→</span><span class="hs-upgrade-stat-next">+${diff}${stat.suffix || ''}</span>`;
+      row.innerHTML = `<span>${slot.statIcons[statKey] || stat.icon}</span><span>${stat.name}</span><span class="hs-upgrade-stat-current">${getStatDisplay(statKey, current)}</span><span>→</span><span class="hs-upgrade-stat-next">+${stat.suffix === '%' ? Number(diff).toFixed(2) : Number(diff).toFixed(1)}${stat.suffix || ''}</span>`;
       refs.upgradeStats.appendChild(row);
     });
 
@@ -224,14 +267,9 @@
         window.GameState.setGold(character.gold);
       }
       refs.goldAmount.textContent = character.gold.toLocaleString();
-      Object.entries(currentSlot.stats).forEach(([statKey, baseValue]) => {
-        const currentBonus = calcStatBonus(baseValue, currentSlot.level);
-        const nextBonus = calcStatBonus(baseValue, currentSlot.level + 1);
-        const diff = nextBonus - currentBonus;
-        if (character.stats[statKey] !== undefined) character.stats[statKey] += diff;
-      });
-
       currentSlot.level += 1;
+      refreshCharacterFromHero(character.baseHero);
+      syncHeroToGlobalState();
       const rar = getRarity(currentSlot.level);
       renderCharStats();
       openModal(currentSlot, rar);
@@ -318,6 +356,7 @@
     refs.grid.innerHTML = '';
     SLOTS.forEach((slot) => refs.grid.appendChild(createSlotElement(slot)));
     refreshCharacterFromHero(window.CharacterStatsSystem?.getActiveHero() || DEFAULT_HERO);
+    syncHeroToGlobalState();
     syncGoldFromGlobalState();
     refs.goldAmount.textContent = character.gold.toLocaleString();
     renderCharStats();

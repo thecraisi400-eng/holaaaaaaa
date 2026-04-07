@@ -941,3 +941,39 @@ html, body {
   .ngs-btn { padding: 0.7rem 1rem; font-size: 0.9rem; }
   .ngs-sprite-idle { width: 48px; height: 48px; font-size: 2rem; }
 }
+
+.hs-advanced-stats-container {
+  display: grid;
+  gap: 4px;
+  max-height: 130px;
+  overflow: auto;
+  padding: 2px;
+  border-top: 1px dashed rgba(0,245,255,.15);
+}
+
+.hs-advanced-stat-row {
+  background: rgba(0,245,255,.04);
+  border: 1px solid rgba(0,245,255,.12);
+  border-radius: 6px;
+  padding: 4px 6px;
+}
+
+.hs-advanced-stat-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 8px;
+  color: #cfe8ff;
+  font-weight: 700;
+}
+
+.hs-advanced-cat {
+  color: #ffc83c;
+}
+
+.hs-advanced-values {
+  margin-top: 2px;
+  display: grid;
+  gap: 1px;
+  font-size: 7px;
+  color: rgba(200, 225, 255, 0.75);
+}

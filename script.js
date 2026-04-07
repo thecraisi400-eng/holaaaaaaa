@@ -14,6 +14,17 @@ const state = {
   activeSection: 'heroe',
 };
 
+function setGold(nextGold) {
+  const normalizedGold = Math.max(0, Number(nextGold) || 0);
+  state.gold = normalizedGold;
+  updateBars();
+  window.dispatchEvent(new CustomEvent('ngs:gold-updated', { detail: { gold: state.gold } }));
+}
+
+window.GameState = window.GameState || {};
+window.GameState.getGold = () => state.gold;
+window.GameState.setGold = setGold;
+
 const sections = {
   heroe:        { icon:'🥷', title:'HÉROE',           desc:'Consulta y mejora el equipo de tu shinobi. Cambia armadura, armas y accesorios para maximizar tu poder de combate.' },
   misiones:     { icon:'📜', title:'MISIONES',         desc:'Acepta misiones de rango D a S. Completa objetivos para ganar EXP, oro y recompensas exclusivas.' },

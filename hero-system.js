@@ -25,6 +25,7 @@
 
   let mounted = false;
   let refs = null;
+  let selectedSpriteSrc = '';
   const character = { gold: 24850, stats: {}, hero: DEFAULT_HERO };
   function refreshCharacterFromHero(heroSnapshot) {
     character.hero = heroSnapshot || character.hero || DEFAULT_HERO;
@@ -122,9 +123,8 @@
       if (file.size > 2 * 1024 * 1024) { alert('El archivo es demasiado grande. Máximo 2MB.'); return; }
       const reader = new FileReader();
       reader.onload = (event) => {
-        refs.spriteImg.src = event.target.result;
-        refs.spriteImg.classList.add('loaded');
-        refs.spritePlaceholder.style.display = 'none';
+        selectedSpriteSrc = event.target.result;
+        applySpriteToPanel();
       };
       reader.readAsDataURL(file);
     });
@@ -139,12 +139,30 @@
       if (file.size > 2 * 1024 * 1024) { alert('El archivo es demasiado grande. Máximo 2MB.'); return; }
       const reader = new FileReader();
       reader.onload = (event) => {
-        refs.spriteImg.src = event.target.result;
-        refs.spriteImg.classList.add('loaded');
-        refs.spritePlaceholder.style.display = 'none';
+        selectedSpriteSrc = event.target.result;
+        applySpriteToPanel();
       };
       reader.readAsDataURL(file);
     });
+  }
+
+  function applySpriteToPanel() {
+    if (!refs?.spriteImg || !refs?.spritePlaceholder) return;
+    if (selectedSpriteSrc) {
+      refs.spriteImg.src = selectedSpriteSrc;
+      refs.spriteImg.classList.add('loaded');
+      refs.spritePlaceholder.style.display = 'none';
+      return;
+    }
+    refs.spriteImg.removeAttribute('src');
+    refs.spriteImg.classList.remove('loaded');
+    refs.spritePlaceholder.style.display = '';
+  }
+
+  function setCharacterSprite(spriteSrc = '') {
+    selectedSpriteSrc = spriteSrc;
+    if (!mounted || !refs) return;
+    applySpriteToPanel();
   }
 
   let currentSlot = null;
@@ -295,6 +313,7 @@
     refs.goldAmount.textContent = character.gold.toLocaleString();
     renderCharStats();
     renderHeroIdentity();
+    applySpriteToPanel();
     bindSpriteHandlers();
     bindModalHandlers();
     mounted = true;
@@ -308,7 +327,7 @@
     refs = null;
   }
 
-  window.HeroSystem = { mount, unmount, isMounted: () => mounted };
+  window.HeroSystem = { mount, unmount, isMounted: () => mounted, setCharacterSprite };
 
   window.addEventListener('ngs:hero-stats-updated', (event) => {
     const hero = event?.detail?.hero;

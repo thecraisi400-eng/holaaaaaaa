@@ -45,6 +45,28 @@ function syncCharacterIdentity(saveData) {
   }
 }
 
+function syncCharacterSprite(saveData) {
+  const spriteSrc = saveData?.characterSprite;
+
+  const topSpriteImg = document.getElementById('topCharacterSprite');
+  const topSpritePlaceholder = document.getElementById('topCharacterSpritePlaceholder');
+  if (topSpriteImg) {
+    if (spriteSrc) {
+      topSpriteImg.src = spriteSrc;
+      topSpriteImg.style.display = 'block';
+      if (topSpritePlaceholder) topSpritePlaceholder.style.display = 'none';
+    } else {
+      topSpriteImg.removeAttribute('src');
+      topSpriteImg.style.display = '';
+      if (topSpritePlaceholder) topSpritePlaceholder.style.display = '';
+    }
+  }
+
+  if (window.HeroSystem && typeof window.HeroSystem.setCharacterSprite === 'function') {
+    window.HeroSystem.setCharacterSprite(spriteSrc || '');
+  }
+}
+
 function syncStateFromHero(snapshot) {
   if (!snapshot) return;
   state.heroSnapshot = snapshot;
@@ -210,6 +232,7 @@ renderCenterSection(state.activeSection);
 window.addEventListener('ngs:game-entered', (event) => {
   const saveData = event?.detail?.saveData;
   syncCharacterIdentity(saveData);
+  syncCharacterSprite(saveData);
 
   if (window.CharacterStatsSystem && saveData?.characterId) {
     const snapshot = window.CharacterStatsSystem.buildHeroSnapshot(

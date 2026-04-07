@@ -181,6 +181,7 @@
         const saveObject = {
           characterId: character.id,
           character: character.name,
+          characterSprite: character.img || '',
           clan: clanId,
           clanName: selectedClan?.name || clanId,
           level: 1,
@@ -237,7 +238,21 @@
     }
   }
 
+  function getCharacterById(characterId) {
+    if (!characterId) return null;
+    for (const clanChars of Object.values(CHARACTERS_BY_CLAN)) {
+      const found = clanChars.find((character) => character.id === characterId);
+      if (found) return found;
+    }
+    return null;
+  }
+
   function enterGame() {
+    const selectedCharacterMeta = getCharacterById(gameSavedData?.characterId);
+    if (selectedCharacterMeta && !gameSavedData?.characterSprite) {
+      gameSavedData.characterSprite = selectedCharacterMeta.img || '';
+    }
+
     introRoot.style.display = 'none';
     app.classList.remove('game-shell-hidden');
     window.dispatchEvent(new CustomEvent('ngs:game-entered', {

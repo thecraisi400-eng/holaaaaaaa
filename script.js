@@ -23,6 +23,25 @@ const sections = {
   ajustes:      { icon:'⚙️', title:'AJUSTES',          desc:'Configura notificaciones, audio, gráficos y tu cuenta de shinobi. También puedes vincular tu aldea.' },
 };
 
+function syncCharacterIdentity(saveData) {
+  if (!saveData) return;
+
+  const topNameEl = document.getElementById('charName');
+  if (topNameEl && saveData.character) {
+    topNameEl.textContent = saveData.character.toUpperCase();
+  }
+
+  const heroNameEl = document.querySelector('.hs-char-name');
+  if (heroNameEl && saveData.character) {
+    heroNameEl.innerHTML = saveData.character.toUpperCase().replace(/\s+/g, '<br>');
+  }
+
+  const heroClanEl = document.querySelector('.hs-char-clan-name');
+  if (heroClanEl && saveData.clanName) {
+    heroClanEl.textContent = saveData.clanName;
+  }
+}
+
 /* ─────────────────────────────────────────────
    ACTUALIZACIÓN DE BARRAS - VALORES ESTÁTICOS
    ✅ Sin incremento automático de EXP, Gold, HP o MP
@@ -153,3 +172,8 @@ overlayClose.addEventListener('click', () => {
 });
 
 renderCenterSection(state.activeSection);
+
+window.addEventListener('ngs:game-entered', (event) => {
+  const saveData = event?.detail?.saveData;
+  syncCharacterIdentity(saveData);
+});

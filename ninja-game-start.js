@@ -61,6 +61,7 @@
 
   let currentClanSelected = null;
   let gameSavedData = null;
+  let currentCharacterSelected = null;
 
   const introRoot = document.getElementById('ngsIntroRoot');
   const app = document.getElementById('app');
@@ -171,17 +172,20 @@
 
       const selectCharBtn = card.querySelector('.ngs-select-char-btn');
       selectCharBtn.addEventListener('click', () => {
+        const selectedClan = CLANS.find((c) => c.id === clanId);
         const saveObject = {
           character: character.name,
           clan: clanId,
+          clanName: selectedClan?.name || clanId,
           level: 1,
           timestamp: Date.now(),
           playTime: '00:12:34'
         };
 
         localStorage.setItem(SAVE_KEY, JSON.stringify(saveObject));
+        gameSavedData = saveObject;
+        currentCharacterSelected = character.name;
         playPlaceholderSound('select');
-        alert(`✨ ¡${character.name} del ${CLANS.find((c) => c.id === clanId)?.name} se une a la aventura! ✨\nPartida guardada automáticamente.`);
         updateLoadPreview();
         enterGame();
       });
@@ -197,6 +201,8 @@
       try {
         const data = JSON.parse(savedRaw);
         gameSavedData = data;
+        currentCharacterSelected = data.character || null;
+        currentClanSelected = data.clan || null;
         const dateStr = data.timestamp ? new Date(data.timestamp).toLocaleString() : 'desconocida';
 
         loadPreviewDataDiv.innerHTML = `🎮 ${data.character} | Nivel ${data.level || 1} | Tiempo: ${data.playTime || '00:00'} <br> <span style="font-size:0.7rem;">Guardado: ${dateStr}</span>`;
@@ -212,6 +218,9 @@
     const saved = localStorage.getItem(SAVE_KEY);
     if (saved) {
       const data = JSON.parse(saved);
+      gameSavedData = data;
+      currentClanSelected = data.clan || null;
+      currentCharacterSelected = data.character || null;
       playPlaceholderSound('select');
       alert(`Partida cargada: ${data.character} (Clan ${data.clan}) - Nivel ${data.level || 1}\n¡Bienvenido de vuelta, héroe!`);
       enterGame();
@@ -226,9 +235,26 @@
     window.dispatchEvent(new CustomEvent('ngs:game-entered', {
       detail: {
         selectedClan: currentClanSelected,
+        selectedCharacter: currentCharacterSelected,
         saveData: gameSavedData
       }
     }));
+  }
+
+  function clearAllGameSaves() {
+    const keysToDelete = [];
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+      if (key === SAVE_KEY || key.startsWith('ngs_')) {
+        keysToDelete.push(key);
+      }
+    }
+
+    keysToDelete.forEach((key) => localStorage.removeItem(key));
+    gameSavedData = null;
+    currentClanSelected = null;
+    currentCharacterSelected = null;
   }
 
   const optionsBtn = document.getElementById('ngsOptionsBtn');
@@ -255,6 +281,8 @@
 
   document.getElementById('ngsNewGameBtn').addEventListener('click', () => {
     playPlaceholderSound('select');
+    clearAllGameSaves();
+    updateLoadPreview();
     renderClans();
     showScreen('clan');
   });

@@ -23,6 +23,32 @@ const sections = {
   ajustes:      { icon:'⚙️', title:'AJUSTES',          desc:'Configura notificaciones, audio, gráficos y tu cuenta de shinobi. También puedes vincular tu aldea.' },
 };
 
+
+function applySelectedHeroStats(saveData) {
+  if (!saveData || !window.HeroSystem || typeof window.HeroSystem.updateHeroContext !== 'function') return;
+  const heroStats = window.HeroSystem.updateHeroContext(saveData.characterId, saveData.level || 1);
+  if (!heroStats) return;
+
+  state.level = Number(saveData.level) || 1;
+  state.hpMax = Math.round(heroStats.HP || state.hpMax);
+  state.mpMax = Math.round(heroStats.MP || state.mpMax);
+  state.hp = state.hpMax;
+  state.mp = state.mpMax;
+  state.atk = Math.round(heroStats.ATK || state.atk);
+  state.def = Math.round(heroStats.DEF || state.def);
+
+  const atkEl = document.getElementById('statAtk');
+  const defEl = document.getElementById('statDef');
+  const hpMaxEl = document.getElementById('hpMax');
+  const mpMaxEl = document.getElementById('mpMax');
+  if (atkEl) atkEl.textContent = state.atk;
+  if (defEl) defEl.textContent = state.def;
+  if (hpMaxEl) hpMaxEl.textContent = state.hpMax;
+  if (mpMaxEl) mpMaxEl.textContent = state.mpMax;
+
+  updateBars();
+}
+
 function syncCharacterIdentity(saveData) {
   if (!saveData) return;
 
@@ -176,4 +202,5 @@ renderCenterSection(state.activeSection);
 window.addEventListener('ngs:game-entered', (event) => {
   const saveData = event?.detail?.saveData;
   syncCharacterIdentity(saveData);
+  applySelectedHeroStats(saveData);
 });

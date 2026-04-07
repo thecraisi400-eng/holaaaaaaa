@@ -175,6 +175,7 @@
         const selectedClan = CLANS.find((c) => c.id === clanId);
         const saveObject = {
           character: character.name,
+          characterId: character.id,
           clan: clanId,
           clanName: selectedClan?.name || clanId,
           level: 1,

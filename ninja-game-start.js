@@ -162,15 +162,15 @@
         <div class="ngs-character-name">${character.name}</div>
         <div class="ngs-stat-item">
           <div class="ngs-stat-label"><span>⚔️ ATK</span><span>${previewATK}</span></div>
-          <div class="ngs-stat-bar-container"><div class="ngs-stat-fill ngs-str" style="width: ${Math.min(100, previewATK)}%;"></div></div>
+          <div class="ngs-stat-bar-container"><div class="ngs-stat-fill ngs-str" style="width: 100%;"></div></div>
         </div>
         <div class="ngs-stat-item">
           <div class="ngs-stat-label"><span>❤️ HP</span><span>${previewHP}</span></div>
-          <div class="ngs-stat-bar-container"><div class="ngs-stat-fill ngs-agi" style="width: ${Math.min(100, Math.round((previewHP / 250) * 100))}%;"></div></div>
+          <div class="ngs-stat-bar-container"><div class="ngs-stat-fill ngs-agi" style="width: 100%;"></div></div>
         </div>
         <div class="ngs-stat-item">
           <div class="ngs-stat-label"><span>🔵 MP</span><span>${previewMP}</span></div>
-          <div class="ngs-stat-bar-container"><div class="ngs-stat-fill ngs-int" style="width: ${Math.min(100, Math.round((previewMP / 250) * 100))}%;"></div></div>
+          <div class="ngs-stat-bar-container"><div class="ngs-stat-fill ngs-int" style="width: 100%;"></div></div>
         </div>
         <button class="ngs-btn ngs-select-char-btn">Iniciar Aventura</button>
       `;

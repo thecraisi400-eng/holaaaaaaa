@@ -70,16 +70,22 @@
 
   function getXpAtLevel(characterId, level) {
     const table = XP_CHECKPOINTS[characterId];
-    if (!table) return Math.max(0, (level - 1) * 1000);
-    if (table[level] !== undefined) return table[level];
+    const targetLevel = clampLevel(level);
+    if (!table) return Math.max(0, (targetLevel - 1) * 1000);
+    if (table[targetLevel] !== undefined) return table[targetLevel];
 
-    const keys = Object.keys(table).map(Number).sort((a, b) => a - b);
-    const lower = keys.filter((k) => k < level).pop() || 1;
-    const upper = keys.find((k) => k > level) || 100;
-    const lowerXp = table[lower];
-    const upperXp = table[upper];
-    const ratio = (level - lower) / (upper - lower);
-    return Math.round(lowerXp + (upperXp - lowerXp) * ratio);
+    const checkpoints = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+    const lower = checkpoints.filter((checkpoint) => checkpoint < targetLevel).pop() || 1;
+    const upper = checkpoints.find((checkpoint) => checkpoint > targetLevel) || 100;
+    const lowerXp = table[lower] ?? 0;
+    const upperXp = table[upper] ?? lowerXp;
+
+    if (upper === lower) return lowerXp;
+
+    const levelsInSegment = upper - lower;
+    const progressInsideSegment = targetLevel - lower;
+    const xpPerLevel = (upperXp - lowerXp) / levelsInSegment;
+    return Math.round(lowerXp + xpPerLevel * progressInsideSegment);
   }
 
   function buildHeroSnapshot(characterId, level = 1, exp = null, rank = DEFAULT_RANK) {
@@ -95,7 +101,9 @@
 
     const currentLevelXpStart = getXpAtLevel(characterId, clampedLevel);
     const nextLevelXp = getXpAtLevel(characterId, Math.min(100, clampedLevel + 1));
-    const totalExp = exp == null ? currentLevelXpStart : Math.max(0, Number(exp) || currentLevelXpStart);
+    const parsedExp = exp == null ? currentLevelXpStart : Number(exp);
+    const normalizedExp = Number.isFinite(parsedExp) ? parsedExp : currentLevelXpStart;
+    const totalExp = Math.max(currentLevelXpStart, normalizedExp);
 
     return {
       characterId,

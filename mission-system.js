@@ -42,12 +42,83 @@
     ]
   };
 
+  const battleMarkup = `
+<div class="ms-rangod-battle-root" data-battle-rangod-autostart>
+  <div id="game-container">
+    <div class="parallax-sky" id="layer-sky"></div>
+    <div class="parallax-mountains" id="layer-mountains"></div>
+    <div class="parallax-trees-back" id="layer-trees-back"></div>
+    <div class="parallax-trees-front" id="layer-trees-front"></div>
+    <div class="parallax-ground" id="layer-ground"></div>
+    <div class="parallax-dust" id="layer-dust"></div>
+    <div class="parallax-grass" id="layer-grass"></div>
+    <div id="encounter-flash"></div>
+    <div id="notification"></div>
+
+    <div id="player" class="idle">
+      <div class="ninja-head"></div><div class="ninja-body"></div><div class="ninja-scarf"></div>
+      <div class="ninja-arms left"></div><div class="ninja-arms right"></div><div class="ninja-kunai"></div>
+      <div class="ninja-legs left"></div><div class="ninja-legs right"></div>
+    </div>
+
+    <div id="enemy">
+      <div class="enemy-horns"></div><div class="enemy-head"></div><div class="enemy-body"></div>
+      <div class="enemy-arms left"></div><div class="enemy-arms right"></div><div class="enemy-sword"></div>
+      <div class="enemy-legs left"></div><div class="enemy-legs right"></div>
+    </div>
+
+    <div id="ui-top">
+      <span id="progress-label">Misión</span>
+      <div id="progress-bar-container">
+        <div class="trigger-marker" style="left:30%"></div>
+        <div class="trigger-marker" style="left:60%"></div>
+        <div class="trigger-marker" style="left:90%"></div>
+        <div id="progress-bar"></div>
+      </div>
+      <span id="progress-text">0%</span>
+    </div>
+
+    <div id="combat-log"></div>
+
+    <div id="sub-skills">
+      <button class="sub-skill-slot fire" onclick="game.useSubSkill('fire')" title="Bola de Fuego — 25 DMG"><span class="sub-icon">🔥</span><span class="sub-name">Fuego</span></button>
+      <button class="sub-skill-slot water" onclick="game.useSubSkill('water')" title="Torbellino — 20 DMG"><span class="sub-icon">🌊</span><span class="sub-name">Agua</span></button>
+      <button class="sub-skill-slot wind" onclick="game.useSubSkill('wind')" title="Corte Viento — 15 DMG"><span class="sub-icon">🌪</span><span class="sub-name">Viento</span></button>
+    </div>
+
+    <div id="combat-panel">
+      <div id="player-stats">
+        <div class="stat-bar"><span class="stat-label">HP</span><div class="stat-bar-bg"><div id="hp-player-bar" class="stat-bar-fill hp"></div></div><span id="hp-player-text" class="stat-text">100/100</span></div>
+        <div class="stat-bar"><span class="stat-label">MP</span><div class="stat-bar-bg"><div id="mp-player-bar" class="stat-bar-fill mp"></div></div><span id="mp-player-text" class="stat-text">50/50</span></div>
+      </div>
+      <div id="action-buttons">
+        <button class="skill-btn attack-btn" onclick="game.useAttack()" title="Ataque básico"><span class="skill-icon">⚔️</span><span class="skill-name">Ataque</span></button>
+        <button class="skill-btn skill-type-btn" onclick="game.toggleSubSkills()" title="Ver habilidades especiales"><span class="skill-icon">✨</span><span class="skill-name">Skills</span></button>
+        <button class="skill-btn auto-btn" id="auto-btn" onclick="game.toggleAuto()" title="Modo automático"><span class="skill-icon">❎</span><span class="skill-name">Auto</span></button>
+      </div>
+      <div id="enemy-stats">
+        <div class="stat-bar"><span id="hp-enemy-text" class="stat-text">80/80</span><div class="stat-bar-bg"><div id="hp-enemy-bar" class="stat-bar-fill hp"></div></div><span class="stat-label">HP</span></div>
+        <div class="stat-bar"><span id="mp-enemy-text" class="stat-text">30/30</span><div class="stat-bar-bg"><div id="mp-enemy-bar" class="stat-bar-fill mp"></div></div><span class="stat-label">MP</span></div>
+      </div>
+    </div>
+
+    <div class="victory-particles" id="victory-particles"></div>
+
+    <div id="mission-complete">
+      <h2>¡MISIÓN COMPLETA!</h2>
+      <p>Has derrotado a todos los enemigos</p>
+      <button id="restart-btn">Reiniciar</button>
+    </div>
+  </div>
+</div>`;
+
   const MissionSystem = {
     host: null,
     root: null,
     currentView: 'ms-view-main',
     heroLevel: 1,
     currentRank: null,
+    battleGame: null,
 
     mount() {
       if (this.isMounted()) return;
@@ -66,6 +137,7 @@
     },
 
     unmount() {
+      this.destroyBattle();
       if (!this.host) return;
       this.host.innerHTML = '';
       this.root = null;
@@ -93,6 +165,7 @@
       onClick('#ms-openMissionsBtn', () => this.showRanks());
       onClick('#ms-backToMainBtn', () => this.goBack('ms-view-main'));
       onClick('#ms-backToRanksBtn', () => this.goBack('ms-view-ranks'));
+      onClick('#ms-backToMissionsFromBattleBtn', () => this.goBack('ms-view-missions'));
       onClick('#ms-closeVictoryBtn', () => this.closeVictory());
 
       this.root.querySelectorAll('.ms-rank-btn').forEach((btn) => {
@@ -186,13 +259,12 @@
       card.classList.add('ms-combat-flash');
       setTimeout(() => card.classList.remove('ms-combat-flash'), 600);
 
-      if (window.HeroSystem && typeof window.HeroSystem.grantExperience === 'function') {
-        window.HeroSystem.grantExperience(mission.xp);
-      }
-      if (window.GameState && typeof window.GameState.getGold === 'function' && typeof window.GameState.setGold === 'function') {
-        window.GameState.setGold(window.GameState.getGold() + mission.gold);
+      if (rank === 'D' && typeof window.initBattleRangoD === 'function') {
+        this.showBattleRunner(mission);
+        return;
       }
 
+      this.grantMissionRewards(mission);
       const popup = this.root.querySelector('#ms-victoryPopup');
       const info = this.root.querySelector('#ms-victoryInfo');
       const rewards = this.root.querySelector('#ms-victoryRewards');
@@ -201,6 +273,43 @@
         rewards.innerHTML = `<span style="color:#34d399">+${mission.xp} XP</span> &nbsp;|&nbsp; <span style="color:#fbbf24">+${mission.gold} Oro</span>`;
       }
       if (popup) popup.classList.add('show');
+    },
+
+    showBattleRunner(mission) {
+      const host = this.root.querySelector('#ms-rangod-battle-host');
+      if (!host) return;
+
+      this.destroyBattle();
+      host.innerHTML = battleMarkup;
+      const battleRoot = host.querySelector('.ms-rangod-battle-root');
+      if (!battleRoot) return;
+
+      this.battleGame = window.initBattleRangoD(battleRoot, {
+        onEnemyDefeated: () => this.grantMissionRewards(mission)
+      });
+
+      this.switchView('ms-view-missions', 'ms-view-battle', 'forward');
+    },
+
+    destroyBattle() {
+      if (this.battleGame && typeof this.battleGame.destroy === 'function') {
+        this.battleGame.destroy();
+      }
+      this.battleGame = null;
+      if (window.game) {
+        window.game = null;
+      }
+      const host = this.root?.querySelector('#ms-rangod-battle-host');
+      if (host) host.innerHTML = '';
+    },
+
+    grantMissionRewards(mission) {
+      if (window.HeroSystem && typeof window.HeroSystem.grantExperience === 'function') {
+        window.HeroSystem.grantExperience(mission.xp);
+      }
+      if (window.GameState && typeof window.GameState.getGold === 'function' && typeof window.GameState.setGold === 'function') {
+        window.GameState.setGold(window.GameState.getGold() + mission.gold);
+      }
     },
 
     closeVictory() {
@@ -213,22 +322,25 @@
         this.switchView('ms-view-ranks', 'ms-view-main', 'back');
       } else if (target === 'ms-view-ranks') {
         this.switchView('ms-view-missions', 'ms-view-ranks', 'back');
+      } else if (target === 'ms-view-missions' && this.currentView === 'ms-view-battle') {
+        this.destroyBattle();
+        this.switchView('ms-view-battle', 'ms-view-missions', 'back');
       }
     },
 
     resetToMain() {
-      const main = this.root?.querySelector('#ms-view-main');
-      const ranks = this.root?.querySelector('#ms-view-ranks');
-      const missions = this.root?.querySelector('#ms-view-missions');
-      if (!main || !ranks || !missions) return;
-
-      [main, ranks, missions].forEach((view) => {
+      const views = ['ms-view-main', 'ms-view-ranks', 'ms-view-missions', 'ms-view-battle'];
+      views.forEach((id) => {
+        const view = this.root?.querySelector(`#${id}`);
+        if (!view) return;
         view.classList.remove('active');
         view.style.opacity = '0';
         view.style.transform = 'translateX(100%)';
         view.style.pointerEvents = 'none';
       });
 
+      const main = this.root?.querySelector('#ms-view-main');
+      if (!main) return;
       main.classList.add('active');
       main.style.opacity = '1';
       main.style.transform = 'translateX(0)';

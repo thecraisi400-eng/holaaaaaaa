@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Premium Ninja Tech – HUD</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Orbitron:wght@700;900&family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+
+<div id="ngsIntroRoot" class="ngs-intro-root">
+  <div class="ngs-parallax-bg" aria-hidden="true">
+    <div class="ngs-layer ngs-layer1"></div>
+    <div class="ngs-layer ngs-layer2"></div>
+    <div class="ngs-layer ngs-layer3"></div>
+  </div>
+
+  <div class="ngs-app-container">
+    <div id="ngsStartScreen" class="ngs-screen">
+      <div class="ngs-welcome-grid">
+        <div class="ngs-logo-area">
+          <h1>🍥 NINJA IDLE 🍥</h1>
+          <p class="ngs-subtitle">El destino de los clanes ancestrales</p>
+        </div>
+        <div class="ngs-main-buttons">
+          <button id="ngsNewGameBtn" class="ngs-btn">✨ NUEVA PARTIDA</button>
+          <button id="ngsLoadGameBtn" class="ngs-btn">📀 CARGAR PARTIDA</button>
+          <button id="ngsOptionsBtn" class="ngs-btn ngs-btn-secondary">⚙️ OPCIONES</button>
+        </div>
+        <div id="ngsLoadPreviewPanel" class="ngs-load-preview">
+          <span>📁 Última partida guardada</span>
+          <div id="ngsSavePreviewData" class="ngs-save-preview">Ningún guardado encontrado</div>
+        </div>
+        <div class="ngs-footnote">✨ Sonidos placeholder | Efectos ambientales ✨</div>
+      </div>
+    </div>
+
+    <div id="ngsClanScreen" class="ngs-screen ngs-hidden">
+      <div class="ngs-nav-header">
+        <button id="ngsBackFromClan" class="ngs-btn ngs-btn-back">← Volver</button>
+        <h2>Elige tu Clan</h2>
+        <div></div>
+      </div>
+      <div id="ngsClanContainer" class="ngs-clan-grid"></div>
+    </div>
+
+    <div id="ngsCharacterScreen" class="ngs-screen ngs-hidden">
+      <div class="ngs-nav-header">
+        <button id="ngsBackFromChar" class="ngs-btn ngs-btn-back">← Volver a Clanes</button>
+        <h2 id="ngsSelectedClanTitle">Clan: --</h2>
+        <div></div>
+      </div>
+      <div id="ngsCharactersGrid" class="ngs-characters-grid"></div>
+    </div>
+
+    <div id="ngsOptionsModal" class="ngs-options-modal" aria-hidden="true">
+      <div class="ngs-options-card">
+        <h3>Opciones de audio</h3>
+        <p>🎵 Sonidos ambientales (placeholder)</p>
+        <p>🔊 Efectos UI (simulados)</p>
+        <button id="ngsCloseOptions" class="ngs-btn ngs-options-close">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="app" class="game-shell-hidden">
+
+  <section id="hud-top">
+    <div class="hud-corner tl"></div>
+    <div class="hud-corner tr"></div>
+    <div class="hud-corner bl"></div>
+    <div class="hud-corner br"></div>
+
+    <div class="avatar-row">
+      <div class="avatar-frame" id="avatarFrame">
+        <img id="topCharacterSprite" alt="Sprite del personaje seleccionado" />
+        <div class="avatar-placeholder" id="topCharacterSpritePlaceholder">🥷</div>
+        <div class="avatar-corner"></div>
+      </div>
+
+      <div class="identity">
+        <div class="char-name" id="charName">UZUMAKI NARUTO</div>
+        <div class="char-rank">
+          <span class="rank-dot"></span>
+          <span id="charRank">GENIN</span>
+        </div>
+        <div class="stat-chips">
+          <div class="chip atk">
+            <span class="chip-icon">⚔️</span>
+            <span class="chip-label">ATK</span>
+            <span class="chip-val" id="statAtk">120</span>
+          </div>
+          <div class="chip def">
+            <span class="chip-icon">🛡️</span>
+            <span class="chip-label">DEF</span>
+            <span class="chip-val" id="statDef">80</span>
+          </div>
+          <div class="chip gold">
+            <span class="chip-icon">💰</span>
+            <span class="chip-label">ORO</span>
+            <span class="chip-val" id="statGold">100</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bars-block">
+      <!-- HP - FULL -->
+      <div class="bar-row">
+        <span class="bar-label hp">HP</span>
+        <div class="bar-track">
+          <div class="bar-fill hp-fill" id="hpFill" style="width:100%"></div>
+        </div>
+        <span class="bar-info"><span id="hpCur">1000</span>/<span id="hpMax">1000</span> &nbsp;<span id="hpPct">100%</span></span>
+      </div>
+      <!-- MP - FULL -->
+      <div class="bar-row">
+        <span class="bar-label mp">MP</span>
+        <div class="bar-track">
+          <div class="bar-fill mp-fill" id="mpFill" style="width:100%"></div>
+        </div>
+        <span class="bar-info"><span id="mpCur">500</span>/<span id="mpMax">500</span> &nbsp;<span id="mpPct">100%</span></span>
+      </div>
+      <!-- EXP - 0% -->
+      <div class="bar-row">
+        <span class="bar-label exp">EXP</span>
+        <div class="bar-track exp-track">
+          <div class="bar-fill exp-fill" id="expFill" style="width:0%"></div>
+        </div>
+        <span class="bar-info" style="font-size:.6rem; color:var(--text-lo)">Nv. <span id="expLevel" style="color:var(--amber)">1</span></span>
+      </div>
+      <div class="exp-next" id="expNext">0 / 1,000 EXP — Próx. nivel: 1,000</div>
+    </div>
+  </section>
+
+  <section id="hud-center"><div id="hero-system-host" class="hero-system-host"></div></section>
+
+  <nav id="hud-bottom">
+    <button class="nav-btn active" data-section="heroe"        id="btn-heroe">
+      <span class="btn-icon">🥷</span>
+      <span class="btn-label">HÉROE</span>
+    </button>
+    <button class="nav-btn" data-section="misiones"     id="btn-misiones">
+      <span class="btn-icon">📜</span>
+      <span class="btn-label">MISIONES</span>
+      <span class="btn-badge" id="badgeMisiones">3</span>
+    </button>
+    <button class="nav-btn" data-section="clanes"       id="btn-clanes">
+      <span class="btn-icon">⛩️</span>
+      <span class="btn-label">CLANES</span>
+    </button>
+    <button class="nav-btn" data-section="eventos"      id="btn-eventos">
+      <span class="btn-icon">🎴</span>
+      <span class="btn-label">EVENTOS</span>
+      <span class="btn-badge" id="badgeEventos">!</span>
+    </button>
+    <button class="nav-btn" data-section="jutsus"       id="btn-jutsus">
+      <span class="btn-icon">🌀</span>
+      <span class="btn-label">JUTSUS</span>
+    </button>
+    <button class="nav-btn" data-section="batallas"     id="btn-batallas">
+      <span class="btn-icon">⚔️</span>
+      <span class="btn-label">BATALLAS</span>
+    </button>
+    <button class="nav-btn" data-section="invocaciones" id="btn-invocaciones">
+      <span class="btn-icon">✨</span>
+      <span class="btn-label">INVOCAR</span>
+    </button>
+    <button class="nav-btn" data-section="habilidades"  id="btn-habilidades">
+      <span class="btn-icon">🌿</span>
+      <span class="btn-label">ÁRBOL</span>
+    </button>
+    <button class="nav-btn" data-section="ajustes"      id="btn-ajustes">
+      <span class="btn-icon">⚙️</span>
+      <span class="btn-label">AJUSTES</span>
+    </button>
+  </nav>
+
+</div>
+
+<div class="particle-container" id="particleContainer"></div>
+
+<div id="section-overlay">
+  <div class="overlay-panel" id="overlayPanel">
+    <h2 id="overlayTitle">🥷 SECCIÓN</h2>
+    <p id="overlayDesc">Contenido de la sección.</p>
+    <button class="overlay-close" id="overlayClose">✕ CERRAR</button>
+  </div>
+</div>
+
+
+
+<template id="heroSystemTemplate">
+  <div class="hs-sheet" id="hsSheet">
+    <div class="hs-corner hs-tl"></div>
+    <div class="hs-corner hs-tr"></div>
+    <div class="hs-corner hs-bl"></div>
+    <div class="hs-corner hs-br"></div>
+
+    <div class="hs-col-main">
+      <div class="hs-main-top">
+        <div class="hs-gear-header">
+          <div class="hs-gear-title">⚔ Equipamiento</div>
+        </div>
+      </div>
+
+      <div class="hs-main-content">
+        <div class="hs-gear-block">
+          <div class="hs-gear-grid" id="hsGearGrid"></div>
+        </div>
+
+        <div class="hs-gear-stats-divider"></div>
+
+        <div class="hs-hero-identity-row">
+          <div class="hs-sprite-box" id="hsSpriteBox">
+            <div class="hs-sprite-placeholder" id="hsSpritePlaceholder">
+              <div class="hs-sprite-placeholder-icon">🎭</div>
+              <div>Sprite automático<br>según personaje</div>
+            </div>
+            <img class="hs-sprite-img" id="hsSpriteImg" alt="Sprite del personaje">
+          </div>
+
+          <div class="hs-hero-meta-panel">
+            <div class="hs-hero-meta-item">
+              <span class="hs-hero-meta-label">Nombre:</span>
+              <span class="hs-hero-meta-value hs-char-name" id="hsHeroName">Kage Ryuu</span>
+            </div>
+            <div class="hs-hero-meta-item">
+              <span class="hs-hero-meta-label">Clan:</span>
+              <span class="hs-hero-meta-value hs-char-clan-name" id="hsHeroClanName">Clan Uchiha</span>
+            </div>
+            <div class="hs-hero-meta-item">
+              <span class="hs-hero-meta-label">Rango:</span>
+              <span class="hs-hero-meta-value hs-rank-badge" id="hsHeroRank">GENIN</span>
+            </div>
+            <div class="hs-hero-meta-item">
+              <span class="hs-hero-meta-label">Nivel:</span>
+              <span class="hs-hero-meta-value hs-hero-level-value" id="hsHeroLevel">1</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hs-col-side">
+      <div class="hs-stats-title">✦ Estadísticas</div>
+      <div class="hs-stats-block">
+        <div class="hs-char-stats-panel" id="hsCharStats"></div>
+      </div>
+    </div>
+
+    <div class="hs-modal-overlay" id="hsModalOverlay">
+      <div class="hs-modal" id="hsModal">
+        <button class="hs-modal-close" id="hsModalClose">✕</button>
+        <div class="hs-modal-header">
+          <div class="hs-modal-icon" id="hsMIcon">⚔</div>
+          <div class="hs-modal-title-group">
+            <div class="hs-modal-item-name" id="hsMName">Katana Oscura</div>
+            <div class="hs-modal-rarity" id="hsMRarity">ANBU</div>
+          </div>
+        </div>
+
+        <div class="hs-modal-section">
+          <div class="hs-modal-section-title">Costo de Mejora</div>
+          <div class="hs-cost-row">
+            <span class="hs-cost-icon">◆</span>
+            <span class="hs-cost-val" id="hsMCost">3,200</span>
+            <span class="hs-cost-lbl">ORO</span>
+          </div>
+        </div>
+
+        <div class="hs-modal-section">
+          <div class="hs-modal-section-title">Estadísticas a Mejorar</div>
+          <div class="hs-upgrade-stats-grid" id="hsUpgradeStats"></div>
+        </div>
+
+        <button class="hs-btn-upgrade" id="hsBtnUpgrade">▲ MEJORAR</button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script src="character-stats-container.js"></script>
+<script src="hero-system.js"></script>
+<script src="ninja-game-start.js"></script>
+<script src="script.js"></script>
+</body>
+</html>

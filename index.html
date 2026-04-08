@@ -329,8 +329,75 @@
   </div>
 </template>
 
+
+
+<template id="battleRangoDTemplate">
+  <div id="brd-game-container" class="brd-game-container">
+    <div class="brd-parallax-sky" id="brd-layer-sky"></div>
+    <div class="brd-parallax-mountains" id="brd-layer-mountains"></div>
+    <div class="brd-parallax-trees-back" id="brd-layer-trees-back"></div>
+    <div class="brd-parallax-trees-front" id="brd-layer-trees-front"></div>
+    <div class="brd-parallax-ground" id="brd-layer-ground"></div>
+    <div class="brd-parallax-dust" id="brd-layer-dust"></div>
+    <div class="brd-parallax-grass" id="brd-layer-grass"></div>
+
+    <div id="brd-encounter-flash"></div>
+    <div id="brd-notification"></div>
+
+    <div id="brd-player" class="idle">
+      <div class="ninja-head"></div><div class="ninja-body"></div><div class="ninja-scarf"></div>
+      <div class="ninja-arms left"></div><div class="ninja-arms right"></div><div class="ninja-kunai"></div>
+      <div class="ninja-legs left"></div><div class="ninja-legs right"></div>
+    </div>
+
+    <div id="brd-enemy">
+      <div class="enemy-horns"></div><div class="enemy-head"></div><div class="enemy-body"></div>
+      <div class="enemy-arms left"></div><div class="enemy-arms right"></div><div class="enemy-sword"></div>
+      <div class="enemy-legs left"></div><div class="enemy-legs right"></div>
+    </div>
+
+    <div id="brd-ui-top">
+      <span id="brd-progress-label">Misión D</span>
+      <div id="brd-progress-bar-container">
+        <div class="brd-trigger-marker" style="left:30%"></div>
+        <div class="brd-trigger-marker" style="left:60%"></div>
+        <div class="brd-trigger-marker" style="left:90%"></div>
+        <div id="brd-progress-bar"></div>
+      </div>
+      <span id="brd-progress-text">0%</span>
+    </div>
+
+    <div id="brd-combat-log"></div>
+
+    <div id="brd-sub-skills">
+      <button class="brd-sub-skill-slot fire" data-skill="fire"><span class="sub-icon">🔥</span><span class="sub-name">Fuego</span></button>
+      <button class="brd-sub-skill-slot water" data-skill="water"><span class="sub-icon">🌊</span><span class="sub-name">Agua</span></button>
+      <button class="brd-sub-skill-slot wind" data-skill="wind"><span class="sub-icon">🌪</span><span class="sub-name">Viento</span></button>
+    </div>
+
+    <div id="brd-combat-panel">
+      <div id="brd-player-stats">
+        <div class="brd-stat-bar"><span class="brd-stat-label">HP</span><div class="brd-stat-bar-bg"><div id="brd-hp-player-bar" class="brd-stat-bar-fill hp"></div></div><span id="brd-hp-player-text" class="brd-stat-text">0/0</span></div>
+        <div class="brd-stat-bar"><span class="brd-stat-label">MP</span><div class="brd-stat-bar-bg"><div id="brd-mp-player-bar" class="brd-stat-bar-fill mp"></div></div><span id="brd-mp-player-text" class="brd-stat-text">0/0</span></div>
+      </div>
+      <div id="brd-action-buttons">
+        <button class="brd-skill-btn attack-btn" id="brd-attack-btn"><span class="skill-icon">⚔️</span><span class="skill-name">Ataque</span></button>
+        <button class="brd-skill-btn skill-type-btn" id="brd-skills-btn"><span class="skill-icon">✨</span><span class="skill-name">Skills</span></button>
+        <button class="brd-skill-btn auto-btn" id="brd-auto-btn"><span class="skill-icon">❎</span><span class="skill-name">Auto</span></button>
+      </div>
+      <div id="brd-enemy-stats">
+        <div class="brd-stat-bar"><span id="brd-hp-enemy-text" class="brd-stat-text">0/0</span><div class="brd-stat-bar-bg"><div id="brd-hp-enemy-bar" class="brd-stat-bar-fill hp"></div></div><span class="brd-stat-label">HP</span></div>
+        <div class="brd-stat-bar"><span id="brd-mp-enemy-text" class="brd-stat-text">0/0</span><div class="brd-stat-bar-bg"><div id="brd-mp-enemy-bar" class="brd-stat-bar-fill mp"></div></div><span class="brd-stat-label">MP</span></div>
+      </div>
+    </div>
+
+    <div class="brd-victory-particles" id="brd-victory-particles"></div>
+  </div>
+</template>
+
 <script src="character-stats-container.js"></script>
 <script src="hero-system.js"></script>
+<script src="battle-rango-d-system.js"></script>
 <script src="mission-system.js"></script>
 <script src="ninja-game-start.js"></script>
 <script src="script.js"></script>

@@ -21,9 +21,43 @@ function setGold(nextGold) {
   window.dispatchEvent(new CustomEvent('ngs:gold-updated', { detail: { gold: state.gold } }));
 }
 
+function setBattleResources({ hp, mp }) {
+  if (Number.isFinite(hp)) state.hp = Math.max(0, Math.min(state.hpMax, Math.round(hp)));
+  if (Number.isFinite(mp)) state.mp = Math.max(0, Math.min(state.mpMax, Math.round(mp)));
+  updateBars();
+}
+
+function awardMissionRewards(expGain, goldGain) {
+  const safeExp = Math.max(0, Number(expGain) || 0);
+  const safeGold = Math.max(0, Number(goldGain) || 0);
+  if (safeGold) setGold(state.gold + safeGold);
+  if (!safeExp || !window.CharacterStatsSystem || !state.heroSnapshot?.characterId) return;
+
+  const characterId = state.heroSnapshot.characterId;
+  let nextExp = state.exp + safeExp;
+  let nextLevel = state.level;
+  while (nextLevel < 100) {
+    const xpTarget = window.CharacterStatsSystem.getXpAtLevel(characterId, nextLevel + 1);
+    if (nextExp < xpTarget) break;
+    nextLevel += 1;
+  }
+
+  const nextSnapshot = window.CharacterStatsSystem.buildHeroSnapshot(characterId, nextLevel, nextExp, state.rank);
+  if (nextSnapshot) {
+    window.CharacterStatsSystem.setActiveHero(nextSnapshot);
+    syncStateFromHero(getSyncedHeroSnapshot(nextSnapshot));
+    state.hp = Math.min(state.hp, state.hpMax);
+    state.mp = Math.min(state.mp, state.mpMax);
+    updateBars();
+  }
+}
+
 window.GameState = window.GameState || {};
 window.GameState.getGold = () => state.gold;
 window.GameState.setGold = setGold;
+window.GameState.getBattleStats = () => ({ hp: state.hp, hpMax: state.hpMax, mp: state.mp, mpMax: state.mpMax, atk: state.atk, def: state.def });
+window.GameState.setBattleResources = setBattleResources;
+window.GameState.awardMissionRewards = awardMissionRewards;
 
 const sections = {
   heroe:        { icon:'🥷', title:'HÉROE',           desc:'Consulta y mejora el equipo de tu shinobi. Cambia armadura, armas y accesorios para maximizar tu poder de combate.' },
@@ -202,6 +236,10 @@ const overlayClose = document.getElementById('overlayClose');
 function renderCenterSection(sectionKey) {
   const isHero = sectionKey === 'heroe';
   const isMissions = sectionKey === 'misiones';
+
+  if (window.BattleRangoDSystem && window.BattleRangoDSystem.isActive() && sectionKey !== 'misiones') {
+    window.BattleRangoDSystem.stop(`nav-${sectionKey}`);
+  }
 
   if (isHero) {
     overlay.classList.remove('visible');

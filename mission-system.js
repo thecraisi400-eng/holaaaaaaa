@@ -66,6 +66,9 @@
     },
 
     unmount() {
+      if (window.BattleRangoDSystem && window.BattleRangoDSystem.isActive()) {
+        window.BattleRangoDSystem.stop('leave-misiones');
+      }
       if (!this.host) return;
       this.host.innerHTML = '';
       this.root = null;
@@ -186,21 +189,19 @@
       card.classList.add('ms-combat-flash');
       setTimeout(() => card.classList.remove('ms-combat-flash'), 600);
 
-      if (window.HeroSystem && typeof window.HeroSystem.grantExperience === 'function') {
-        window.HeroSystem.grantExperience(mission.xp);
-      }
-      if (window.GameState && typeof window.GameState.getGold === 'function' && typeof window.GameState.setGold === 'function') {
-        window.GameState.setGold(window.GameState.getGold() + mission.gold);
+      if (rank !== 'D') {
+        const popup = this.root.querySelector('#ms-victoryPopup');
+        const info = this.root.querySelector('#ms-victoryInfo');
+        const rewards = this.root.querySelector('#ms-victoryRewards');
+        if (info) info.textContent = `Misión: ${mission.name}`;
+        if (rewards) rewards.innerHTML = `Solo misiones Rango D usan el nuevo sistema de batalla`;
+        if (popup) popup.classList.add('show');
+        return;
       }
 
-      const popup = this.root.querySelector('#ms-victoryPopup');
-      const info = this.root.querySelector('#ms-victoryInfo');
-      const rewards = this.root.querySelector('#ms-victoryRewards');
-      if (info) info.textContent = `Misión: ${mission.name}`;
-      if (rewards) {
-        rewards.innerHTML = `<span style="color:#34d399">+${mission.xp} XP</span> &nbsp;|&nbsp; <span style="color:#fbbf24">+${mission.gold} Oro</span>`;
+      if (window.BattleRangoDSystem) {
+        window.BattleRangoDSystem.start({ ...mission, rank });
       }
-      if (popup) popup.classList.add('show');
     },
 
     closeVictory() {

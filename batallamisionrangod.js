@@ -17,9 +17,9 @@ const GameStates = Object.freeze({
 });
 
 const EnemyTypes = [
-  { name: 'Bandido Sombra', hp: 80, mp: 30, atk: 2, color: '#4a2a2a' },
-  { name: 'Oni de Hierro', hp: 100, mp: 40, atk: 3, color: '#3a3a4a' },
-  { name: 'Demonio Bosque', hp: 120, mp: 50, atk: 4, color: '#2a4a2a' }
+  { name: 'Bandido Sombra', hp: 80, mp: 30, atk: 2, def: 1, color: '#4a2a2a' },
+  { name: 'Oni de Hierro', hp: 100, mp: 40, atk: 3, def: 2, color: '#3a3a4a' },
+  { name: 'Demonio Bosque', hp: 120, mp: 50, atk: 4, def: 3, color: '#2a4a2a' }
 ];
 
 class BattleRunner {
@@ -33,13 +33,16 @@ class BattleRunner {
     this.isRunning = false;
     this.roundCount = 0; // 🔁 Contador de rondas para modo infinito
 
+    const globalState = window.GameState && typeof window.GameState.getState === 'function'
+      ? window.GameState.getState()
+      : null;
     this.player = {
-      hp: 100,
-      maxHp: 100,
-      mp: 50,
-      maxMp: 50,
-      atk: 18,
-      defense: 5
+      hp: globalState?.hp ?? 100,
+      maxHp: globalState?.hpMax ?? 100,
+      mp: globalState?.mp ?? 50,
+      maxMp: globalState?.mpMax ?? 50,
+      atk: globalState?.atk ?? 18,
+      defense: globalState?.def ?? 5
     };
 
     this.enemy = {
@@ -48,6 +51,7 @@ class BattleRunner {
       mp: 0,
       maxMp: 0,
       atk: 0,
+      def: 0,
       name: '',
       index: 0
     };
@@ -69,6 +73,9 @@ class BattleRunner {
     this.initParallax();
 
     this.bindRestart();
+    this.handleStateUpdated = this.handleStateUpdated.bind(this);
+    window.addEventListener('ngs:state-updated', this.handleStateUpdated);
+    this.syncPlayerFromGlobal();
     this.startRunner();
   }
 
@@ -102,6 +109,28 @@ class BattleRunner {
     if (this.dom.restartBtn) {
       this.dom.restartBtn.addEventListener('click', () => this.restart());
     }
+  }
+
+  handleStateUpdated() {
+    this.syncPlayerFromGlobal();
+    this.updatePlayerHP();
+    this.updatePlayerMP();
+  }
+
+  syncPlayerFromGlobal() {
+    if (!window.GameState || typeof window.GameState.getState !== 'function') return;
+    const gameState = window.GameState.getState();
+    this.player.maxHp = gameState.hpMax;
+    this.player.maxMp = gameState.mpMax;
+    this.player.hp = Math.max(0, Math.min(this.player.maxHp, gameState.hp));
+    this.player.mp = Math.max(0, Math.min(this.player.maxMp, gameState.mp));
+    this.player.atk = gameState.atk;
+    this.player.defense = gameState.def;
+  }
+
+  pushPlayerVitalsToGlobal() {
+    if (!window.GameState || typeof window.GameState.setPlayerVitals !== 'function') return;
+    window.GameState.setPlayerVitals({ hp: this.player.hp, mp: this.player.mp });
   }
 
   // ===== Configuración de parallax =====
@@ -157,13 +186,6 @@ class BattleRunner {
         this.showNotification(`🔄 Ronda #${this.roundCount + 1}`, 1500);
         this.showCombatLog('¡Nueva ronda comenzada!');
 
-        // 🔁 Opcional: Curar parcialmente al jugador entre rondas (20% HP/MP)
-        const healAmount = Math.floor(this.player.maxHp * 0.2);
-        this.player.hp = Math.min(this.player.maxHp, this.player.hp + healAmount);
-        this.player.mp = Math.min(this.player.maxMp, this.player.mp + Math.floor(this.player.maxMp * 0.2));
-        this.updatePlayerHP();
-        this.updatePlayerMP();
-
         this.updateProgressBar();
         // Continuar el bucle sin detenerse
       }
@@ -200,13 +222,15 @@ class BattleRunner {
 
     // 🔁 Usar módulo para ciclos infinitos de enemigos
     const enemyIdx = (this.roundCount * this.triggerPoints.length) + this.currentTriggerIndex - 1;
-    const enemyData = EnemyTypes[enemyIdx % EnemyTypes.length];
+    const missionEnemy = this.options.missionConfig;
+    const enemyData = missionEnemy || EnemyTypes[enemyIdx % EnemyTypes.length];
     this.enemy = {
       hp: enemyData.hp,
       maxHp: enemyData.hp,
       mp: enemyData.mp,
       maxMp: enemyData.mp,
       atk: enemyData.atk,
+      def: enemyData.def || 0,
       name: enemyData.name,
       index: enemyIdx
     };
@@ -238,7 +262,7 @@ class BattleRunner {
     setTimeout(() => {
       const baseDmg = this.player.atk;
       const variance = Math.floor(Math.random() * 5) - 2;
-      const damage = Math.max(1, baseDmg + variance);
+      const damage = Math.max(1, baseDmg + variance - this.enemy.def);
 
       this.enemy.hp = Math.max(0, this.enemy.hp - damage);
       this.updateEnemyHP();
@@ -289,6 +313,7 @@ class BattleRunner {
 
     this.player.mp -= skill.mpCost;
     this.updatePlayerMP();
+    this.pushPlayerVitalsToGlobal();
 
     this.dom.player.className = 'attack';
 
@@ -330,6 +355,7 @@ class BattleRunner {
 
       this.player.hp = Math.max(0, this.player.hp - damage);
       this.updatePlayerHP();
+      this.pushPlayerVitalsToGlobal();
 
       this.showDamageNumber(damage, this.dom.player);
       this.showHitEffect(this.dom.player);
@@ -581,8 +607,7 @@ class BattleRunner {
     this.subSkillsVisible = false;
     this.roundCount = 0; // 🔁 Reset contador de rondas
 
-    this.player.hp = this.player.maxHp;
-    this.player.mp = this.player.maxMp;
+    this.syncPlayerFromGlobal();
 
     this.updateProgressBar();
     this.updatePlayerHP();
@@ -605,6 +630,7 @@ class BattleRunner {
   destroy() {
     this.stopRunner();
     clearTimeout(this._logTimeout);
+    window.removeEventListener('ngs:state-updated', this.handleStateUpdated);
   }
 }
 

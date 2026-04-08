@@ -14,16 +14,41 @@ const state = {
   activeSection: 'heroe',
 };
 
+function emitStateUpdated(reason = 'sync') {
+  window.dispatchEvent(new CustomEvent('ngs:state-updated', {
+    detail: {
+      reason,
+      state: { ...state }
+    }
+  }));
+}
+
+function updateState(partial, reason = 'update') {
+  Object.assign(state, partial);
+  updateBars();
+  emitStateUpdated(reason);
+}
+
 function setGold(nextGold) {
   const normalizedGold = Math.max(0, Number(nextGold) || 0);
-  state.gold = normalizedGold;
-  updateBars();
+  updateState({ gold: normalizedGold }, 'gold');
   window.dispatchEvent(new CustomEvent('ngs:gold-updated', { detail: { gold: state.gold } }));
 }
 
 window.GameState = window.GameState || {};
 window.GameState.getGold = () => state.gold;
 window.GameState.setGold = setGold;
+window.GameState.addGold = (gold) => setGold(state.gold + (Number(gold) || 0));
+window.GameState.getState = () => ({ ...state });
+window.GameState.syncHeroSnapshot = (snapshot) => {
+  syncStateFromHero(snapshot);
+  updateBars();
+};
+window.GameState.setPlayerVitals = ({ hp, mp }) => {
+  const nextHp = hp == null ? state.hp : Math.max(0, Math.min(state.hpMax, Number(hp) || 0));
+  const nextMp = mp == null ? state.mp : Math.max(0, Math.min(state.mpMax, Number(mp) || 0));
+  updateState({ hp: nextHp, mp: nextMp }, 'player-vitals');
+};
 
 const sections = {
   heroe:        { icon:'🥷', title:'HÉROE',           desc:'Consulta y mejora el equipo de tu shinobi. Cambia armadura, armas y accesorios para maximizar tu poder de combate.' },
@@ -80,11 +105,15 @@ function syncCharacterSprite(saveData) {
 
 function syncStateFromHero(snapshot) {
   if (!snapshot) return;
+  const nextHpMax = snapshot.stats.HP;
+  const nextMpMax = snapshot.stats.MP;
+  const nextHp = Math.max(0, Math.min(state.hp, nextHpMax));
+  const nextMp = Math.max(0, Math.min(state.mp, nextMpMax));
   state.heroSnapshot = snapshot;
-  state.hp = snapshot.stats.HP;
-  state.hpMax = snapshot.stats.HP;
-  state.mp = snapshot.stats.MP;
-  state.mpMax = snapshot.stats.MP;
+  state.hp = nextHp;
+  state.hpMax = nextHpMax;
+  state.mp = nextMp;
+  state.mpMax = nextMpMax;
   state.exp = snapshot.exp;
   state.expCurrentLevelStart = snapshot.expCurrentLevelStart || 0;
   state.expMax = snapshot.expNextLevelTarget;
@@ -99,6 +128,7 @@ function syncStateFromHero(snapshot) {
   if (atkEl) atkEl.textContent = state.atk.toLocaleString();
   const defEl = document.getElementById('statDef');
   if (defEl) defEl.textContent = state.def.toLocaleString();
+  emitStateUpdated('hero-snapshot');
 }
 
 function getSyncedHeroSnapshot(snapshot) {
@@ -147,6 +177,7 @@ function updateBars() {
 
 // ✅ Llamada única al iniciar - SIN setInterval para valores estáticos
 updateBars();
+emitStateUpdated('bootstrap');
 
 /* ─────────────────────────────────────────────
    PARTÍCULAS

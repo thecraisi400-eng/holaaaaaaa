@@ -53,6 +53,12 @@
       this.dom = {};
       this.isDisposed = false;
       this.pendingTimeouts = new Set();
+      this.onSectionChange = (event) => {
+        const nextSection = event?.detail?.section;
+        if (nextSection !== 'misiones') {
+          this.cancelCombat('section-change');
+        }
+      };
 
       this.render();
       this.cacheDOM();
@@ -63,6 +69,7 @@
       this.updatePlayerMP();
       this.syncBattleVitals();
       this.startRunner();
+      window.addEventListener('ngs:section-changed', this.onSectionChange);
     }
 
     schedule(callback, delay) {
@@ -280,12 +287,36 @@
 
     missionComplete() { if (this.isDisposed) return; this.state = GameStates.MISSION_DONE; this.stopRunner(); this.dom.missionComplete.classList.add('visible'); }
     restart() { this.dom.missionComplete.classList.remove('visible'); this.state = GameStates.MOVING; this.progress = 0; this.currentTriggerIndex = 0; this.roundCount = 1; this.player.hp = this.player.maxHp; this.player.mp = this.player.maxMp; this.updateProgressBar(); this.updatePlayerHP(); this.updatePlayerMP(); this.startRunner(); }
-    destroy() { this.isDisposed = true; this.autoMode = false; this.combatLocked = true; this.state = GameStates.MISSION_DONE; this.clearScheduled(); this.stopRunner(); this.host.innerHTML = ''; }
+    cancelCombat() {
+      if (this.isDisposed) return;
+      this.autoMode = false;
+      this.combatLocked = true;
+      this.subSkillsVisible = false;
+      this.closeSubSkills();
+      if (this.state !== GameStates.MISSION_DONE) {
+        this.state = GameStates.MISSION_DONE;
+      }
+      this.clearScheduled();
+      this.stopRunner();
+      this.syncBattleVitals();
+    }
+    destroy() {
+      if (this.isDisposed) return;
+      this.cancelCombat();
+      this.isDisposed = true;
+      window.removeEventListener('ngs:section-changed', this.onSectionChange);
+      this.host.innerHTML = '';
+    }
   }
 
   const BattleRunnerSystem = {
     instance: null,
     mount(host, options = {}) { this.unmount(); if (!host) return; this.instance = new BattleRunner(host, options); },
+    cancelCombat() {
+      if (!this.instance) return;
+      this.instance.cancelCombat();
+      this.unmount();
+    },
     unmount() { if (!this.instance) return; this.instance.destroy(); this.instance = null; }
   };
 

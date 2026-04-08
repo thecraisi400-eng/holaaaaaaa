@@ -225,6 +225,10 @@ const overlayDesc  = document.getElementById('overlayDesc');
 const overlayClose = document.getElementById('overlayClose');
 
 function renderCenterSection(sectionKey) {
+  window.dispatchEvent(new CustomEvent('ngs:section-changed', {
+    detail: { section: sectionKey }
+  }));
+
   const isHero = sectionKey === 'heroe';
   const isMissions = sectionKey === 'misiones';
 

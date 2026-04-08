@@ -66,6 +66,9 @@
     },
 
     unmount() {
+      if (window.BattleRunnerSystem && typeof window.BattleRunnerSystem.destroy === 'function') {
+        window.BattleRunnerSystem.destroy();
+      }
       if (!this.host) return;
       this.host.innerHTML = '';
       this.root = null;
@@ -180,6 +183,12 @@
     startFight(index, rank, btnEl) {
       const mission = missionsData[rank]?.[index];
       if (!mission) return;
+
+      if (rank === 'D' && window.BattleRunnerSystem && this.root) {
+        this.openRankDBattle(mission);
+        return;
+      }
+
       const card = btnEl.closest('.ms-mission-card');
       if (!card) return;
 
@@ -200,6 +209,32 @@
       if (rewards) {
         rewards.innerHTML = `<span style="color:#34d399">+${mission.xp} XP</span> &nbsp;|&nbsp; <span style="color:#fbbf24">+${mission.gold} Oro</span>`;
       }
+      if (popup) popup.classList.add('show');
+    },
+
+    openRankDBattle(mission) {
+      window.BattleRunnerSystem.launch(this.root, {
+        onVictory: () => {
+          if (window.HeroSystem && typeof window.HeroSystem.grantExperience === 'function') {
+            window.HeroSystem.grantExperience(mission.xp);
+          }
+          if (window.GameState && typeof window.GameState.getGold === 'function' && typeof window.GameState.setGold === 'function') {
+            window.GameState.setGold(window.GameState.getGold() + mission.gold);
+          }
+          this.showCombatVictory(mission);
+        },
+        onFinish: () => {
+          if (this.root) this.root.classList.remove('ms-battle-mode');
+        }
+      });
+    },
+
+    showCombatVictory(mission) {
+      const popup = this.root.querySelector('#ms-victoryPopup');
+      const info = this.root.querySelector('#ms-victoryInfo');
+      const rewards = this.root.querySelector('#ms-victoryRewards');
+      if (info) info.textContent = `Misión Rango D completada: ${mission.name}`;
+      if (rewards) rewards.innerHTML = `<span style="color:#34d399">+${mission.xp} XP</span> &nbsp;|&nbsp; <span style="color:#fbbf24">+${mission.gold} Oro</span>`;
       if (popup) popup.classList.add('show');
     },
 

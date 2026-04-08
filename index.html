@@ -329,8 +329,56 @@
   </div>
 </template>
 
+<template id="battleRunnerTemplate">
+  <div id="br-game-container">
+    <div class="br-parallax-sky" id="br-layer-sky"></div>
+    <div class="br-parallax-mountains" id="br-layer-mountains"></div>
+    <div class="br-parallax-trees-back" id="br-layer-trees-back"></div>
+    <div class="br-parallax-trees-front" id="br-layer-trees-front"></div>
+    <div class="br-parallax-ground" id="br-layer-ground"></div>
+    <div class="br-parallax-dust" id="br-layer-dust"></div>
+    <div class="br-parallax-grass" id="br-layer-grass"></div>
+    <div id="br-encounter-flash"></div>
+    <div id="br-notification"></div>
+    <div id="br-player" class="idle">
+      <div class="br-ninja-head"></div><div class="br-ninja-body"></div><div class="br-ninja-scarf"></div>
+      <div class="br-ninja-arms left"></div><div class="br-ninja-arms right"></div><div class="br-ninja-kunai"></div>
+      <div class="br-ninja-legs left"></div><div class="br-ninja-legs right"></div>
+    </div>
+    <div id="br-enemy">
+      <div class="br-enemy-horns"></div><div class="br-enemy-head"></div><div class="br-enemy-body"></div>
+      <div class="br-enemy-arms left"></div><div class="br-enemy-arms right"></div><div class="br-enemy-sword"></div>
+      <div class="br-enemy-legs left"></div><div class="br-enemy-legs right"></div>
+    </div>
+    <div id="br-ui-top"><span id="br-progress-label">Misión</span><div id="br-progress-bar-container"><div class="br-trigger-marker" style="left:30%"></div><div class="br-trigger-marker" style="left:60%"></div><div class="br-trigger-marker" style="left:90%"></div><div id="br-progress-bar"></div></div><span id="br-progress-text">0%</span></div>
+    <div id="br-combat-log"></div>
+    <div id="br-sub-skills">
+      <button class="br-sub-skill-slot fire" data-skill="fire"><span class="br-sub-icon">🔥</span><span class="br-sub-name">Fuego</span></button>
+      <button class="br-sub-skill-slot water" data-skill="water"><span class="br-sub-icon">🌊</span><span class="br-sub-name">Agua</span></button>
+      <button class="br-sub-skill-slot wind" data-skill="wind"><span class="br-sub-icon">🌪</span><span class="br-sub-name">Viento</span></button>
+    </div>
+    <div id="br-combat-panel">
+      <div id="br-player-stats">
+        <div class="br-stat-bar"><span class="br-stat-label">HP</span><div class="br-stat-bar-bg"><div id="br-hp-player-bar" class="br-stat-bar-fill hp"></div></div><span id="br-hp-player-text" class="br-stat-text">100/100</span></div>
+        <div class="br-stat-bar"><span class="br-stat-label">MP</span><div class="br-stat-bar-bg"><div id="br-mp-player-bar" class="br-stat-bar-fill mp"></div></div><span id="br-mp-player-text" class="br-stat-text">50/50</span></div>
+      </div>
+      <div id="br-action-buttons">
+        <button class="br-skill-btn br-attack-btn" id="br-attack-btn"><span class="br-skill-icon">⚔️</span><span class="br-skill-name">Ataque</span></button>
+        <button class="br-skill-btn br-skill-type-btn" id="br-skills-btn"><span class="br-skill-icon">✨</span><span class="br-skill-name">Skills</span></button>
+        <button class="br-skill-btn br-auto-btn" id="br-auto-btn"><span class="br-skill-icon">❎</span><span class="br-skill-name">Auto</span></button>
+      </div>
+      <div id="br-enemy-stats">
+        <div class="br-stat-bar"><span id="br-hp-enemy-text" class="br-stat-text">80/80</span><div class="br-stat-bar-bg"><div id="br-hp-enemy-bar" class="br-stat-bar-fill hp"></div></div><span class="br-stat-label">HP</span></div>
+        <div class="br-stat-bar"><span id="br-mp-enemy-text" class="br-stat-text">30/30</span><div class="br-stat-bar-bg"><div id="br-mp-enemy-bar" class="br-stat-bar-fill mp"></div></div><span class="br-stat-label">MP</span></div>
+      </div>
+    </div>
+    <div class="br-victory-particles" id="br-victory-particles"></div>
+  </div>
+</template>
+
 <script src="character-stats-container.js"></script>
 <script src="hero-system.js"></script>
+<script src="battle-runner-system.js"></script>
 <script src="mission-system.js"></script>
 <script src="ninja-game-start.js"></script>
 <script src="script.js"></script>

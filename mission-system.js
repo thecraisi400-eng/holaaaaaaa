@@ -97,7 +97,6 @@
       onClick('#ms-backToMainBtn', () => this.goBack('ms-view-main'));
       onClick('#ms-backToRanksBtn', () => this.goBack('ms-view-ranks'));
       onClick('#ms-closeVictoryBtn', () => this.closeVictory());
-      onClick('#ms-backFromBattleBtn', () => this.exitBattleView());
 
       this.root.querySelectorAll('.ms-rank-btn').forEach((btn) => {
         btn.addEventListener('click', () => this.showMissions(btn.dataset.rank));
@@ -229,6 +228,11 @@
           }
           if (window.GameState && typeof window.GameState.getGold === 'function' && typeof window.GameState.setGold === 'function') {
             window.GameState.setGold(window.GameState.getGold() + mission.gold);
+          }
+        },
+        onPlayerVitalsChange: (vitals) => {
+          if (window.HeroSystem && typeof window.HeroSystem.updateBattleVitals === 'function') {
+            window.HeroSystem.updateBattleVitals(vitals);
           }
         }
       });

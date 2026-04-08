@@ -21,10 +21,20 @@
       this.progress = 0;
       this.progressSpeed = 0.08;
       this.isRunning = false;
-      this.roundCount = 0;
-      this.rewardGranted = false;
+      this.roundCount = 1;
 
-      this.player = { hp: 100, maxHp: 100, mp: 50, maxMp: 50, atk: 18, defense: 5 };
+      const activeHero = window.HeroSystem && typeof window.HeroSystem.getHeroSnapshot === 'function'
+        ? window.HeroSystem.getHeroSnapshot()
+        : null;
+      const baseStats = activeHero?.stats || {};
+      this.player = {
+        hp: Math.max(1, Number(activeHero?.currentHp ?? baseStats.HP ?? 100) || 100),
+        maxHp: Math.max(1, Number(baseStats.HP) || 100),
+        mp: Math.max(0, Number(activeHero?.currentMp ?? baseStats.MP ?? 50) || 50),
+        maxMp: Math.max(1, Number(baseStats.MP) || 50),
+        atk: Math.max(1, Number(baseStats.ATK) || 18),
+        defense: Math.max(0, Number(baseStats.DEF) || 5)
+      };
       this.enemy = { hp: 0, maxHp: 0, mp: 0, maxMp: 0, atk: 0, name: '', index: 0 };
 
       this.autoMode = false;
@@ -42,6 +52,7 @@
       this.updateProgressBar();
       this.updatePlayerHP();
       this.updatePlayerMP();
+      this.syncBattleVitals();
       this.startRunner();
     }
 
@@ -142,12 +153,12 @@
       if (this.state === GameStates.MOVING) {
         this.progress += this.progressSpeed; this.updateProgressBar(); this.checkTriggers();
         if (this.progress >= 100) {
-          this.progress = 0; this.currentTriggerIndex = 0; this.roundCount += 1;
-          this.showNotification(`🔄 Ronda #${this.roundCount + 1}`, 1500); this.showCombatLog('¡Nueva ronda comenzada!');
-          const healAmount = Math.floor(this.player.maxHp * 0.2);
-          this.player.hp = Math.min(this.player.maxHp, this.player.hp + healAmount);
-          this.player.mp = Math.min(this.player.maxMp, this.player.mp + Math.floor(this.player.maxMp * 0.2));
-          this.updatePlayerHP(); this.updatePlayerMP();
+          this.progress = 0;
+          this.currentTriggerIndex = 0;
+          this.roundCount += 1;
+          const roundLabel = this.roundCount === 2 ? 'Segunda Ronda' : `Ronda #${this.roundCount}`;
+          this.showNotification(`🔄 ${roundLabel}`, 1500);
+          this.showCombatLog(`¡${roundLabel} comenzada!`);
         }
       }
       requestAnimationFrame(() => this.gameLoop());
@@ -179,7 +190,7 @@
     enemyTurn() {
       if (this.state !== GameStates.COMBAT) return;
       this.dom.enemy.classList.add('enemy-attack');
-      setTimeout(() => { const damage = Math.max(1, this.enemy.atk + Math.floor(Math.random()*4)-2 - this.player.defense); this.player.hp = Math.max(0, this.player.hp - damage); this.updatePlayerHP(); this.showDamageNumber(damage, this.dom.player); this.showHitEffect(this.dom.player); this.showCombatLog(`${this.enemy.name} ataca por ${damage}!`); if (this.player.hp <= 0) { this.showNotification('¡DERROTADO!', 2000); setTimeout(() => this.missionComplete(), 1200); return; } setTimeout(() => { this.dom.enemy.classList.remove('enemy-attack'); this.isPlayerTurn = true; this.combatLocked = false; if (this.autoMode) setTimeout(() => this.autoCombatAction(), 500); }, 400); }, 450);
+      setTimeout(() => { const damage = Math.max(1, this.enemy.atk + Math.floor(Math.random()*4)-2 - this.player.defense); this.player.hp = Math.max(0, this.player.hp - damage); this.updatePlayerHP(); this.showDamageNumber(damage, this.dom.player); this.showHitEffect(this.dom.player); this.showCombatLog(`${this.enemy.name} ataca por ${damage}!`); if (this.player.hp <= 0) { this.syncBattleVitals(); this.showNotification('¡DERROTADO!', 2000); setTimeout(() => this.missionComplete(), 1200); return; } setTimeout(() => { this.dom.enemy.classList.remove('enemy-attack'); this.isPlayerTurn = true; this.combatLocked = false; if (this.autoMode) setTimeout(() => this.autoCombatAction(), 500); }, 400); }, 450);
     }
 
     autoCombatAction() { if (this.state !== GameStates.COMBAT || !this.autoMode || this.player.hp <= 0 || this.enemy.hp <= 0) return; const roll = Math.random(); if (roll < 0.25 && this.player.mp >= 8) { const skills = ['fire','water','wind']; const costs = { fire: 15, water: 12, wind: 8 }; const available = skills.filter(s => this.player.mp >= costs[s]); if (available.length) this.useSubSkill(available[Math.floor(Math.random()*available.length)]); else this.useAttack(); } else this.useAttack(); }
@@ -187,14 +198,26 @@
 
     enemyDefeated() {
       this.state = GameStates.VICTORY;
-      this.dom.enemy.classList.add('defeated'); this.dom.player.className = 'victory';
-      this.showNotification('¡VICTORIA!', 1500); this.showCombatLog(`¡${this.enemy.name} derrotado!`); this.spawnVictoryParticles();
-      if (!this.rewardGranted && typeof this.options.onVictory === 'function') { this.options.onVictory(); this.rewardGranted = true; }
-      setTimeout(() => { this.dom.enemy.classList.remove('visible', 'defeated'); this.dom.player.className = 'idle'; if (typeof this.options.onExit === 'function') { this.options.onExit(); return; } this.state = GameStates.MOVING; this.startRunner(); }, 1800);
+      this.dom.enemy.classList.add('defeated');
+      this.dom.player.className = 'victory';
+      this.showNotification('¡VICTORIA!', 1500);
+      this.showCombatLog(`¡${this.enemy.name} derrotado!`);
+      this.spawnVictoryParticles();
+
+      if (typeof this.options.onVictory === 'function') {
+        this.options.onVictory({ enemy: { ...this.enemy }, round: this.roundCount });
+      }
+
+      setTimeout(() => {
+        this.dom.enemy.classList.remove('visible', 'defeated');
+        this.dom.player.className = 'idle';
+        this.state = GameStates.MOVING;
+        this.startRunner();
+      }, 1200);
     }
 
-    updatePlayerHP() { const pct = (this.player.hp / this.player.maxHp) * 100; this.dom.hpPlayerBar.style.width = `${pct}%`; this.dom.hpPlayerText.textContent = `${this.player.hp}/${this.player.maxHp}`; }
-    updatePlayerMP() { const pct = (this.player.mp / this.player.maxMp) * 100; this.dom.mpPlayerBar.style.width = `${pct}%`; this.dom.mpPlayerText.textContent = `${this.player.mp}/${this.player.maxMp}`; }
+    updatePlayerHP() { const pct = (this.player.hp / this.player.maxHp) * 100; this.dom.hpPlayerBar.style.width = `${pct}%`; this.dom.hpPlayerText.textContent = `${this.player.hp}/${this.player.maxHp}`; this.syncBattleVitals(); }
+    updatePlayerMP() { const pct = (this.player.mp / this.player.maxMp) * 100; this.dom.mpPlayerBar.style.width = `${pct}%`; this.dom.mpPlayerText.textContent = `${this.player.mp}/${this.player.maxMp}`; this.syncBattleVitals(); }
     updateEnemyHP() { const pct = this.enemy.maxHp ? (this.enemy.hp / this.enemy.maxHp) * 100 : 0; this.dom.hpEnemyBar.style.width = `${pct}%`; this.dom.hpEnemyText.textContent = `${this.enemy.hp}/${this.enemy.maxHp}`; }
     updateEnemyMP() { const pct = this.enemy.maxMp ? (this.enemy.mp / this.enemy.maxMp) * 100 : 0; this.dom.mpEnemyBar.style.width = `${pct}%`; this.dom.mpEnemyText.textContent = `${this.enemy.mp}/${this.enemy.maxMp}`; }
 
@@ -204,11 +227,22 @@
     showCombatLog(text) { this.dom.combatLog.textContent = text; this.dom.combatLog.classList.add('visible'); clearTimeout(this._logTimeout); this._logTimeout = setTimeout(() => this.dom.combatLog.classList.remove('visible'), 2000); }
     spawnVictoryParticles() { this.dom.victoryParticles.innerHTML = ''; const colors = ['#ffcc00','#ff6644','#44cc66','#4488ff','#ff44aa']; for (let i=0;i<20;i+=1){const p=document.createElement('div'); p.className='br-victory-particle'; p.style.background=colors[Math.floor(Math.random()*colors.length)]; p.style.left='50%'; p.style.top='50%'; p.style.setProperty('--tx', `${Math.random()*200-100}px`); p.style.setProperty('--ty', `${Math.random()*200-100}px`); this.dom.victoryParticles.appendChild(p);} setTimeout(()=>{this.dom.victoryParticles.innerHTML='';},1200); }
 
+
+    syncBattleVitals() {
+      if (typeof this.options.onPlayerVitalsChange !== 'function') return;
+      this.options.onPlayerVitalsChange({
+        hp: this.player.hp,
+        mp: this.player.mp,
+        maxHp: this.player.maxHp,
+        maxMp: this.player.maxMp
+      });
+    }
+
     toggleSubSkills() { this.subSkillsVisible = !this.subSkillsVisible; this.dom.subSkills.classList.toggle('visible', this.subSkillsVisible); }
     closeSubSkills() { this.subSkillsVisible = false; this.dom.subSkills.classList.remove('visible'); }
 
     missionComplete() { this.state = GameStates.MISSION_DONE; this.stopRunner(); this.dom.missionComplete.classList.add('visible'); }
-    restart() { this.dom.missionComplete.classList.remove('visible'); this.state = GameStates.MOVING; this.progress = 0; this.currentTriggerIndex = 0; this.player.hp = this.player.maxHp; this.player.mp = this.player.maxMp; this.updateProgressBar(); this.updatePlayerHP(); this.updatePlayerMP(); this.startRunner(); }
+    restart() { this.dom.missionComplete.classList.remove('visible'); this.state = GameStates.MOVING; this.progress = 0; this.currentTriggerIndex = 0; this.roundCount = 1; this.player.hp = this.player.maxHp; this.player.mp = this.player.maxMp; this.updateProgressBar(); this.updatePlayerHP(); this.updatePlayerMP(); this.startRunner(); }
     destroy() { this.stopRunner(); this.host.innerHTML = ''; }
   }
 

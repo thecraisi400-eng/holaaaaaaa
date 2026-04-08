@@ -285,6 +285,13 @@
       if (!battleRoot) return;
 
       this.battleGame = window.initBattleRangoD(battleRoot, {
+        missionConfig: {
+          hp: mission.hp,
+          atk: mission.atk,
+          def: mission.def,
+          mp: Math.max(10, Math.floor(mission.hp * 0.2)),
+          name: mission.name
+        },
         onEnemyDefeated: () => this.grantMissionRewards(mission)
       });
 
@@ -304,6 +311,14 @@
     },
 
     grantMissionRewards(mission) {
+      if (!mission) return;
+      if (window.HeroSystem && typeof window.HeroSystem.grantMissionRewards === 'function') {
+        window.HeroSystem.grantMissionRewards({
+          exp: mission.xp,
+          gold: mission.gold
+        });
+        return;
+      }
       if (window.HeroSystem && typeof window.HeroSystem.grantExperience === 'function') {
         window.HeroSystem.grantExperience(mission.xp);
       }

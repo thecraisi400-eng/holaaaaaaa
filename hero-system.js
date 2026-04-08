@@ -322,7 +322,69 @@
     refs = null;
   }
 
-  window.HeroSystem = { mount, unmount, isMounted: () => mounted, setCharacterSprite, getHeroSnapshot };
+  function resolveHeroFromState() {
+    return character.baseHero || character.hero || window.CharacterStatsSystem?.getActiveHero() || DEFAULT_HERO;
+  }
+
+  function grantExperience(expAmount = 0) {
+    const gainedExp = Math.max(0, Number(expAmount) || 0);
+    if (!gainedExp) return;
+    const heroBase = resolveHeroFromState();
+    if (!heroBase || !window.CharacterStatsSystem) return;
+
+    const nextExp = (Number(heroBase.exp) || 0) + gainedExp;
+    let nextLevel = heroBase.level || 1;
+
+    while (nextLevel < 100) {
+      const nextLevelTarget = window.CharacterStatsSystem.getXpAtLevel(heroBase.characterId, nextLevel + 1);
+      if (nextExp < nextLevelTarget) break;
+      nextLevel += 1;
+    }
+
+    const leveledHero = window.CharacterStatsSystem.buildHeroSnapshot(
+      heroBase.characterId,
+      nextLevel,
+      nextExp,
+      heroBase.rank || window.CharacterStatsSystem.DEFAULT_RANK
+    );
+    if (!leveledHero) return;
+
+    const globalState = window.GameState && typeof window.GameState.getState === 'function'
+      ? window.GameState.getState()
+      : null;
+    const preservedHp = globalState ? Math.min(globalState.hp, leveledHero.stats.HP) : leveledHero.stats.HP;
+    const preservedMp = globalState ? Math.min(globalState.mp, leveledHero.stats.MP) : leveledHero.stats.MP;
+
+    window.CharacterStatsSystem.setActiveHero(leveledHero);
+
+    if (window.GameState && typeof window.GameState.syncHeroSnapshot === 'function') {
+      window.GameState.syncHeroSnapshot(leveledHero);
+    }
+    if (window.GameState && typeof window.GameState.setPlayerVitals === 'function') {
+      window.GameState.setPlayerVitals({ hp: preservedHp, mp: preservedMp });
+    }
+  }
+
+  function grantMissionRewards(reward) {
+    const exp = Math.max(0, Number(reward?.exp) || 0);
+    const gold = Math.max(0, Number(reward?.gold) || 0);
+    if (gold > 0 && window.GameState && typeof window.GameState.addGold === 'function') {
+      window.GameState.addGold(gold);
+    }
+    if (exp > 0) {
+      grantExperience(exp);
+    }
+  }
+
+  window.HeroSystem = {
+    mount,
+    unmount,
+    isMounted: () => mounted,
+    setCharacterSprite,
+    getHeroSnapshot,
+    grantExperience,
+    grantMissionRewards
+  };
 
   window.addEventListener('ngs:hero-stats-updated', (event) => {
     const hero = event?.detail?.hero;

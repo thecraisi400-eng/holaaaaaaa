@@ -304,3 +304,13 @@ window.addEventListener('ngs:hero-stats-updated', (event) => {
     window.MissionSystem.setHeroLevel(state.level);
   }
 });
+
+
+window.addEventListener('ngs:hero-combat-resource-updated', (event) => {
+  const detail = event?.detail || {};
+  state.hp = Math.max(0, Number(detail.hp) || state.hp);
+  state.hpMax = Math.max(1, Number(detail.hpMax) || state.hpMax);
+  state.mp = Math.max(0, Number(detail.mp) || state.mp);
+  state.mpMax = Math.max(1, Number(detail.mpMax) || state.mpMax);
+  updateBars();
+});

@@ -318,19 +318,40 @@
       <div class="ms-back-container">
         <button id="ms-backToRanksBtn" class="ms-back-btn">← Volver a Rangos</button>
       </div>
-    </div>
 
-    <div id="ms-victoryPopup" class="ms-victory-popup">
-      <h3>⚔️ ¡VICTORIA!</h3>
-      <p id="ms-victoryInfo"></p>
-      <p id="ms-victoryRewards"></p>
-      <button id="ms-closeVictoryBtn" class="ms-close-popup">Aceptar</button>
+      <div id="brdBattleContainer" class="brd-battle-container" aria-hidden="true">
+        <div class="brd-progress-row">
+          <span id="brdAssaultLabel" class="brd-assault-label">1 Asalto</span>
+          <div class="brd-progress-track"><div id="brdProgressFill" class="brd-progress-fill"></div></div>
+          <span id="brdProgressText" class="brd-progress-text">0%</span>
+        </div>
+
+        <div class="brd-combat-stage">
+          <div class="brd-character-card brd-hero-card">
+            <div class="brd-title">HÉROE</div>
+            <div id="brdHeroStats" class="brd-stats"></div>
+          </div>
+          <div class="brd-vs">⚔️</div>
+          <div class="brd-character-card brd-enemy-card">
+            <div id="brdEnemyName" class="brd-title">ENEMIGO</div>
+            <div id="brdEnemyStats" class="brd-stats"></div>
+          </div>
+        </div>
+
+        <div class="brd-actions-row">
+          <button id="brdAttackBtn" class="brd-btn">ATAQUE</button>
+          <button id="brdAutoBtn" class="brd-btn">AUTO: OFF</button>
+        </div>
+
+        <div id="brdLog" class="brd-log">Esperando combate...</div>
+      </div>
     </div>
   </div>
 </template>
 
 <script src="character-stats-container.js"></script>
 <script src="hero-system.js"></script>
+<script src="battle-rango-d-system.js"></script>
 <script src="mission-system.js"></script>
 <script src="ninja-game-start.js"></script>
 <script src="script.js"></script>

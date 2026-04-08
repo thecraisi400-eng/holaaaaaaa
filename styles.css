@@ -504,10 +504,10 @@ html, body {
 .hs-slot-level { font-family: var(--font-hud); font-size:8.8px; font-weight:800; }
 .hs-gear-stats-divider { width:95%; height:1px; background: linear-gradient(to right, transparent, rgba(0,245,255,.15), transparent); margin: 3px auto 5px; }
 .hs-char-stats-panel { display:grid; grid-template-columns:1fr; gap:4px; flex:1; min-height:0; overflow:auto; padding:0 2px 2px; }
-.hs-char-stat-item { display:flex; align-items:center; gap:6px; min-height:24px; padding:3px 8px; background: rgba(0,245,255,.03); border-radius:3px; border-left:2px solid var(--hs-cyan); }
+.hs-char-stat-item { display:flex; align-items:center; gap:6px; min-height:26.4px; padding:3px 8px; background: rgba(0,245,255,.03); border-radius:3px; border-left:2px solid var(--hs-cyan); }
 .hs-char-stat-icon { font-size:11.4px; }
-.hs-char-stat-key { font-size:9.5px; color:var(--hs-text-dim); }
-.hs-char-stat-val { margin-left:auto; font-family: var(--font-hud); font-size:10.8px; }
+.hs-char-stat-key { font-size:10.93px; color:var(--hs-text-dim); }
+.hs-char-stat-val { margin-left:auto; font-family: var(--font-hud); font-size:12.42px; }
 .hs-char-stat-val.crit { color: var(--hs-red-neon); }
 .hs-char-stat-val.good { color: var(--hs-green-neon); }
 .hs-char-stat-val.speed { color: var(--hs-cyan); }

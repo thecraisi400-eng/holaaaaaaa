@@ -1242,3 +1242,83 @@ html, body {
   .ngs-btn { padding: 0.7rem 1rem; font-size: 0.9rem; }
   .ngs-sprite-idle { width: 48px; height: 48px; font-size: 2rem; }
 }
+
+/* ═══════════════════════════════════════════
+   BATTLE RANGO D SYSTEM (scoped)
+   ═══════════════════════════════════════════ */
+.brd-game-container{position:relative;width:100%;height:100%;overflow:hidden;background:#1a1a2e;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif}
+.brd-game-container [id^="brd-layer-"]{position:absolute;left:0;top:0}
+.brd-parallax-sky{width:200%;height:100%;z-index:1;background:linear-gradient(180deg,#0a1628 0%,#1a2a4a 25%,#2d4a3e 50%,#3a6b5a 70%,#4a7a5a 85%,#2a4a3a 100%)}
+.brd-parallax-mountains,.brd-parallax-trees-back,.brd-parallax-trees-front,.brd-parallax-ground,.brd-parallax-dust,.brd-parallax-grass{width:400%;height:100%}
+.brd-parallax-mountains{z-index:2;background:linear-gradient(0deg,transparent 65%,rgba(0,0,0,.1) 66%),linear-gradient(135deg,transparent 30%,#1a3a2a 30% 70%,transparent 70%) 0 100%/200px 120px repeat-x}
+.brd-parallax-trees-back{z-index:3;background:repeating-linear-gradient(90deg,transparent 0 10px,#143019 10px 13px)}
+.brd-parallax-trees-front{z-index:4;background:repeating-linear-gradient(90deg,transparent 0 18px,#0f2915 18px 22px)}
+.brd-parallax-ground{z-index:5;background:linear-gradient(180deg,transparent 78%,#2b4a2b 79%,#4a6a3a 100%)}
+.brd-parallax-dust{z-index:6;background:repeating-linear-gradient(90deg,transparent 0 16px,rgba(139,119,80,.2) 16px 18px)}
+.brd-parallax-grass{z-index:7;background:repeating-linear-gradient(90deg,transparent 0 8px,#2a6a1a 8px 10px)}
+.brd-parallax-scrolling{animation:brdParallaxMove linear infinite}
+.brd-speed-slow{animation-duration:8s}.brd-speed-medium{animation-duration:5s}.brd-speed-fast{animation-duration:3s}.brd-speed-fastest{animation-duration:2s}
+@keyframes brdParallaxMove{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+#brd-player,#brd-enemy{position:absolute;bottom:85px;z-index:20;transition:all .3s ease}
+#brd-player{left:80px;width:45px;height:70px}
+#brd-enemy{right:-80px;width:50px;height:75px;z-index:18;opacity:0;transition:right .6s ease-out,opacity .4s ease-out}
+#brd-enemy.visible{right:100px;opacity:1}
+#brd-player .ninja-body,#brd-enemy .enemy-body{position:absolute;border-radius:3px;top:18px;box-shadow:inset -2px 0 4px rgba(0,0,0,.5)}
+#brd-player .ninja-body{width:20px;height:28px;background:linear-gradient(180deg,#1a1a2e,#0d0d1a);left:12px}
+#brd-enemy .enemy-body{width:24px;height:30px;background:linear-gradient(180deg,#4a2a2a,#2a1515);left:13px}
+#brd-player .ninja-head,#brd-enemy .enemy-head{position:absolute;border-radius:50%;box-shadow:inset -1px 0 3px rgba(0,0,0,.5)}
+#brd-player .ninja-head{width:18px;height:18px;background:linear-gradient(135deg,#2a2a4a,#1a1a2e);top:0;left:13px}
+#brd-enemy .enemy-head{width:20px;height:20px;background:linear-gradient(135deg,#5a3a3a,#3a2020);top:-2px;left:15px}
+#brd-player .ninja-legs,#brd-enemy .enemy-legs{position:absolute;width:8px;border-radius:2px;bottom:0}
+#brd-player .ninja-legs{height:22px;background:linear-gradient(180deg,#1a1a2e,#0d0d1a)}
+#brd-enemy .enemy-legs{height:25px;background:linear-gradient(180deg,#3a1a1a,#2a1010)}
+#brd-player .left,#brd-enemy .left{left:14px}#brd-player .right,#brd-enemy .right{left:24px}
+#brd-player .ninja-arms,#brd-enemy .enemy-arms{position:absolute;border-radius:2px;top:20px}
+#brd-player .ninja-arms{width:6px;height:20px;background:linear-gradient(180deg,#1a1a2e,#0d0d1a)}
+#brd-enemy .enemy-arms{width:7px;height:22px;background:linear-gradient(180deg,#4a2a2a,#2a1515)}
+#brd-player .ninja-kunai,#brd-enemy .enemy-sword{position:absolute;width:4px;border-radius:1px;top:14px;left:36px;background:linear-gradient(180deg,#ccc,#888);height:18px}
+#brd-player.idle{animation:brdIdle 1.5s ease-in-out infinite}#brd-player.run{animation:brdRun .35s steps(4) infinite}
+#brd-player.attack{animation:brdAttack .4s ease-out forwards}#brd-player.victory{animation:brdVictory .8s ease-out forwards}
+#brd-enemy.enemy-attack{animation:brdEnemyAttack .5s ease-out forwards}#brd-enemy.defeated{animation:brdEnemyDefeat .6s ease-out forwards}
+@keyframes brdIdle{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes brdRun{0%,100%{transform:translateY(0)}25%{transform:translateY(-8px)}75%{transform:translateY(-4px)}}
+@keyframes brdAttack{0%{transform:translateX(0)}30%{transform:translateX(30px)}100%{transform:translateX(0)}}
+@keyframes brdVictory{0%{transform:translateY(0)}50%{transform:translateY(-20px)}100%{transform:translateY(0)}}
+@keyframes brdEnemyAttack{0%{transform:translateX(0)}40%{transform:translateX(-35px)}100%{transform:translateX(0)}}
+@keyframes brdEnemyDefeat{0%{transform:translateX(0);opacity:1}100%{transform:translateX(-40px) rotate(20deg);opacity:0;right:-80px}}
+
+#brd-ui-top,#brd-combat-panel{position:absolute;left:0;right:0;z-index:30;display:flex;align-items:center}
+#brd-ui-top{top:0;height:32px;background:linear-gradient(180deg,rgba(0,0,0,.85),rgba(0,0,0,.6));padding:0 10px;border-bottom:1px solid rgba(255,255,255,.1)}
+#brd-progress-label{color:#aaa;font-size:10px;font-weight:700;margin-right:8px}#brd-progress-text{color:#fff;font-size:11px;font-weight:700;margin-left:8px;min-width:35px;text-align:right}
+#brd-progress-bar-container{flex:1;height:12px;background:#1a1a2e;border-radius:6px;overflow:hidden;border:1px solid #333;position:relative}
+#brd-progress-bar{height:100%;width:0;background:linear-gradient(90deg,#22aa44,#44cc66);transition:width .3s ease}
+.brd-trigger-marker{position:absolute;top:0;width:2px;height:100%;background:#ff4444}
+#brd-combat-panel{bottom:0;height:70px;background:linear-gradient(0deg,rgba(0,0,0,.9),rgba(0,0,0,.7));justify-content:space-between;padding:0 10px;border-top:2px solid #333;gap:8px}
+#brd-player-stats,#brd-enemy-stats{display:flex;flex-direction:column;gap:3px;width:110px}
+#brd-enemy-stats{align-items:flex-end}#brd-enemy-stats .brd-stat-bar{flex-direction:row-reverse}
+.brd-stat-bar{display:flex;align-items:center;gap:4px}.brd-stat-label{color:#aaa;font-size:8px;font-weight:700;width:20px}
+.brd-stat-bar-bg{flex:1;height:8px;background:#1a1a2e;border-radius:4px;overflow:hidden;border:1px solid #333}.brd-stat-bar-fill{height:100%;transition:width .3s ease}.brd-stat-bar-fill.hp{background:linear-gradient(90deg,#cc2222,#ee4444)}.brd-stat-bar-fill.mp{background:linear-gradient(90deg,#2244aa,#4488ff)}
+.brd-stat-text{color:#fff;font-size:8px;min-width:35px;text-align:right}
+#brd-action-buttons{display:flex;gap:6px}
+.brd-skill-btn{width:60px;height:50px;border:2px solid #444;border-radius:8px;background:linear-gradient(180deg,#2a2a4a,#1a1a2e);color:#fff;font-size:9px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.brd-skill-btn.auto-btn.active{border-color:#6666ff;box-shadow:0 0 15px rgba(68,68,204,.5)}
+#brd-sub-skills{position:absolute;bottom:72px;left:50%;transform:translateX(-50%);display:none;gap:6px;z-index:31;padding:8px;background:rgba(0,0,0,.85);border:1px solid #444;border-radius:10px}
+#brd-sub-skills.visible{display:flex}.brd-sub-skill-slot{width:50px;height:45px;border:2px solid #555;border-radius:6px;background:linear-gradient(180deg,#2a2a4a,#1a1a2e);color:#fff;font-size:8px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center}
+
+#brd-notification{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-size:20px;font-weight:700;z-index:40;opacity:0;pointer-events:none;text-shadow:0 0 10px rgba(255,255,255,.5),2px 2px 4px #000}
+#brd-notification.show{animation:brdNotifShow 1.5s ease-out forwards}
+@keyframes brdNotifShow{0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}20%,80%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-70%) scale(.8)}}
+#brd-encounter-flash{position:absolute;inset:0;background:rgba(255,255,255,0);z-index:35;pointer-events:none}
+#brd-encounter-flash.active{animation:brdEncounterFlash .4s ease-out forwards}
+@keyframes brdEncounterFlash{0%{background:rgba(255,255,255,.8)}100%{background:rgba(255,255,255,0)}}
+#brd-combat-log{position:absolute;bottom:75px;left:50%;transform:translateX(-50%);color:#ffcc00;font-size:11px;font-weight:700;z-index:32;opacity:0;transition:opacity .3s;text-align:center;pointer-events:none;white-space:nowrap}
+#brd-combat-log.visible{opacity:1}
+.brd-damage-number{position:absolute;font-size:16px;font-weight:700;color:#ff4444;z-index:50;animation:brdDamageFloat .8s ease-out forwards;pointer-events:none}
+@keyframes brdDamageFloat{0%{opacity:1;transform:translateY(0) scale(1.2)}100%{opacity:0;transform:translateY(-40px) scale(.8)}}
+.brd-hit-effect{position:absolute;width:30px;height:30px;z-index:45;pointer-events:none}.brd-hit-effect::before{content:'✦';font-size:24px;color:#ffaa00;animation:brdHitBurst .3s ease-out forwards}
+@keyframes brdHitBurst{0%{transform:scale(.3);opacity:1}100%{transform:scale(2);opacity:0}}
+.brd-victory-particles{position:absolute;inset:0;pointer-events:none;z-index:38}.brd-victory-particle{position:absolute;width:4px;height:4px;border-radius:50%;animation:brdParticleFly 1s ease-out forwards}
+@keyframes brdParticleFly{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--tx),var(--ty)) scale(0)}}
+.brd-game-container.shake{animation:brdScreenShake .3s ease-out}
+@keyframes brdScreenShake{20%{transform:translate(-3px,1px)}40%{transform:translate(3px,-1px)}60%{transform:translate(-2px,2px)}80%{transform:translate(2px,-2px)}}

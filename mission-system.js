@@ -104,6 +104,10 @@
     },
 
     switchView(fromId, toId, direction) {
+      if (fromId === 'ms-view-battle' && toId !== 'ms-view-battle') {
+        this.cancelActiveBattle();
+      }
+
       const fromEl = this.root.querySelector(`#${fromId}`);
       const toEl = this.root.querySelector(`#${toId}`);
       if (!fromEl || !toEl) return;
@@ -239,11 +243,19 @@
     },
 
     exitBattleView() {
-      if (window.BattleRunnerSystem && typeof window.BattleRunnerSystem.unmount === 'function') {
-        window.BattleRunnerSystem.unmount();
-      }
+      this.cancelActiveBattle();
       if (this.currentView === 'ms-view-battle') {
         this.switchView('ms-view-battle', 'ms-view-missions', 'back');
+      }
+    },
+
+    cancelActiveBattle() {
+      if (window.BattleRunnerSystem && typeof window.BattleRunnerSystem.cancelCombat === 'function') {
+        window.BattleRunnerSystem.cancelCombat();
+        return;
+      }
+      if (window.BattleRunnerSystem && typeof window.BattleRunnerSystem.unmount === 'function') {
+        window.BattleRunnerSystem.unmount();
       }
     },
 
@@ -263,6 +275,8 @@
     },
 
     resetToMain() {
+      this.cancelActiveBattle();
+
       const main = this.root?.querySelector('#ms-view-main');
       const ranks = this.root?.querySelector('#ms-view-ranks');
       const missions = this.root?.querySelector('#ms-view-missions');

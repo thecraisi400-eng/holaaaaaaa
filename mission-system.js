@@ -218,6 +218,9 @@
     openBattleView(mission, rank, index) {
       const host = this.root.querySelector('#ms-battle-host');
       if (!host) return;
+      const initialVitals = window.GameState && typeof window.GameState.getVitals === 'function'
+        ? window.GameState.getVitals()
+        : null;
 
       this.switchView('ms-view-missions', 'ms-view-battle', 'forward');
       window.BattleRunnerSystem.mount(host, {
@@ -225,6 +228,7 @@
         rank,
         missionIndex: index,
         heroLevel: this.heroLevel,
+        initialVitals,
         onExit: () => this.exitBattleView(),
         onVictory: () => {
           if (window.HeroSystem && typeof window.HeroSystem.grantExperience === 'function') {

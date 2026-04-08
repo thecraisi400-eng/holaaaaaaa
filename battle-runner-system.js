@@ -26,12 +26,26 @@
       const activeHero = window.HeroSystem && typeof window.HeroSystem.getHeroSnapshot === 'function'
         ? window.HeroSystem.getHeroSnapshot()
         : null;
+      const sharedVitals = this.options?.initialVitals
+        || (window.GameState && typeof window.GameState.getVitals === 'function'
+          ? window.GameState.getVitals()
+          : null);
       const baseStats = activeHero?.stats || {};
+      const heroMaxHp = Math.max(1, Number(baseStats.HP) || Number(sharedVitals?.hpMax) || 100);
+      const heroMaxMp = Math.max(1, Number(baseStats.MP) || Number(sharedVitals?.mpMax) || 50);
+      const syncedHp = Number(sharedVitals?.hp);
+      const syncedMp = Number(sharedVitals?.mp);
+      const initialHp = Number.isFinite(syncedHp)
+        ? Math.max(0, Math.min(heroMaxHp, syncedHp))
+        : Math.max(0, Number(activeHero?.currentHp ?? heroMaxHp) || heroMaxHp);
+      const initialMp = Number.isFinite(syncedMp)
+        ? Math.max(0, Math.min(heroMaxMp, syncedMp))
+        : Math.max(0, Number(activeHero?.currentMp ?? heroMaxMp) || heroMaxMp);
       this.player = {
-        hp: Math.max(1, Number(activeHero?.currentHp ?? baseStats.HP ?? 100) || 100),
-        maxHp: Math.max(1, Number(baseStats.HP) || 100),
-        mp: Math.max(0, Number(activeHero?.currentMp ?? baseStats.MP ?? 50) || 50),
-        maxMp: Math.max(1, Number(baseStats.MP) || 50),
+        hp: initialHp,
+        maxHp: heroMaxHp,
+        mp: initialMp,
+        maxMp: heroMaxMp,
         atk: Math.max(1, Number(baseStats.ATK) || 18),
         defense: Math.max(0, Number(baseStats.DEF) || 5)
       };

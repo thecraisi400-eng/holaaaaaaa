@@ -66,6 +66,9 @@
     },
 
     unmount() {
+      if (window.BattleRunnerSystem && typeof window.BattleRunnerSystem.unmount === 'function') {
+        window.BattleRunnerSystem.unmount();
+      }
       if (!this.host) return;
       this.host.innerHTML = '';
       this.root = null;
@@ -94,6 +97,7 @@
       onClick('#ms-backToMainBtn', () => this.goBack('ms-view-main'));
       onClick('#ms-backToRanksBtn', () => this.goBack('ms-view-ranks'));
       onClick('#ms-closeVictoryBtn', () => this.closeVictory());
+      onClick('#ms-backFromBattleBtn', () => this.exitBattleView());
 
       this.root.querySelectorAll('.ms-rank-btn').forEach((btn) => {
         btn.addEventListener('click', () => this.showMissions(btn.dataset.rank));
@@ -186,6 +190,11 @@
       card.classList.add('ms-combat-flash');
       setTimeout(() => card.classList.remove('ms-combat-flash'), 600);
 
+      if (rank === 'D' && window.BattleRunnerSystem) {
+        this.openBattleView(mission, rank, index);
+        return;
+      }
+
       if (window.HeroSystem && typeof window.HeroSystem.grantExperience === 'function') {
         window.HeroSystem.grantExperience(mission.xp);
       }
@@ -203,6 +212,37 @@
       if (popup) popup.classList.add('show');
     },
 
+    openBattleView(mission, rank, index) {
+      const host = this.root.querySelector('#ms-battle-host');
+      if (!host) return;
+
+      this.switchView('ms-view-missions', 'ms-view-battle', 'forward');
+      window.BattleRunnerSystem.mount(host, {
+        mission,
+        rank,
+        missionIndex: index,
+        heroLevel: this.heroLevel,
+        onExit: () => this.exitBattleView(),
+        onVictory: () => {
+          if (window.HeroSystem && typeof window.HeroSystem.grantExperience === 'function') {
+            window.HeroSystem.grantExperience(mission.xp);
+          }
+          if (window.GameState && typeof window.GameState.getGold === 'function' && typeof window.GameState.setGold === 'function') {
+            window.GameState.setGold(window.GameState.getGold() + mission.gold);
+          }
+        }
+      });
+    },
+
+    exitBattleView() {
+      if (window.BattleRunnerSystem && typeof window.BattleRunnerSystem.unmount === 'function') {
+        window.BattleRunnerSystem.unmount();
+      }
+      if (this.currentView === 'ms-view-battle') {
+        this.switchView('ms-view-battle', 'ms-view-missions', 'back');
+      }
+    },
+
     closeVictory() {
       const popup = this.root?.querySelector('#ms-victoryPopup');
       if (popup) popup.classList.remove('show');
@@ -213,6 +253,8 @@
         this.switchView('ms-view-ranks', 'ms-view-main', 'back');
       } else if (target === 'ms-view-ranks') {
         this.switchView('ms-view-missions', 'ms-view-ranks', 'back');
+      } else if (target === 'ms-view-missions') {
+        this.exitBattleView();
       }
     },
 
@@ -220,9 +262,10 @@
       const main = this.root?.querySelector('#ms-view-main');
       const ranks = this.root?.querySelector('#ms-view-ranks');
       const missions = this.root?.querySelector('#ms-view-missions');
-      if (!main || !ranks || !missions) return;
+      const battle = this.root?.querySelector('#ms-view-battle');
+      if (!main || !ranks || !missions || !battle) return;
 
-      [main, ranks, missions].forEach((view) => {
+      [main, ranks, missions, battle].forEach((view) => {
         view.classList.remove('active');
         view.style.opacity = '0';
         view.style.transform = 'translateX(100%)';

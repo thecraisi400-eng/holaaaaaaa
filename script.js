@@ -114,6 +114,29 @@ function getSyncedHeroSnapshot(snapshot) {
   return heroFromPanel;
 }
 
+function regenerateHeroVitals() {
+  if (state.activeSection !== 'heroe') return;
+  if (state.hpMax <= 0 && state.mpMax <= 0) return;
+
+  const hpRegen = Math.max(1, Math.ceil(state.hpMax * 0.07));
+  const mpRegen = Math.max(1, Math.ceil(state.mpMax * 0.07));
+  const nextHp = Math.min(state.hpMax, state.hp + hpRegen);
+  const nextMp = Math.min(state.mpMax, state.mp + mpRegen);
+
+  if (nextHp === state.hp && nextMp === state.mp) return;
+
+  state.hp = nextHp;
+  state.mp = nextMp;
+
+  if (window.HeroSystem && typeof window.HeroSystem.updateBattleVitals === 'function') {
+    window.HeroSystem.updateBattleVitals({ hp: state.hp, mp: state.mp });
+  }
+
+  updateBars();
+}
+
+setInterval(regenerateHeroVitals, 1000);
+
 /* ─────────────────────────────────────────────
    ACTUALIZACIÓN DE BARRAS - VALORES ESTÁTICOS
    ✅ Sin incremento automático de EXP, Gold, HP o MP

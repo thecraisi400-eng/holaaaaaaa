@@ -8,9 +8,9 @@
   });
 
   const EnemyTypes = [
-    { name: 'Bandido Sombra', hp: 80, mp: 30, atk: 2 },
-    { name: 'Oni de Hierro', hp: 100, mp: 40, atk: 3 },
-    { name: 'Demonio Bosque', hp: 120, mp: 50, atk: 4 }
+    { name: 'Bandido Sombra', hp: 80, mp: 30, atk: 2, def: 1 },
+    { name: 'Oni de Hierro', hp: 100, mp: 40, atk: 3, def: 2 },
+    { name: 'Demonio Bosque', hp: 120, mp: 50, atk: 4, def: 3 }
   ];
 
   class BattleRunner {
@@ -35,7 +35,14 @@
         atk: Math.max(1, Number(baseStats.ATK) || 18),
         defense: Math.max(0, Number(baseStats.DEF) || 5)
       };
-      this.enemy = { hp: 0, maxHp: 0, mp: 0, maxMp: 0, atk: 0, name: '', index: 0 };
+      this.enemy = { hp: 0, maxHp: 0, mp: 0, maxMp: 0, atk: 0, defense: 0, name: '', index: 0 };
+
+      const missionStats = this.options?.mission || {};
+      this.missionEnemyProfile = {
+        hp: Number.isFinite(Number(missionStats.hp)) ? Math.max(1, Number(missionStats.hp)) : -1,
+        atk: Number.isFinite(Number(missionStats.atk)) ? Math.max(1, Number(missionStats.atk)) : -1,
+        def: Number.isFinite(Number(missionStats.def)) ? Math.max(0, Number(missionStats.def)) : -1
+      };
 
       this.autoMode = false;
       this.isPlayerTurn = true;
@@ -172,11 +179,23 @@
       setTimeout(() => this.dom.encounterFlash.classList.remove('active'), 400); this.showNotification('¡ENCUENTRO!', 1200);
       const enemyIdx = (this.roundCount * this.triggerPoints.length) + this.currentTriggerIndex - 1;
       const enemyData = EnemyTypes[enemyIdx % EnemyTypes.length];
-      this.enemy = { hp: enemyData.hp, maxHp: enemyData.hp, mp: enemyData.mp, maxMp: enemyData.mp, atk: enemyData.atk, name: enemyData.name, index: enemyIdx };
+      const missionHp = this.missionEnemyProfile.hp > 0 ? this.missionEnemyProfile.hp : enemyData.hp;
+      const missionAtk = this.missionEnemyProfile.atk > 0 ? this.missionEnemyProfile.atk : enemyData.atk;
+      const missionDef = this.missionEnemyProfile.def >= 0 ? this.missionEnemyProfile.def : enemyData.def;
+      this.enemy = {
+        hp: missionHp,
+        maxHp: missionHp,
+        mp: enemyData.mp,
+        maxMp: enemyData.mp,
+        atk: missionAtk,
+        defense: missionDef,
+        name: enemyData.name,
+        index: enemyIdx
+      };
       setTimeout(() => { this.dom.enemy.classList.add('visible'); this.updateEnemyHP(); this.updateEnemyMP(); this.state = GameStates.COMBAT; this.isPlayerTurn = true; this.combatLocked = false; this.showCombatLog(`¡${this.enemy.name} aparece!`); if (this.autoMode) setTimeout(() => this.autoCombatAction(), 500); }, 600);
     }
 
-    useAttack() { if (this.state !== GameStates.COMBAT || this.combatLocked || !this.isPlayerTurn) return; this.combatLocked = true; this.dom.player.className = 'attack'; setTimeout(() => { const damage = Math.max(1, this.player.atk + Math.floor(Math.random()*5)-2); this.enemy.hp = Math.max(0, this.enemy.hp - damage); this.updateEnemyHP(); this.showDamageNumber(damage, this.dom.enemy); this.showHitEffect(this.dom.enemy); this.showCombatLog(`Atacas por ${damage} de daño!`); if (this.enemy.hp <= 0) setTimeout(() => this.enemyDefeated(), 400); else { this.isPlayerTurn = false; setTimeout(() => this.enemyTurn(), 800); } setTimeout(() => { this.dom.player.className = 'idle'; this.combatLocked = false; }, 400); }, 350); }
+    useAttack() { if (this.state !== GameStates.COMBAT || this.combatLocked || !this.isPlayerTurn) return; this.combatLocked = true; this.dom.player.className = 'attack'; setTimeout(() => { const rawDamage = this.player.atk + Math.floor(Math.random()*5)-2; const damage = Math.max(1, rawDamage - this.enemy.defense); this.enemy.hp = Math.max(0, this.enemy.hp - damage); this.updateEnemyHP(); this.showDamageNumber(damage, this.dom.enemy); this.showHitEffect(this.dom.enemy); this.showCombatLog(`Atacas por ${damage} de daño!`); if (this.enemy.hp <= 0) setTimeout(() => this.enemyDefeated(), 400); else { this.isPlayerTurn = false; setTimeout(() => this.enemyTurn(), 800); } setTimeout(() => { this.dom.player.className = 'idle'; this.combatLocked = false; }, 400); }, 350); }
 
     useSubSkill(type) {
       if (this.state !== GameStates.COMBAT || this.combatLocked || !this.isPlayerTurn) return;
@@ -184,7 +203,7 @@
       const skill = skillData[type]; if (!skill) return; this.combatLocked = true; this.closeSubSkills();
       if (this.player.mp < skill.mpCost) { this.showCombatLog('❌ ¡MP insuficiente!'); this.combatLocked = false; return; }
       this.player.mp -= skill.mpCost; this.updatePlayerMP(); this.dom.player.className = 'attack';
-      setTimeout(() => { const damage = skill.dmg + Math.floor(Math.random()*4)-1; this.enemy.hp = Math.max(0, this.enemy.hp - damage); this.updateEnemyHP(); this.showDamageNumber(damage, this.dom.enemy); this.showHitEffect(this.dom.enemy); this.showCombatLog(`${skill.name} — ${damage} de daño!`); if (this.enemy.hp <= 0) setTimeout(() => this.enemyDefeated(), 400); else { this.isPlayerTurn = false; setTimeout(() => this.enemyTurn(), 800); } setTimeout(() => { this.dom.player.className = 'idle'; this.combatLocked = false; }, 400); }, 350);
+      setTimeout(() => { const rawDamage = skill.dmg + Math.floor(Math.random()*4)-1; const damage = Math.max(1, rawDamage - this.enemy.defense); this.enemy.hp = Math.max(0, this.enemy.hp - damage); this.updateEnemyHP(); this.showDamageNumber(damage, this.dom.enemy); this.showHitEffect(this.dom.enemy); this.showCombatLog(`${skill.name} — ${damage} de daño!`); if (this.enemy.hp <= 0) setTimeout(() => this.enemyDefeated(), 400); else { this.isPlayerTurn = false; setTimeout(() => this.enemyTurn(), 800); } setTimeout(() => { this.dom.player.className = 'idle'; this.combatLocked = false; }, 400); }, 350);
     }
 
     enemyTurn() {

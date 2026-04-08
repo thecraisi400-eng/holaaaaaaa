@@ -51,6 +51,8 @@
       this.triggerPoints = [30, 60, 90];
       this.currentTriggerIndex = 0;
       this.dom = {};
+      this.isDisposed = false;
+      this.pendingTimeouts = new Set();
 
       this.render();
       this.cacheDOM();
@@ -61,6 +63,21 @@
       this.updatePlayerMP();
       this.syncBattleVitals();
       this.startRunner();
+    }
+
+    schedule(callback, delay) {
+      const timerId = setTimeout(() => {
+        this.pendingTimeouts.delete(timerId);
+        if (this.isDisposed) return;
+        callback();
+      }, delay);
+      this.pendingTimeouts.add(timerId);
+      return timerId;
+    }
+
+    clearScheduled() {
+      this.pendingTimeouts.forEach((timerId) => clearTimeout(timerId));
+      this.pendingTimeouts.clear();
     }
 
     render() {
@@ -175,8 +192,9 @@
     checkTriggers() { if (this.currentTriggerIndex >= this.triggerPoints.length) return; if (this.progress >= this.triggerPoints[this.currentTriggerIndex]) { this.currentTriggerIndex += 1; this.triggerEncounter(); } }
 
     triggerEncounter() {
+      if (this.isDisposed) return;
       this.state = GameStates.ENCOUNTER; this.stopRunner(); this.dom.encounterFlash.classList.add('active');
-      setTimeout(() => this.dom.encounterFlash.classList.remove('active'), 400); this.showNotification('¡ENCUENTRO!', 1200);
+      this.schedule(() => this.dom.encounterFlash.classList.remove('active'), 400); this.showNotification('¡ENCUENTRO!', 1200);
       const enemyIdx = (this.roundCount * this.triggerPoints.length) + this.currentTriggerIndex - 1;
       const enemyData = EnemyTypes[enemyIdx % EnemyTypes.length];
       const missionHp = this.missionEnemyProfile.hp > 0 ? this.missionEnemyProfile.hp : enemyData.hp;
@@ -192,28 +210,28 @@
         name: enemyData.name,
         index: enemyIdx
       };
-      setTimeout(() => { this.dom.enemy.classList.add('visible'); this.updateEnemyHP(); this.updateEnemyMP(); this.state = GameStates.COMBAT; this.isPlayerTurn = true; this.combatLocked = false; this.showCombatLog(`¡${this.enemy.name} aparece!`); if (this.autoMode) setTimeout(() => this.autoCombatAction(), 500); }, 600);
+      this.schedule(() => { this.dom.enemy.classList.add('visible'); this.updateEnemyHP(); this.updateEnemyMP(); this.state = GameStates.COMBAT; this.isPlayerTurn = true; this.combatLocked = false; this.showCombatLog(`¡${this.enemy.name} aparece!`); if (this.autoMode) this.schedule(() => this.autoCombatAction(), 500); }, 600);
     }
 
-    useAttack() { if (this.state !== GameStates.COMBAT || this.combatLocked || !this.isPlayerTurn) return; this.combatLocked = true; this.dom.player.className = 'attack'; setTimeout(() => { const rawDamage = this.player.atk + Math.floor(Math.random()*5)-2; const damage = Math.max(1, rawDamage - this.enemy.defense); this.enemy.hp = Math.max(0, this.enemy.hp - damage); this.updateEnemyHP(); this.showDamageNumber(damage, this.dom.enemy); this.showHitEffect(this.dom.enemy); this.showCombatLog(`Atacas por ${damage} de daño!`); if (this.enemy.hp <= 0) setTimeout(() => this.enemyDefeated(), 400); else { this.isPlayerTurn = false; setTimeout(() => this.enemyTurn(), 800); } setTimeout(() => { this.dom.player.className = 'idle'; this.combatLocked = false; }, 400); }, 350); }
+    useAttack() { if (this.isDisposed || this.state !== GameStates.COMBAT || this.combatLocked || !this.isPlayerTurn) return; this.combatLocked = true; this.dom.player.className = 'attack'; this.schedule(() => { const rawDamage = this.player.atk + Math.floor(Math.random()*5)-2; const damage = Math.max(1, rawDamage - this.enemy.defense); this.enemy.hp = Math.max(0, this.enemy.hp - damage); this.updateEnemyHP(); this.showDamageNumber(damage, this.dom.enemy); this.showHitEffect(this.dom.enemy); this.showCombatLog(`Atacas por ${damage} de daño!`); if (this.enemy.hp <= 0) this.schedule(() => this.enemyDefeated(), 400); else { this.isPlayerTurn = false; this.schedule(() => this.enemyTurn(), 800); } this.schedule(() => { this.dom.player.className = 'idle'; this.combatLocked = false; }, 400); }, 350); }
 
     useSubSkill(type) {
-      if (this.state !== GameStates.COMBAT || this.combatLocked || !this.isPlayerTurn) return;
+      if (this.isDisposed || this.state !== GameStates.COMBAT || this.combatLocked || !this.isPlayerTurn) return;
       const skillData = { fire: { name: '🔥 Bola de Fuego', dmg: 25, mpCost: 15 }, water: { name: '🌊 Torbellino', dmg: 20, mpCost: 12 }, wind: { name: '🌪 Corte Viento', dmg: 15, mpCost: 8 } };
       const skill = skillData[type]; if (!skill) return; this.combatLocked = true; this.closeSubSkills();
       if (this.player.mp < skill.mpCost) { this.showCombatLog('❌ ¡MP insuficiente!'); this.combatLocked = false; return; }
       this.player.mp -= skill.mpCost; this.updatePlayerMP(); this.dom.player.className = 'attack';
-      setTimeout(() => { const rawDamage = skill.dmg + Math.floor(Math.random()*4)-1; const damage = Math.max(1, rawDamage - this.enemy.defense); this.enemy.hp = Math.max(0, this.enemy.hp - damage); this.updateEnemyHP(); this.showDamageNumber(damage, this.dom.enemy); this.showHitEffect(this.dom.enemy); this.showCombatLog(`${skill.name} — ${damage} de daño!`); if (this.enemy.hp <= 0) setTimeout(() => this.enemyDefeated(), 400); else { this.isPlayerTurn = false; setTimeout(() => this.enemyTurn(), 800); } setTimeout(() => { this.dom.player.className = 'idle'; this.combatLocked = false; }, 400); }, 350);
+      this.schedule(() => { const rawDamage = skill.dmg + Math.floor(Math.random()*4)-1; const damage = Math.max(1, rawDamage - this.enemy.defense); this.enemy.hp = Math.max(0, this.enemy.hp - damage); this.updateEnemyHP(); this.showDamageNumber(damage, this.dom.enemy); this.showHitEffect(this.dom.enemy); this.showCombatLog(`${skill.name} — ${damage} de daño!`); if (this.enemy.hp <= 0) this.schedule(() => this.enemyDefeated(), 400); else { this.isPlayerTurn = false; this.schedule(() => this.enemyTurn(), 800); } this.schedule(() => { this.dom.player.className = 'idle'; this.combatLocked = false; }, 400); }, 350);
     }
 
     enemyTurn() {
-      if (this.state !== GameStates.COMBAT) return;
+      if (this.isDisposed || this.state !== GameStates.COMBAT) return;
       this.dom.enemy.classList.add('enemy-attack');
-      setTimeout(() => { const damage = Math.max(1, this.enemy.atk + Math.floor(Math.random()*4)-2 - this.player.defense); this.player.hp = Math.max(0, this.player.hp - damage); this.updatePlayerHP(); this.showDamageNumber(damage, this.dom.player); this.showHitEffect(this.dom.player); this.showCombatLog(`${this.enemy.name} ataca por ${damage}!`); if (this.player.hp <= 0) { this.syncBattleVitals(); this.showNotification('¡DERROTADO!', 2000); setTimeout(() => this.missionComplete(), 1200); return; } setTimeout(() => { this.dom.enemy.classList.remove('enemy-attack'); this.isPlayerTurn = true; this.combatLocked = false; if (this.autoMode) setTimeout(() => this.autoCombatAction(), 500); }, 400); }, 450);
+      this.schedule(() => { const damage = Math.max(1, this.enemy.atk + Math.floor(Math.random()*4)-2 - this.player.defense); this.player.hp = Math.max(0, this.player.hp - damage); this.updatePlayerHP(); this.showDamageNumber(damage, this.dom.player); this.showHitEffect(this.dom.player); this.showCombatLog(`${this.enemy.name} ataca por ${damage}!`); if (this.player.hp <= 0) { this.syncBattleVitals(); this.showNotification('¡DERROTADO!', 2000); this.schedule(() => this.missionComplete(), 1200); return; } this.schedule(() => { this.dom.enemy.classList.remove('enemy-attack'); this.isPlayerTurn = true; this.combatLocked = false; if (this.autoMode) this.schedule(() => this.autoCombatAction(), 500); }, 400); }, 450);
     }
 
-    autoCombatAction() { if (this.state !== GameStates.COMBAT || !this.autoMode || this.player.hp <= 0 || this.enemy.hp <= 0) return; const roll = Math.random(); if (roll < 0.25 && this.player.mp >= 8) { const skills = ['fire','water','wind']; const costs = { fire: 15, water: 12, wind: 8 }; const available = skills.filter(s => this.player.mp >= costs[s]); if (available.length) this.useSubSkill(available[Math.floor(Math.random()*available.length)]); else this.useAttack(); } else this.useAttack(); }
-    toggleAuto() { this.autoMode = !this.autoMode; const icon = this.dom.autoBtn.querySelector('.skill-icon'); if (this.autoMode) { this.dom.autoBtn.classList.add('active'); icon.textContent='✅'; if (this.state===GameStates.COMBAT && this.isPlayerTurn) setTimeout(()=>this.autoCombatAction(),250);} else { this.dom.autoBtn.classList.remove('active'); icon.textContent='❎'; } }
+    autoCombatAction() { if (this.isDisposed || this.state !== GameStates.COMBAT || !this.autoMode || this.player.hp <= 0 || this.enemy.hp <= 0) return; const roll = Math.random(); if (roll < 0.25 && this.player.mp >= 8) { const skills = ['fire','water','wind']; const costs = { fire: 15, water: 12, wind: 8 }; const available = skills.filter(s => this.player.mp >= costs[s]); if (available.length) this.useSubSkill(available[Math.floor(Math.random()*available.length)]); else this.useAttack(); } else this.useAttack(); }
+    toggleAuto() { this.autoMode = !this.autoMode; const icon = this.dom.autoBtn.querySelector('.skill-icon'); if (this.autoMode) { this.dom.autoBtn.classList.add('active'); icon.textContent='✅'; if (this.state===GameStates.COMBAT && this.isPlayerTurn) this.schedule(()=>this.autoCombatAction(),250);} else { this.dom.autoBtn.classList.remove('active'); icon.textContent='❎'; } }
 
     enemyDefeated() {
       this.state = GameStates.VICTORY;
@@ -227,7 +245,7 @@
         this.options.onVictory({ enemy: { ...this.enemy }, round: this.roundCount });
       }
 
-      setTimeout(() => {
+      this.schedule(() => {
         this.dom.enemy.classList.remove('visible', 'defeated');
         this.dom.player.className = 'idle';
         this.state = GameStates.MOVING;
@@ -240,11 +258,11 @@
     updateEnemyHP() { const pct = this.enemy.maxHp ? (this.enemy.hp / this.enemy.maxHp) * 100 : 0; this.dom.hpEnemyBar.style.width = `${pct}%`; this.dom.hpEnemyText.textContent = `${this.enemy.hp}/${this.enemy.maxHp}`; }
     updateEnemyMP() { const pct = this.enemy.maxMp ? (this.enemy.mp / this.enemy.maxMp) * 100 : 0; this.dom.mpEnemyBar.style.width = `${pct}%`; this.dom.mpEnemyText.textContent = `${this.enemy.mp}/${this.enemy.maxMp}`; }
 
-    showDamageNumber(damage, target) { const el = document.createElement('div'); el.className = 'br-damage-number'; el.textContent = `-${damage}`; const rect = target.getBoundingClientRect(); const c = this.dom.container.getBoundingClientRect(); el.style.left = `${rect.left - c.left + rect.width / 2 - 10}px`; el.style.top = `${rect.top - c.top}px`; this.dom.container.appendChild(el); setTimeout(() => el.remove(), 800); }
-    showHitEffect(target) { const el = document.createElement('div'); el.className = 'br-hit-effect'; const rect = target.getBoundingClientRect(); const c = this.dom.container.getBoundingClientRect(); el.style.left = `${rect.left - c.left + rect.width/2 - 15}px`; el.style.top = `${rect.top - c.top + rect.height/2 - 15}px`; this.dom.container.appendChild(el); setTimeout(() => el.remove(), 400); }
-    showNotification(text, duration=1200) { this.dom.notification.textContent = text; this.dom.notification.className = ''; void this.dom.notification.offsetWidth; this.dom.notification.classList.add('show'); setTimeout(() => this.dom.notification.classList.remove('show'), duration); }
-    showCombatLog(text) { this.dom.combatLog.textContent = text; this.dom.combatLog.classList.add('visible'); clearTimeout(this._logTimeout); this._logTimeout = setTimeout(() => this.dom.combatLog.classList.remove('visible'), 2000); }
-    spawnVictoryParticles() { this.dom.victoryParticles.innerHTML = ''; const colors = ['#ffcc00','#ff6644','#44cc66','#4488ff','#ff44aa']; for (let i=0;i<20;i+=1){const p=document.createElement('div'); p.className='br-victory-particle'; p.style.background=colors[Math.floor(Math.random()*colors.length)]; p.style.left='50%'; p.style.top='50%'; p.style.setProperty('--tx', `${Math.random()*200-100}px`); p.style.setProperty('--ty', `${Math.random()*200-100}px`); this.dom.victoryParticles.appendChild(p);} setTimeout(()=>{this.dom.victoryParticles.innerHTML='';},1200); }
+    showDamageNumber(damage, target) { if (this.isDisposed) return; const el = document.createElement('div'); el.className = 'br-damage-number'; el.textContent = `-${damage}`; const rect = target.getBoundingClientRect(); const c = this.dom.container.getBoundingClientRect(); el.style.left = `${rect.left - c.left + rect.width / 2 - 10}px`; el.style.top = `${rect.top - c.top}px`; this.dom.container.appendChild(el); this.schedule(() => el.remove(), 800); }
+    showHitEffect(target) { if (this.isDisposed) return; const el = document.createElement('div'); el.className = 'br-hit-effect'; const rect = target.getBoundingClientRect(); const c = this.dom.container.getBoundingClientRect(); el.style.left = `${rect.left - c.left + rect.width/2 - 15}px`; el.style.top = `${rect.top - c.top + rect.height/2 - 15}px`; this.dom.container.appendChild(el); this.schedule(() => el.remove(), 400); }
+    showNotification(text, duration=1200) { if (this.isDisposed) return; this.dom.notification.textContent = text; this.dom.notification.className = ''; void this.dom.notification.offsetWidth; this.dom.notification.classList.add('show'); this.schedule(() => this.dom.notification.classList.remove('show'), duration); }
+    showCombatLog(text) { if (this.isDisposed) return; this.dom.combatLog.textContent = text; this.dom.combatLog.classList.add('visible'); if (this._logTimeout) { clearTimeout(this._logTimeout); this.pendingTimeouts.delete(this._logTimeout); } this._logTimeout = this.schedule(() => this.dom.combatLog.classList.remove('visible'), 2000); }
+    spawnVictoryParticles() { if (this.isDisposed) return; this.dom.victoryParticles.innerHTML = ''; const colors = ['#ffcc00','#ff6644','#44cc66','#4488ff','#ff44aa']; for (let i=0;i<20;i+=1){const p=document.createElement('div'); p.className='br-victory-particle'; p.style.background=colors[Math.floor(Math.random()*colors.length)]; p.style.left='50%'; p.style.top='50%'; p.style.setProperty('--tx', `${Math.random()*200-100}px`); p.style.setProperty('--ty', `${Math.random()*200-100}px`); this.dom.victoryParticles.appendChild(p);} this.schedule(()=>{this.dom.victoryParticles.innerHTML='';},1200); }
 
 
     syncBattleVitals() {
@@ -260,9 +278,9 @@
     toggleSubSkills() { this.subSkillsVisible = !this.subSkillsVisible; this.dom.subSkills.classList.toggle('visible', this.subSkillsVisible); }
     closeSubSkills() { this.subSkillsVisible = false; this.dom.subSkills.classList.remove('visible'); }
 
-    missionComplete() { this.state = GameStates.MISSION_DONE; this.stopRunner(); this.dom.missionComplete.classList.add('visible'); }
+    missionComplete() { if (this.isDisposed) return; this.state = GameStates.MISSION_DONE; this.stopRunner(); this.dom.missionComplete.classList.add('visible'); }
     restart() { this.dom.missionComplete.classList.remove('visible'); this.state = GameStates.MOVING; this.progress = 0; this.currentTriggerIndex = 0; this.roundCount = 1; this.player.hp = this.player.maxHp; this.player.mp = this.player.maxMp; this.updateProgressBar(); this.updatePlayerHP(); this.updatePlayerMP(); this.startRunner(); }
-    destroy() { this.stopRunner(); this.host.innerHTML = ''; }
+    destroy() { this.isDisposed = true; this.autoMode = false; this.combatLocked = true; this.state = GameStates.MISSION_DONE; this.clearScheduled(); this.stopRunner(); this.host.innerHTML = ''; }
   }
 
   const BattleRunnerSystem = {

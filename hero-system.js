@@ -115,22 +115,11 @@
   function renderHeroIdentity() {
     const hero = character.hero;
     if (!hero || !refs.root) return;
-    const levelProgressBase = hero.expCurrentLevelStart || 0;
-    const expSpan = Math.max(1, (hero.expNextLevelTarget || 0) - levelProgressBase);
-    const progress = Math.min(100, Math.max(0, ((hero.exp - levelProgressBase) / expSpan) * 100));
 
-    refs.heroName.innerHTML = hero.name.toUpperCase().replace(/\s+/g, '<br>');
+    refs.heroName.textContent = hero.name.toUpperCase();
     refs.heroClanName.textContent = hero.clanName;
     refs.heroRank.textContent = hero.rank || 'GENIN';
-    refs.leftHpValue.textContent = hero.stats.HP.toLocaleString();
-    refs.leftMpValue.textContent = hero.stats.MP.toLocaleString();
-    refs.leftExpValue.textContent = `${Math.round(progress)}%`;
-    refs.leftHpFill.style.width = '100%';
-    refs.leftMpFill.style.width = '100%';
-    refs.leftExpFill.style.width = `${progress}%`;
     refs.heroLevel.textContent = hero.level;
-    refs.xpMiniFill.style.width = `${progress}%`;
-    refs.levelProgress.textContent = `${hero.exp.toLocaleString()} / ${hero.expNextLevelTarget.toLocaleString()} EXP`;
   }
 
   function createParticles(slotEl) {
@@ -292,15 +281,7 @@
       heroName: root.querySelector('#hsHeroName'),
       heroClanName: root.querySelector('#hsHeroClanName'),
       heroRank: root.querySelector('#hsHeroRank'),
-      leftHpFill: root.querySelector('#hsLeftHpFill'),
-      leftMpFill: root.querySelector('#hsLeftMpFill'),
-      leftExpFill: root.querySelector('#hsLeftExpFill'),
-      leftHpValue: root.querySelector('#hsLeftHpValue'),
-      leftMpValue: root.querySelector('#hsLeftMpValue'),
-      leftExpValue: root.querySelector('#hsLeftExpValue'),
       heroLevel: root.querySelector('#hsHeroLevel'),
-      xpMiniFill: root.querySelector('#hsXpMiniFill'),
-      levelProgress: root.querySelector('#hsLevelProgress'),
       overlay: root.querySelector('#hsModalOverlay'),
       btnClose: root.querySelector('#hsModalClose'),
       btnUpgrade: root.querySelector('#hsBtnUpgrade'),

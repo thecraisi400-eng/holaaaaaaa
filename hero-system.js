@@ -225,10 +225,15 @@
 
   function updateBattleVitals(vitals = {}) {
     if (!character.baseHero) return;
-    const maxHp = Number(character.baseHero.stats?.HP || 0);
-    const maxMp = Number(character.baseHero.stats?.MP || 0);
-    const nextHp = Math.max(0, Math.min(maxHp, Number(vitals.hp ?? character.baseHero.currentHp ?? maxHp) || 0));
-    const nextMp = Math.max(0, Math.min(maxMp, Number(vitals.mp ?? character.baseHero.currentMp ?? maxMp) || 0));
+    const effectiveHero = character.hero || character.baseHero;
+    const effectiveMaxHp = Math.max(0, Number(effectiveHero.stats?.HP || character.baseHero.stats?.HP || 0));
+    const effectiveMaxMp = Math.max(0, Number(effectiveHero.stats?.MP || character.baseHero.stats?.MP || 0));
+    const currentHp = Number(effectiveHero.currentHp ?? character.baseHero.currentHp ?? effectiveMaxHp);
+    const currentMp = Number(effectiveHero.currentMp ?? character.baseHero.currentMp ?? effectiveMaxMp);
+    const hpSource = Number(vitals.hp ?? currentHp);
+    const mpSource = Number(vitals.mp ?? currentMp);
+    const nextHp = Math.max(0, Math.min(effectiveMaxHp, Number.isFinite(hpSource) ? hpSource : currentHp));
+    const nextMp = Math.max(0, Math.min(effectiveMaxMp, Number.isFinite(mpSource) ? mpSource : currentMp));
 
     const updatedBaseHero = {
       ...character.baseHero,

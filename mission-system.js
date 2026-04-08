@@ -218,9 +218,18 @@
     openBattleView(mission, rank, index) {
       const host = this.root.querySelector('#ms-battle-host');
       if (!host) return;
-      const initialVitals = window.GameState && typeof window.GameState.getVitals === 'function'
+      const topHudVitals = window.GameState && typeof window.GameState.getVitals === 'function'
         ? window.GameState.getVitals()
         : null;
+      const heroSnapshot = window.HeroSystem && typeof window.HeroSystem.getHeroSnapshot === 'function'
+        ? window.HeroSystem.getHeroSnapshot()
+        : null;
+      const initialVitals = {
+        hp: Number(topHudVitals?.hp ?? heroSnapshot?.currentHp ?? heroSnapshot?.stats?.HP ?? 0),
+        hpMax: Number(topHudVitals?.hpMax ?? heroSnapshot?.stats?.HP ?? 0),
+        mp: Number(topHudVitals?.mp ?? heroSnapshot?.currentMp ?? heroSnapshot?.stats?.MP ?? 0),
+        mpMax: Number(topHudVitals?.mpMax ?? heroSnapshot?.stats?.MP ?? 0)
+      };
 
       this.switchView('ms-view-missions', 'ms-view-battle', 'forward');
       window.BattleRunnerSystem.mount(host, {

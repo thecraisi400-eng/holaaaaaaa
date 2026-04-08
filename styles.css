@@ -420,6 +420,309 @@ html, body {
 }
 .overlay-close:hover { background: var(--btn-hover); border-color: var(--teal); color: var(--teal); }
 
+/* ═══════════════════════════════════════════
+   MISSION SYSTEM (sección MISIONES) - scoped styles
+   ═══════════════════════════════════════════ */
+.ms-game-container {
+  --ms-ink: #0d1117;
+  --ms-panel: #131a26;
+  --ms-surface: #1c2740;
+  --ms-btn-bg: #162035;
+  --ms-rankD: #4ade80;
+  --ms-rankC: #60a5fa;
+  --ms-rankB: #a78bfa;
+  --ms-rankA: #fb923c;
+  --ms-rankS: #facc15;
+  width: 100%;
+  height: 100%;
+  background: var(--ms-panel);
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 0 60px rgba(0,0,0,.35);
+}
+
+.ms-view {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(100%);
+  transition: opacity .3s ease, transform .3s ease;
+  z-index: 1;
+}
+
+.ms-view.active { opacity: 1; pointer-events: all; transform: translateX(0); }
+
+.ms-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 8px;
+  scrollbar-width: thin;
+  scrollbar-color: #1e3a5f transparent;
+}
+
+.ms-scroll-area::-webkit-scrollbar { width: 4px; }
+.ms-scroll-area::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 4px; }
+
+.ms-back-container {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+}
+
+.ms-back-btn {
+  width: 100%;
+  padding: 8px 0;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  color: #94a3b8;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all .2s ease;
+}
+
+.ms-back-btn:hover { background: #334155; color: #e2e8f0; }
+
+.ms-main-btn-wrap {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+  padding: 12px 12px 0;
+}
+
+.ms-main-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 16px 0;
+  background: linear-gradient(135deg, #1e3a5f, #162035);
+  border: 1px solid #2563eb;
+  border-radius: 10px;
+  color: #60a5fa;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  transition: all .25s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.ms-main-btn:hover {
+  background: linear-gradient(135deg, #2563eb, #1e3a5f);
+  box-shadow: 0 0 20px #2563eb44;
+  transform: scale(1.02);
+}
+
+.ms-main-btn::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(transparent, rgba(96,165,250,.12), transparent 30%);
+  animation: ms-rotate-bg 4s linear infinite;
+}
+
+@keyframes ms-rotate-bg { to { transform: rotate(360deg); } }
+
+.ms-rank-btn {
+  width: 100%;
+  padding: 10px 12px;
+  margin: 4px 0;
+  border-radius: 8px;
+  border: 1px solid;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  transition: all .2s ease;
+  position: relative;
+  overflow: hidden;
+  background: var(--ms-btn-bg);
+  white-space: nowrap;
+}
+
+.ms-rank-btn:hover { transform: translateX(4px); }
+.ms-rank-icon { font-size: 16px; flex-shrink: 0; }
+.ms-rank-label { flex: 1; text-align: left; }
+.ms-rank-arrow { opacity: .5; flex-shrink: 0; }
+
+.ms-rank-D { border-color: #4ade8044; color: var(--ms-rankD); }
+.ms-rank-C { border-color: #60a5fa44; color: var(--ms-rankC); }
+.ms-rank-B { border-color: #a78bfa44; color: var(--ms-rankB); }
+.ms-rank-A { border-color: #fb923c44; color: var(--ms-rankA); }
+.ms-rank-S { border-color: #facc1544; color: var(--ms-rankS); }
+
+.ms-rank-S::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 10px;
+  background: linear-gradient(45deg, #facc15, #ef4444, #facc15);
+  z-index: -1;
+  animation: ms-pulse-glow 2s ease-in-out infinite;
+  opacity: .3;
+}
+
+@keyframes ms-pulse-glow { 0%,100% { opacity: .2; } 50% { opacity: .5; } }
+
+.ms-mission-card {
+  background: var(--ms-surface);
+  border: 1px solid #1e3a5f;
+  border-radius: 8px;
+  padding: 5px 8px;
+  margin: 4px 0;
+  position: relative;
+  overflow: hidden;
+  transition: all .2s ease;
+}
+
+.ms-mission-card:hover { border-color: #3b82f6; box-shadow: 0 0 12px #3b82f622; }
+.ms-mission-card.locked { opacity: .55; filter: grayscale(.3); }
+
+.ms-mission-lock {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,.7);
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #ef4444;
+  font-weight: 700;
+  gap: 6px;
+  backdrop-filter: blur(2px);
+  border-radius: 7px;
+  z-index: 2;
+}
+
+.ms-mission-card.locked .ms-mission-lock { display: flex; }
+.ms-mission-lock.unlocked { display: none; }
+
+.ms-mission-name {
+  text-align: center;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #e2e8f0;
+  padding: 2px 0 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 1px solid #1e3a5f;
+  margin-bottom: 3px;
+}
+
+.ms-fight-btn {
+  display: block;
+  width: 70%;
+  margin: 3px auto;
+  padding: 4px 0;
+  background: linear-gradient(135deg, #dc2626, #991b1b);
+  border: 1px solid #ef4444;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  transition: all .2s ease;
+  text-shadow: 0 1px 2px rgba(0,0,0,.5);
+}
+
+.ms-fight-btn:hover {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  box-shadow: 0 0 14px #ef444455;
+  transform: scale(1.05);
+}
+
+.ms-fight-btn:active { transform: scale(.97); }
+
+.ms-mission-card.locked .ms-fight-btn {
+  background: #374151;
+  border-color: #4b5563;
+  cursor: not-allowed;
+  box-shadow: none;
+  pointer-events: none;
+}
+
+.ms-mission-body { display: flex; justify-content: space-between; gap: 6px; }
+.ms-mission-rewards, .ms-mission-enemy { display: flex; flex-direction: column; gap: 1px; min-width: 0; font-size: 9px; color: #94a3b8; }
+.ms-mission-enemy { text-align: right; }
+.ms-mission-rewards span, .ms-mission-enemy span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ms-xp { color: #34d399; }
+.ms-gold { color: #fbbf24; }
+.ms-hp { color: #f87171; }
+.ms-atk { color: #fb923c; }
+.ms-def { color: #60a5fa; }
+
+.ms-particle {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: ms-float-up 1.8s ease forwards;
+}
+
+@keyframes ms-float-up {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-50px) scale(0); }
+}
+
+@keyframes ms-combat-flash {
+  0% { box-shadow: 0 0 0 rgba(239,68,68,0); }
+  50% { box-shadow: 0 0 25px rgba(239,68,68,.6), inset 0 0 15px rgba(239,68,68,.3); }
+  100% { box-shadow: 0 0 0 rgba(239,68,68,0); }
+}
+
+.ms-mission-card.ms-combat-flash { animation: ms-combat-flash .6s ease; }
+
+.ms-victory-popup {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  background: linear-gradient(135deg, #1e3a5f, #0f172a);
+  border: 2px solid #22c55e;
+  border-radius: 12px;
+  padding: 16px 24px;
+  text-align: center;
+  z-index: 100;
+  transition: transform .3s ease;
+  box-shadow: 0 0 30px rgba(34,197,94,.3);
+}
+
+.ms-victory-popup.show { transform: translate(-50%, -50%) scale(1); }
+.ms-victory-popup h3 { color: #22c55e; font-size: 14px; margin-bottom: 6px; }
+.ms-victory-popup p { color: #e2e8f0; font-size: 11px; margin: 2px 0; }
+
+.ms-close-popup {
+  margin-top: 8px;
+  padding: 4px 16px;
+  background: #22c55e;
+  border: none;
+  border-radius: 6px;
+  color: #000;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 11px;
+}
+
 .hud-corner {
   position: absolute;
   width: 10px; height: 10px;

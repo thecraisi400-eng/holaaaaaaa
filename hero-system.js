@@ -171,7 +171,73 @@
   }
 
   function getHeroSnapshot() {
-    return character.hero ? { ...character.hero, stats: { ...character.hero.stats } } : null;
+    if (!character.hero) return null;
+    return {
+      ...character.hero,
+      stats: { ...(character.hero.stats || {}) },
+      baseStats: { ...(character.hero.baseStats || {}) },
+      equipmentBonuses: { ...(character.hero.equipmentBonuses || {}) }
+    };
+  }
+
+  function grantExperience(amount) {
+    const xpGain = Math.max(0, Number(amount) || 0);
+    if (!xpGain || !window.CharacterStatsSystem || !character.baseHero?.characterId) return getHeroSnapshot();
+
+    const currentBase = character.baseHero;
+    const totalExp = Math.max(0, Number(currentBase.exp || 0)) + xpGain;
+    let nextLevel = Math.max(1, Number(currentBase.level) || 1);
+
+    while (nextLevel < 100) {
+      const xpNeededForNext = window.CharacterStatsSystem.getXpAtLevel(currentBase.characterId, nextLevel + 1);
+      if (totalExp < xpNeededForNext) break;
+      nextLevel += 1;
+    }
+
+    const leveledHero = window.CharacterStatsSystem.buildHeroSnapshot(
+      currentBase.characterId,
+      nextLevel,
+      totalExp,
+      currentBase.rank || window.CharacterStatsSystem.DEFAULT_RANK
+    );
+
+    if (!leveledHero) return getHeroSnapshot();
+
+    const currentHp = Number(currentBase.currentHp ?? currentBase.stats?.HP ?? leveledHero.stats.HP);
+    const currentMp = Number(currentBase.currentMp ?? currentBase.stats?.MP ?? leveledHero.stats.MP);
+    const prevMaxHp = Number(currentBase.stats?.HP || leveledHero.stats.HP);
+    const prevMaxMp = Number(currentBase.stats?.MP || leveledHero.stats.MP);
+    const hpRatio = prevMaxHp > 0 ? currentHp / prevMaxHp : 1;
+    const mpRatio = prevMaxMp > 0 ? currentMp / prevMaxMp : 1;
+
+    leveledHero.currentHp = Math.max(0, Math.min(leveledHero.stats.HP, Math.round(leveledHero.stats.HP * hpRatio)));
+    leveledHero.currentMp = Math.max(0, Math.min(leveledHero.stats.MP, Math.round(leveledHero.stats.MP * mpRatio)));
+
+    refreshCharacterFromHero(leveledHero);
+    syncHeroToGlobalState();
+    if (mounted && refs) {
+      renderCharStats();
+      renderHeroIdentity();
+    }
+
+    return getHeroSnapshot();
+  }
+
+  function updateBattleVitals(vitals = {}) {
+    if (!character.baseHero) return;
+    const maxHp = Number(character.baseHero.stats?.HP || 0);
+    const maxMp = Number(character.baseHero.stats?.MP || 0);
+    const nextHp = Math.max(0, Math.min(maxHp, Number(vitals.hp ?? character.baseHero.currentHp ?? maxHp) || 0));
+    const nextMp = Math.max(0, Math.min(maxMp, Number(vitals.mp ?? character.baseHero.currentMp ?? maxMp) || 0));
+
+    const updatedBaseHero = {
+      ...character.baseHero,
+      currentHp: nextHp,
+      currentMp: nextMp
+    };
+
+    refreshCharacterFromHero(updatedBaseHero);
+    syncHeroToGlobalState();
   }
 
   let currentSlot = null;
@@ -322,7 +388,7 @@
     refs = null;
   }
 
-  window.HeroSystem = { mount, unmount, isMounted: () => mounted, setCharacterSprite, getHeroSnapshot };
+  window.HeroSystem = { mount, unmount, isMounted: () => mounted, setCharacterSprite, getHeroSnapshot, grantExperience, updateBattleVitals };
 
   window.addEventListener('ngs:hero-stats-updated', (event) => {
     const hero = event?.detail?.hero;

@@ -201,17 +201,38 @@ const overlayClose = document.getElementById('overlayClose');
 
 function renderCenterSection(sectionKey) {
   const isHero = sectionKey === 'heroe';
+  const isMissions = sectionKey === 'misiones';
 
   if (isHero) {
     overlay.classList.remove('visible');
+    if (window.MissionSystem && window.MissionSystem.isMounted()) {
+      window.MissionSystem.unmount();
+    }
     if (window.HeroSystem && !window.HeroSystem.isMounted()) {
       window.HeroSystem.mount();
     }
     return;
   }
 
+  if (isMissions) {
+    overlay.classList.remove('visible');
+    if (window.HeroSystem && window.HeroSystem.isMounted()) {
+      window.HeroSystem.unmount();
+    }
+    if (window.MissionSystem && !window.MissionSystem.isMounted()) {
+      window.MissionSystem.mount();
+    }
+    if (window.MissionSystem) {
+      window.MissionSystem.setHeroLevel(state.level);
+    }
+    return;
+  }
+
   if (window.HeroSystem && window.HeroSystem.isMounted()) {
     window.HeroSystem.unmount();
+  }
+  if (window.MissionSystem && window.MissionSystem.isMounted()) {
+    window.MissionSystem.unmount();
   }
 
   const info = sections[sectionKey];
@@ -267,6 +288,9 @@ window.addEventListener('ngs:game-entered', (event) => {
       window.CharacterStatsSystem.setActiveHero(snapshot);
       syncStateFromHero(getSyncedHeroSnapshot(snapshot));
       updateBars();
+      if (window.MissionSystem) {
+        window.MissionSystem.setHeroLevel(state.level);
+      }
     }
   }
 });
@@ -276,4 +300,7 @@ window.addEventListener('ngs:hero-stats-updated', (event) => {
   if (!snapshot) return;
   syncStateFromHero(getSyncedHeroSnapshot(snapshot));
   updateBars();
+  if (window.MissionSystem) {
+    window.MissionSystem.setHeroLevel(state.level);
+  }
 });

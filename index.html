@@ -283,8 +283,56 @@
   </div>
 </template>
 
+<template id="missionSystemTemplate">
+  <div id="ms-game-container" class="ms-game-container">
+    <div id="ms-view-main" class="ms-view active">
+      <div class="ms-main-btn-wrap">
+        <button id="ms-openMissionsBtn" class="ms-main-btn">📜 ABRIR MISIONES</button>
+      </div>
+    </div>
+
+    <div id="ms-view-ranks" class="ms-view">
+      <div class="ms-scroll-area">
+        <button class="ms-rank-btn ms-rank-D" data-rank="D">
+          <span class="ms-rank-icon">🟢</span><span class="ms-rank-label">MISIÓN RANGO D</span><span class="ms-rank-arrow">›</span>
+        </button>
+        <button class="ms-rank-btn ms-rank-C" data-rank="C">
+          <span class="ms-rank-icon">🔵</span><span class="ms-rank-label">MISIÓN RANGO C</span><span class="ms-rank-arrow">›</span>
+        </button>
+        <button class="ms-rank-btn ms-rank-B" data-rank="B">
+          <span class="ms-rank-icon">🟣</span><span class="ms-rank-label">MISIÓN RANGO B</span><span class="ms-rank-arrow">›</span>
+        </button>
+        <button class="ms-rank-btn ms-rank-A" data-rank="A">
+          <span class="ms-rank-icon">🟠</span><span class="ms-rank-label">MISIÓN RANGO A</span><span class="ms-rank-arrow">›</span>
+        </button>
+        <button class="ms-rank-btn ms-rank-S" data-rank="S">
+          <span class="ms-rank-icon">⭐</span><span class="ms-rank-label">MISIÓN RANGO S</span><span class="ms-rank-arrow">›</span>
+        </button>
+      </div>
+      <div class="ms-back-container">
+        <button id="ms-backToMainBtn" class="ms-back-btn">← Volver</button>
+      </div>
+    </div>
+
+    <div id="ms-view-missions" class="ms-view">
+      <div id="ms-missions-scroll" class="ms-scroll-area"></div>
+      <div class="ms-back-container">
+        <button id="ms-backToRanksBtn" class="ms-back-btn">← Volver a Rangos</button>
+      </div>
+    </div>
+
+    <div id="ms-victoryPopup" class="ms-victory-popup">
+      <h3>⚔️ ¡VICTORIA!</h3>
+      <p id="ms-victoryInfo"></p>
+      <p id="ms-victoryRewards"></p>
+      <button id="ms-closeVictoryBtn" class="ms-close-popup">Aceptar</button>
+    </div>
+  </div>
+</template>
+
 <script src="character-stats-container.js"></script>
 <script src="hero-system.js"></script>
+<script src="mission-system.js"></script>
 <script src="ninja-game-start.js"></script>
 <script src="script.js"></script>
 </body>

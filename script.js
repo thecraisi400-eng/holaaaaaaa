@@ -24,6 +24,12 @@ function setGold(nextGold) {
 window.GameState = window.GameState || {};
 window.GameState.getGold = () => state.gold;
 window.GameState.setGold = setGold;
+window.GameState.getVitals = () => ({
+  hp: state.hp,
+  hpMax: state.hpMax,
+  mp: state.mp,
+  mpMax: state.mpMax
+});
 
 const sections = {
   heroe:        { icon:'🥷', title:'HÉROE',           desc:'Consulta y mejora el equipo de tu shinobi. Cambia armadura, armas y accesorios para maximizar tu poder de combate.' },
@@ -115,7 +121,8 @@ function getSyncedHeroSnapshot(snapshot) {
 }
 
 function regenerateHeroVitals() {
-  if (state.activeSection !== 'heroe') return;
+  const currentSection = document.querySelector('.nav-btn.active')?.dataset?.section || state.activeSection;
+  if (currentSection !== 'heroe') return;
   if (state.hpMax <= 0 && state.mpMax <= 0) return;
 
   const hpRegen = Math.max(1, Math.ceil(state.hpMax * 0.07));

@@ -166,6 +166,21 @@
       }
     },
 
+    getPersistentState() {
+      return {
+        currentView: this.currentView,
+        currentRank: this.currentRank,
+        heroLevel: this.heroLevel
+      };
+    },
+
+    applyPersistentState(savedState = {}) {
+      if (!savedState || typeof savedState !== 'object') return;
+      this.heroLevel = Math.max(1, Number(savedState.heroLevel) || this.heroLevel || 1);
+      this.currentRank = savedState.currentRank || null;
+      this.currentView = savedState.currentView || 'ms-view-main';
+    },
+
     bindEvents() {
       const onClick = (selector, handler) => {
         const el = this.root.querySelector(selector);

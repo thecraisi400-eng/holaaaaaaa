@@ -174,6 +174,40 @@
     return character.hero ? { ...character.hero, stats: { ...character.hero.stats } } : null;
   }
 
+  function getEquipmentSnapshot() {
+    return SLOTS.reduce((acc, slot) => {
+      acc[slot.id] = clampLevel(slot.level);
+      return acc;
+    }, {});
+  }
+
+  function clampLevel(level) {
+    const normalized = Number(level);
+    if (!Number.isFinite(normalized)) return 1;
+    return Math.max(1, Math.min(80, Math.round(normalized)));
+  }
+
+  function applyEquipmentSnapshot(snapshot = {}) {
+    let changed = false;
+    SLOTS.forEach((slot) => {
+      const nextLevel = snapshot[slot.id];
+      if (nextLevel == null) return;
+      const clamped = clampLevel(nextLevel);
+      if (slot.level === clamped) return;
+      slot.level = clamped;
+      changed = true;
+    });
+    if (!changed) return;
+    refreshCharacterFromHero(character.baseHero || character.hero || DEFAULT_HERO);
+    syncHeroToGlobalState();
+    if (mounted && refs) {
+      refs.grid.innerHTML = '';
+      SLOTS.forEach((slot) => refs.grid.appendChild(createSlotElement(slot)));
+      renderCharStats();
+      renderHeroIdentity();
+    }
+  }
+
   let currentSlot = null;
 
   function openModal(slot, rar) {
@@ -268,6 +302,7 @@
 
       refs.btnUpgrade.textContent = '✓ ¡MEJORADO!';
       setTimeout(() => { refs.btnUpgrade.textContent = '▲ MEJORAR'; }, 1200);
+      window.dispatchEvent(new CustomEvent('ngs:equipment-updated', { detail: { equipment: getEquipmentSnapshot() } }));
     });
   }
 
@@ -382,6 +417,8 @@
     isMounted: () => mounted,
     setCharacterSprite,
     getHeroSnapshot,
+    getEquipmentSnapshot,
+    applyEquipmentSnapshot,
     grantExperience,
     grantMissionRewards
   };

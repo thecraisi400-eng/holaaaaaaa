@@ -3,9 +3,10 @@
 
   let wakeLock = null;
   let enabled = localStorage.getItem(KEEP_AWAKE_KEY) === '1';
+  let gameplayActive = false;
 
   async function requestWakeLock() {
-    if (!enabled || !('wakeLock' in navigator)) return false;
+    if (!enabled || !gameplayActive || !('wakeLock' in navigator)) return false;
     if (wakeLock) return true;
 
     try {
@@ -34,11 +35,20 @@
   function setEnabled(nextEnabled) {
     enabled = Boolean(nextEnabled);
     localStorage.setItem(KEEP_AWAKE_KEY, enabled ? '1' : '0');
-    if (enabled) {
+    if (enabled && gameplayActive) {
       requestWakeLock();
     } else {
       releaseWakeLock();
     }
+  }
+
+  function setGameplayActive(nextGameplayActive) {
+    gameplayActive = Boolean(nextGameplayActive);
+    if (enabled && gameplayActive) {
+      requestWakeLock();
+      return;
+    }
+    releaseWakeLock();
   }
 
   document.addEventListener('visibilitychange', () => {
@@ -50,7 +60,9 @@
   window.NGSWakeLockService = {
     isSupported: () => 'wakeLock' in navigator,
     isEnabled: () => enabled,
+    isGameplayActive: () => gameplayActive,
     setEnabled,
+    setGameplayActive,
     request: requestWakeLock,
     release: releaseWakeLock
   };

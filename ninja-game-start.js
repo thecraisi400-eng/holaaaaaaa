@@ -64,6 +64,9 @@
   let currentCharacterSelected = null;
   let activeSlotId = DEFAULT_SLOT;
   let autoSaveTimer = null;
+  let saveInFlight = false;
+  let pendingSaveReason = null;
+  let lastSaveInfo = { lastSaveReason: 'init', lastSaveAt: Date.now(), lastSaveStatus: 'ok', lastSaveError: '' };
 
   const introRoot = document.getElementById('ngsIntroRoot');
   const app = document.getElementById('app');
@@ -199,6 +202,10 @@
           level: 1,
           rank: window.CharacterStatsSystem?.DEFAULT_RANK || 'GENIN',
           exp: 0,
+          activeSection: 'heroe',
+          options: {
+            keepAwakeEnabled: keepAwakeToggle ? Boolean(keepAwakeToggle.checked) : false
+          },
           timestamp: Date.now(),
           playTime: '00:12:34'
         };
@@ -223,7 +230,15 @@
     }
 
     const dateStr = latest.timestamp ? new Date(latest.timestamp).toLocaleString() : 'desconocida';
-    loadPreviewDataDiv.innerHTML = `🎮 ${latest.character || 'Sin personaje'} | Nivel ${latest.level || 1} | Tiempo: ${latest.playTime || '00:00'} <br> <span style="font-size:0.7rem;">Slot ${latest.slotId} · Guardado: ${dateStr}</span>`;
+    const integrityLabelMap = {
+      ok: '✅ íntegro',
+      migrated: '🛠️ migrado',
+      'backup-available': '🧯 backup',
+      'backup-restored': '♻️ recuperado',
+      corrupted: '⚠️ corrupto'
+    };
+    const integrity = integrityLabelMap[latest.integrityStatus] || 'ℹ️ estado desconocido';
+    loadPreviewDataDiv.innerHTML = `🎮 ${latest.character || 'Sin personaje'} | Nivel ${latest.level || 1} | Tiempo: ${latest.playTime || '00:00'}<br><span style=\"font-size:0.7rem;\">Slot ${latest.slotId} · Guardado: ${dateStr} · ${integrity}</span>`;
   }
 
   function formatSlotDetails(slot) {
@@ -231,7 +246,15 @@
       return '<div class=\"ngs-slot-meta\">Sin datos guardados</div>';
     }
     const date = slot.timestamp ? new Date(slot.timestamp).toLocaleString() : 'desconocida';
-    return `<div class=\"ngs-slot-meta\">${slot.character || 'Sin personaje'} · Nivel ${slot.level || 1} · ${slot.rank || 'GENIN'}<br>Guardado: ${date}</div>`;
+    const integrityLabelMap = {
+      ok: 'Integridad OK',
+      migrated: 'Migrado a versión nueva',
+      'backup-available': 'Backup disponible',
+      'backup-restored': 'Recuperado desde backup',
+      corrupted: 'Guardado corrupto'
+    };
+    const integrityLabel = integrityLabelMap[slot.integrityStatus] || 'Sin verificar';
+    return `<div class=\"ngs-slot-meta\">${slot.character || 'Sin personaje'} · ${slot.clanName || 'Sin clan'} · Nivel ${slot.level || 1} · ${slot.rank || 'GENIN'}<br>💰 ${slot.gold || 0} · ❤️ ${slot.hp || 0} · 🔵 ${slot.mp || 0}<br>🎯 ${slot.currentMission || 'Sin misión activa'} · Sección: ${slot.activeSection || 'heroe'}<br>Guardado: ${date}<br><strong>${integrityLabel}</strong></div>`;
   }
 
   function renderLoadSlots() {
@@ -241,11 +264,13 @@
     slots.forEach((slot) => {
       const slotCard = document.createElement('div');
       slotCard.className = 'ngs-slot-card';
+      const isCorrupted = slot.integrityStatus === 'corrupted';
       slotCard.innerHTML = `
         <div class=\"ngs-slot-title\"><span>Slot ${slot.slotId}</span><span>${slot.hasData ? '✅ Ocupado' : '⬜ Vacío'}</span></div>
         ${formatSlotDetails(slot)}
         <div class=\"ngs-slot-actions\">
-          <button class=\"ngs-btn\" data-load-slot=\"${slot.slotId}\" ${slot.hasData ? '' : 'disabled'}>Cargar</button>
+          <button class=\"ngs-btn\" data-load-slot=\"${slot.slotId}\" ${slot.hasData && !isCorrupted ? '' : 'disabled'}>Cargar</button>
+          <button class=\"ngs-btn\" data-duplicate-slot=\"${slot.slotId}\" ${slot.hasData && !isCorrupted ? '' : 'disabled'}>Duplicar</button>
           <button class=\"ngs-btn ngs-btn-secondary\" data-delete-slot=\"${slot.slotId}\" ${slot.hasData ? '' : 'disabled'}>Eliminar</button>
         </div>
       `;
@@ -277,11 +302,20 @@
       ...data,
       playTime: loaded.meta?.playTime || '00:00:00'
     };
+    gameSavedData.options = {
+      keepAwakeEnabled: Boolean(data?.options?.keepAwakeEnabled)
+    };
     currentClanSelected = data.clan || null;
     currentCharacterSelected = data.character || null;
+    if (keepAwakeToggle && window.NGSWakeLockService) {
+      keepAwakeToggle.checked = gameSavedData.options.keepAwakeEnabled;
+      window.NGSWakeLockService.setEnabled(keepAwakeToggle.checked);
+    }
     playPlaceholderSound('select');
     if (loaded.recoveredFromBackup) {
       alert('Se detectó corrupción en el guardado y se recuperó desde backup.');
+    } else if (loaded.integrityStatus === 'migrated') {
+      alert('La partida fue migrada a la nueva versión de guardado.');
     }
     closeLoadSlotsModal();
     updateLoadPreview();
@@ -295,6 +329,15 @@
     const heroSnapshot = window.HeroSystem && typeof window.HeroSystem.getHeroSnapshot === 'function'
       ? window.HeroSystem.getHeroSnapshot()
       : null;
+    const equipmentSnapshot = window.HeroSystem && typeof window.HeroSystem.getEquipmentSnapshot === 'function'
+      ? window.HeroSystem.getEquipmentSnapshot()
+      : {};
+    const missionSnapshot = window.MissionSystem && typeof window.MissionSystem.getSnapshot === 'function'
+      ? window.MissionSystem.getSnapshot()
+      : {};
+    const keepAwakeEnabled = window.NGSWakeLockService && typeof window.NGSWakeLockService.isEnabled === 'function'
+      ? window.NGSWakeLockService.isEnabled()
+      : false;
 
     return {
       ...(gameSavedData || {}),
@@ -306,9 +349,22 @@
       level: heroSnapshot?.level || currentState.level || gameSavedData?.level || 1,
       rank: heroSnapshot?.rank || currentState.rank || gameSavedData?.rank || 'GENIN',
       exp: heroSnapshot?.exp || currentState.exp || gameSavedData?.exp || 0,
+      expCurrentLevelStart: currentState.expCurrentLevelStart,
+      expMax: currentState.expMax,
       hp: currentState.hp,
+      hpMax: currentState.hpMax,
       mp: currentState.mp,
+      mpMax: currentState.mpMax,
+      atk: currentState.atk,
+      def: currentState.def,
       gold: currentState.gold,
+      activeSection: currentState.activeSection || 'heroe',
+      equipment: equipmentSnapshot,
+      mission: missionSnapshot,
+      options: {
+        keepAwakeEnabled
+      },
+      saveLog: { ...lastSaveInfo },
       timestamp: Date.now(),
       playTime: gameSavedData?.playTime || '00:12:34'
     };
@@ -316,14 +372,44 @@
 
   function saveCurrentProgress(reason = 'manual') {
     if (!gameSavedData) return;
+    if (saveInFlight) {
+      pendingSaveReason = reason;
+      return;
+    }
+    saveInFlight = true;
     const runtimeData = collectRuntimeSaveData();
+    runtimeData.saveLog = {
+      lastSaveReason: reason,
+      lastSaveAt: Date.now(),
+      lastSaveStatus: 'ok',
+      lastSaveError: ''
+    };
     const saveResult = window.NGSSaveSystem.save(activeSlotId, runtimeData);
     if (!saveResult.ok) {
       console.warn(`No se pudo guardar (${reason}):`, saveResult.error);
+      lastSaveInfo = {
+        lastSaveReason: reason,
+        lastSaveAt: Date.now(),
+        lastSaveStatus: 'error',
+        lastSaveError: saveResult.error || 'save-failed'
+      };
+      saveInFlight = false;
       return;
     }
+    lastSaveInfo = {
+      lastSaveReason: reason,
+      lastSaveAt: Date.now(),
+      lastSaveStatus: 'ok',
+      lastSaveError: ''
+    };
     gameSavedData = runtimeData;
     updateLoadPreview();
+    saveInFlight = false;
+    if (pendingSaveReason) {
+      const nextReason = pendingSaveReason;
+      pendingSaveReason = null;
+      saveCurrentProgress(`queued:${nextReason}`);
+    }
   }
 
   function scheduleAutosave(reason = 'autosave') {
@@ -375,8 +461,13 @@
 
   if (window.NGSWakeLockService && keepAwakeToggle) {
     keepAwakeToggle.checked = window.NGSWakeLockService.isEnabled();
+    if (!window.NGSWakeLockService.isSupported()) {
+      keepAwakeToggle.disabled = true;
+      keepAwakeToggle.title = 'Tu navegador no soporta Screen Wake Lock';
+    }
     keepAwakeToggle.addEventListener('change', () => {
       window.NGSWakeLockService.setEnabled(keepAwakeToggle.checked);
+      scheduleAutosave('keep-awake-toggle');
     });
   }
 
@@ -428,6 +519,25 @@
       window.NGSSaveSystem.delete(slotId);
       renderLoadSlots();
       updateLoadPreview();
+      return;
+    }
+
+    const duplicateBtn = event.target.closest('[data-duplicate-slot]');
+    if (duplicateBtn) {
+      const fromSlot = Number(duplicateBtn.getAttribute('data-duplicate-slot'));
+      if (!fromSlot) return;
+      const targetSlot = Number(prompt('¿A qué slot quieres duplicar? (1-3)', String(fromSlot === 1 ? 2 : 1)));
+      if (!targetSlot || targetSlot < 1 || targetSlot > window.NGSSaveSystem.SLOT_COUNT) {
+        alert('Slot de destino inválido.');
+        return;
+      }
+      const duplicated = window.NGSSaveSystem.duplicate(fromSlot, targetSlot);
+      if (!duplicated.ok) {
+        alert(`No se pudo duplicar el slot: ${duplicated.error || 'error desconocido'}`);
+        return;
+      }
+      renderLoadSlots();
+      updateLoadPreview();
     }
   });
 
@@ -465,21 +575,33 @@
   }
 
   window.addEventListener('ngs:game-entered', () => {
-    if (window.NGSWakeLockService && window.NGSWakeLockService.isEnabled()) {
-      window.NGSWakeLockService.request();
+    if (window.NGSWakeLockService) {
+      window.NGSWakeLockService.setGameplayActive(true);
     }
     scheduleAutosave('enter-game');
   });
 
   window.addEventListener('ngs:hero-stats-updated', () => scheduleAutosave('hero-stats'));
   window.addEventListener('ngs:state-updated', () => scheduleAutosave('state-updated'));
+  window.addEventListener('ngs:equipment-updated', () => scheduleAutosave('equipment-updated'));
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
       saveCurrentProgress('visibility-hidden');
+      if (window.NGSWakeLockService) {
+        window.NGSWakeLockService.setGameplayActive(false);
+      }
+    } else if (document.visibilityState === 'visible' && introRoot.style.display === 'none' && window.NGSWakeLockService) {
+      window.NGSWakeLockService.setGameplayActive(true);
     }
   });
-  window.addEventListener('pagehide', () => saveCurrentProgress('pagehide'));
-  window.addEventListener('beforeunload', () => saveCurrentProgress('beforeunload'));
+  window.addEventListener('pagehide', () => {
+    saveCurrentProgress('pagehide');
+    if (window.NGSWakeLockService) window.NGSWakeLockService.setGameplayActive(false);
+  });
+  window.addEventListener('beforeunload', () => {
+    saveCurrentProgress('beforeunload');
+    if (window.NGSWakeLockService) window.NGSWakeLockService.setGameplayActive(false);
+  });
 
   init();
 })();

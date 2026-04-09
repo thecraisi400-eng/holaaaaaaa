@@ -348,7 +348,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     cleanupBattleProcesses();
-    state.activeSection = sec;
+    updateState({ activeSection: sec }, 'section-change');
     renderCenterSection(sec);
   });
 });
@@ -382,6 +382,31 @@ window.addEventListener('ngs:game-entered', (event) => {
         window.MissionSystem.setHeroLevel(state.level);
       }
     }
+  }
+
+  if (window.HeroSystem && typeof window.HeroSystem.applyEquipmentSnapshot === 'function' && saveData?.equipment) {
+    window.HeroSystem.applyEquipmentSnapshot(saveData.equipment);
+  }
+
+  if (window.GameState && typeof window.GameState.setGold === 'function') {
+    window.GameState.setGold(saveData?.gold ?? state.gold);
+  }
+  if (window.GameState && typeof window.GameState.setPlayerVitals === 'function') {
+    window.GameState.setPlayerVitals({
+      hp: saveData?.hp ?? state.hp,
+      mp: saveData?.mp ?? state.mp
+    });
+  }
+
+  if (window.MissionSystem && typeof window.MissionSystem.applySnapshot === 'function' && saveData?.mission) {
+    window.MissionSystem.applySnapshot(saveData.mission);
+  }
+
+  const savedSection = saveData?.activeSection;
+  if (savedSection && sections[savedSection]) {
+    document.querySelectorAll('.nav-btn').forEach((b) => b.classList.toggle('active', b.dataset.section === savedSection));
+    updateState({ activeSection: savedSection }, 'restore-section');
+    renderCenterSection(savedSection);
   }
 });
 

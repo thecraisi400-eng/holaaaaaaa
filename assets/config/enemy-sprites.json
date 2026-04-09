@@ -1,0 +1,34 @@
+{
+  "enemies": [
+    {
+      "id": "default-rank-d",
+      "name": "Bandido base",
+      "spriteSheet": {
+        "path": "",
+        "frameWidth": 80,
+        "frameHeight": 80,
+        "frameCount": 1,
+        "animationFps": 6
+      },
+      "hitbox": {
+        "x": 6,
+        "y": 10,
+        "width": 52,
+        "height": 52
+      },
+      "metadata": {
+        "tier": "D",
+        "family": "bandit",
+        "notes": "Config base. Reemplaza path con tu spritesheet."
+      }
+    }
+  ],
+  "missionEnemyMap": {
+    "D:0": "default-rank-d",
+    "D:1": "default-rank-d",
+    "D:2": "default-rank-d",
+    "D:3": "default-rank-d",
+    "D:4": "default-rank-d",
+    "D:5": "default-rank-d"
+  }
+}

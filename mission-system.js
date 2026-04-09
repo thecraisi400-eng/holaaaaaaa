@@ -175,7 +175,6 @@
       onClick('#ms-openMissionsBtn', () => this.showRanks());
       onClick('#ms-backToMainBtn', () => this.goBack('ms-view-main'));
       onClick('#ms-backToRanksBtn', () => this.goBack('ms-view-ranks'));
-      onClick('#ms-backToMissionsFromBattleBtn', () => this.goBack('ms-view-missions'));
       onClick('#ms-closeVictoryBtn', () => this.closeVictory());
 
       this.root.querySelectorAll('.ms-rank-btn').forEach((btn) => {

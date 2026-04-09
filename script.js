@@ -1,7 +1,7 @@
 /* ─────────────────────────────────────────────
    ESTADO DEL JUEGO - VALORES FIJOS SOLICITADOS
 ───────────────────────────────────────────── */
-const state = {
+const INITIAL_STATE = {
   hp: 100, hpMax: 100,
   mp: 100, mpMax: 100,
   exp: 0, expMax: 1000,
@@ -14,6 +14,7 @@ const state = {
   activeSection: 'heroe',
   characterVisual: { spriteSrc: '', characterId: '', characterName: '' }
 };
+const state = { ...INITIAL_STATE, characterVisual: { ...INITIAL_STATE.characterVisual } };
 
 function emitStateUpdated(reason = 'sync') {
   window.dispatchEvent(new CustomEvent('ngs:state-updated', {
@@ -41,6 +42,20 @@ window.GameState.getGold = () => state.gold;
 window.GameState.setGold = setGold;
 window.GameState.addGold = (gold) => setGold(state.gold + (Number(gold) || 0));
 window.GameState.getState = () => ({ ...state });
+window.GameState.applySavedState = (savedState = {}) => {
+  const safeState = {
+    ...INITIAL_STATE,
+    ...savedState,
+    characterVisual: {
+      ...INITIAL_STATE.characterVisual,
+      ...(savedState.characterVisual || {})
+    }
+  };
+  Object.assign(state, safeState);
+  updateBars();
+  emitStateUpdated('load');
+  renderCenterSection(state.activeSection || 'heroe');
+};
 window.GameState.syncHeroSnapshot = (snapshot) => {
   syncStateFromHero(snapshot);
   updateBars();
@@ -350,6 +365,9 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     cleanupBattleProcesses();
     state.activeSection = sec;
     renderCenterSection(sec);
+    if (window.SaveManager && typeof window.SaveManager.save === 'function') {
+      window.SaveManager.save('section-change');
+    }
   });
 });
 
@@ -393,4 +411,8 @@ window.addEventListener('ngs:hero-stats-updated', (event) => {
   if (window.MissionSystem) {
     window.MissionSystem.setHeroLevel(state.level);
   }
+  window.dispatchEvent(new CustomEvent('ngs:level-changed', { detail: { level: state.level } }));
 });
+
+window.addEventListener('blur', () => window.dispatchEvent(new CustomEvent('ngs:pause')));
+window.addEventListener('focus', () => window.dispatchEvent(new CustomEvent('ngs:resume')));

@@ -1,5 +1,9 @@
 (function () {
   const SAVE_KEY = 'ngs_rpg_save_data';
+  const RESET_CONFIG = {
+    askConfirmation: true,
+    reloadOnReset: true
+  };
 
   const CLANS = [
     {
@@ -195,7 +199,12 @@
           playTime: '00:12:34'
         };
 
-        localStorage.setItem(SAVE_KEY, JSON.stringify(saveObject));
+        if (window.SaveManager && typeof window.SaveManager.save === 'function') {
+          setSessionFromSave(saveObject);
+          window.SaveManager.save('new-character-selected');
+        } else {
+          localStorage.setItem(SAVE_KEY, JSON.stringify(saveObject));
+        }
         gameSavedData = saveObject;
         currentCharacterSelected = character.name;
         playPlaceholderSound('select');
@@ -207,18 +216,28 @@
     });
   }
 
+  function getRawSave() {
+    if (window.SaveManager && typeof window.SaveManager.load === 'function' && window.SaveManager.exists()) {
+      const loaded = window.SaveManager.load();
+      return loaded ? JSON.stringify(loaded) : null;
+    }
+    return localStorage.getItem(SAVE_KEY);
+  }
+
   function updateLoadPreview() {
-    const savedRaw = localStorage.getItem(SAVE_KEY);
+    const savedRaw = getRawSave();
 
     if (savedRaw) {
       try {
         const data = JSON.parse(savedRaw);
-        gameSavedData = data;
-        currentCharacterSelected = data.character || null;
-        currentClanSelected = data.clan || null;
-        const dateStr = data.timestamp ? new Date(data.timestamp).toLocaleString() : 'desconocida';
+        const previewData = data.session?.intro || data;
+        gameSavedData = previewData;
+        currentCharacterSelected = previewData.character || data.session?.selectedCharacter || null;
+        currentClanSelected = previewData.clan || data.session?.selectedClan || null;
+        const timestamp = data.meta?.savedAt || previewData.timestamp;
+        const dateStr = timestamp ? new Date(timestamp).toLocaleString() : 'desconocida';
 
-        loadPreviewDataDiv.innerHTML = `🎮 ${data.character} | Nivel ${data.level || 1} | Tiempo: ${data.playTime || '00:00'} <br> <span style="font-size:0.7rem;">Guardado: ${dateStr}</span>`;
+        loadPreviewDataDiv.innerHTML = `🎮 ${previewData.character || 'Desconocido'} | Nivel ${previewData.level || 1} | Tiempo: ${previewData.playTime || '00:00'} <br> <span style="font-size:0.7rem;">Guardado: ${dateStr}</span>`;
       } catch (e) {
         loadPreviewDataDiv.innerHTML = 'Error al leer guardado';
       }
@@ -228,12 +247,16 @@
   }
 
   function loadGameFromStorage() {
-    const saved = localStorage.getItem(SAVE_KEY);
-    if (saved) {
-      const data = JSON.parse(saved);
+    const loadedData = window.SaveManager && typeof window.SaveManager.load === 'function'
+      ? window.SaveManager.load()
+      : null;
+    const fallbackSaved = localStorage.getItem(SAVE_KEY);
+    const data = loadedData?.session?.intro || (fallbackSaved ? JSON.parse(fallbackSaved) : null);
+
+    if (data) {
       gameSavedData = data;
-      currentClanSelected = data.clan || null;
-      currentCharacterSelected = data.character || null;
+      currentClanSelected = data.clan || loadedData?.session?.selectedClan || null;
+      currentCharacterSelected = data.character || loadedData?.session?.selectedCharacter || null;
       playPlaceholderSound('select');
       alert(`Partida cargada: ${data.character} (Clan ${data.clan}) - Nivel ${data.level || 1}\n¡Bienvenido de vuelta, héroe!`);
       enterGame();
@@ -269,19 +292,55 @@
   }
 
   function clearAllGameSaves() {
-    const keysToDelete = [];
-    for (let i = 0; i < localStorage.length; i += 1) {
-      const key = localStorage.key(i);
-      if (!key) continue;
-      if (key === SAVE_KEY || key.startsWith('ngs_')) {
-        keysToDelete.push(key);
+    if (window.SaveManager && typeof window.SaveManager.clear === 'function') {
+      window.SaveManager.clear();
+    } else {
+      const keysToDelete = [];
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const key = localStorage.key(i);
+        if (!key) continue;
+        if (key === SAVE_KEY || key.startsWith('ngs_')) {
+          keysToDelete.push(key);
+        }
       }
+      keysToDelete.forEach((key) => localStorage.removeItem(key));
     }
-
-    keysToDelete.forEach((key) => localStorage.removeItem(key));
     gameSavedData = null;
     currentClanSelected = null;
     currentCharacterSelected = null;
+  }
+
+  function notifyResetFeedback(message) {
+    const existing = document.getElementById('ngsResetToast');
+    if (existing) existing.remove();
+    const toast = document.createElement('div');
+    toast.id = 'ngsResetToast';
+    toast.className = 'ngs-reset-toast';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.classList.add('visible'), 20);
+    setTimeout(() => {
+      toast.classList.remove('visible');
+      setTimeout(() => toast.remove(), 300);
+    }, 2200);
+  }
+
+  function hardResetGameRuntime() {
+    window.dispatchEvent(new CustomEvent('ngs:pause'));
+
+    if (window.MissionSystem && typeof window.MissionSystem.destroyBattle === 'function') {
+      window.MissionSystem.destroyBattle();
+    }
+    if (window.HeroSystem && typeof window.HeroSystem.unmount === 'function' && window.HeroSystem.isMounted()) {
+      window.HeroSystem.unmount();
+    }
+    if (window.MissionSystem && typeof window.MissionSystem.unmount === 'function' && window.MissionSystem.isMounted()) {
+      window.MissionSystem.unmount();
+    }
+    if (window.game && typeof window.game.destroy === 'function') {
+      window.game.destroy();
+    }
+    window.game = null;
   }
 
   const optionsBtn = document.getElementById('ngsOptionsBtn');
@@ -308,10 +367,23 @@
 
   document.getElementById('ngsNewGameBtn').addEventListener('click', () => {
     playPlaceholderSound('select');
+    if (RESET_CONFIG.askConfirmation) {
+      const accepted = window.confirm('¿Seguro que quieres iniciar una nueva partida? Se eliminará todo el progreso guardado.');
+      if (!accepted) return;
+    }
+
     clearAllGameSaves();
+    hardResetGameRuntime();
+    notifyResetFeedback('✅ Partida reiniciada. Estado limpio aplicado.');
     updateLoadPreview();
     renderClans();
     showScreen('clan');
+
+    if (RESET_CONFIG.reloadOnReset) {
+      setTimeout(() => {
+        window.location.reload();
+      }, 300);
+    }
   });
 
   document.getElementById('ngsLoadGameBtn').addEventListener('click', () => {
@@ -347,9 +419,31 @@
     updateLoadPreview();
   }
 
+  function setSessionFromSave(data = {}) {
+    gameSavedData = data ? { ...data } : null;
+    currentClanSelected = data?.clan || null;
+    currentCharacterSelected = data?.character || null;
+    updateLoadPreview();
+  }
+
+  function getSessionSnapshot() {
+    return {
+      selectedClan: currentClanSelected,
+      selectedCharacter: currentCharacterSelected,
+      intro: gameSavedData ? { ...gameSavedData } : null
+    };
+  }
+
   window.addEventListener('storage', (e) => {
     if (e.key === SAVE_KEY) updateLoadPreview();
   });
+
+  window.NinjaGameStart = {
+    getSessionSnapshot,
+    setSessionFromSave,
+    clearAllGameSaves,
+    hardResetGameRuntime
+  };
 
   init();
 })();

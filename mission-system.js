@@ -92,6 +92,11 @@
     </div>
 
     <div id="combat-panel">
+      <!--
+        Layout update (Rango D):
+        Conservamos player-stats e IDs internos para no romper hooks JS de actualización,
+        pero su visualización se controla por CSS para que no aparezca en el panel.
+      -->
       <div id="player-stats">
         <div class="stat-bar"><span class="stat-label">HP</span><div class="stat-bar-bg"><div id="hp-player-bar" class="stat-bar-fill hp"></div></div><span id="hp-player-text" class="stat-text">100/100</span></div>
         <div class="stat-bar"><span class="stat-label">MP</span><div class="stat-bar-bg"><div id="mp-player-bar" class="stat-bar-fill mp"></div></div><span id="mp-player-text" class="stat-text">50/50</span></div>

@@ -195,8 +195,16 @@
           playTime: '00:12:34'
         };
 
-        localStorage.setItem(SAVE_KEY, JSON.stringify(saveObject));
+        if (window.GameSaveManager && typeof window.GameSaveManager.clearAll === 'function') {
+          window.GameSaveManager.clearAll();
+        }
         gameSavedData = saveObject;
+        if (window.GameSaveManager && typeof window.GameSaveManager.saveNow === 'function') {
+          localStorage.setItem(SAVE_KEY, JSON.stringify(saveObject));
+          window.GameSaveManager.saveNow('new-character-selected');
+        } else {
+          localStorage.setItem(SAVE_KEY, JSON.stringify(saveObject));
+        }
         currentCharacterSelected = character.name;
         playPlaceholderSound('select');
         updateLoadPreview();
@@ -208,11 +216,12 @@
   }
 
   function updateLoadPreview() {
-    const savedRaw = localStorage.getItem(SAVE_KEY);
+    const data = window.GameSaveManager && typeof window.GameSaveManager.getSavePreview === 'function'
+      ? window.GameSaveManager.getSavePreview()
+      : JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
 
-    if (savedRaw) {
+    if (data) {
       try {
-        const data = JSON.parse(savedRaw);
         gameSavedData = data;
         currentCharacterSelected = data.character || null;
         currentClanSelected = data.clan || null;
@@ -228,6 +237,22 @@
   }
 
   function loadGameFromStorage() {
+    const loaded = window.GameSaveManager && typeof window.GameSaveManager.loadGame === 'function'
+      ? window.GameSaveManager.loadGame()
+      : null;
+
+    if (loaded?.saveData) {
+      const data = loaded.saveData;
+      gameSavedData = data;
+      currentClanSelected = data.clan || null;
+      currentCharacterSelected = data.character || null;
+      playPlaceholderSound('select');
+      alert(`Partida cargada: ${data.character} (Clan ${data.clan}) - Nivel ${data.level || 1}
+¡Bienvenido de vuelta, héroe!`);
+      enterGame();
+      return;
+    }
+
     const saved = localStorage.getItem(SAVE_KEY);
     if (saved) {
       const data = JSON.parse(saved);
@@ -235,7 +260,8 @@
       currentClanSelected = data.clan || null;
       currentCharacterSelected = data.character || null;
       playPlaceholderSound('select');
-      alert(`Partida cargada: ${data.character} (Clan ${data.clan}) - Nivel ${data.level || 1}\n¡Bienvenido de vuelta, héroe!`);
+      alert(`Partida cargada: ${data.character} (Clan ${data.clan}) - Nivel ${data.level || 1}
+¡Bienvenido de vuelta, héroe!`);
       enterGame();
     } else {
       alert('No hay partidas guardadas. Comienza Nueva Partida.');
@@ -259,6 +285,10 @@
 
     introRoot.style.display = 'none';
     app.classList.remove('game-shell-hidden');
+    if (window.GameSaveManager && typeof window.GameSaveManager.setGameActive === 'function') {
+      window.GameSaveManager.setGameActive(true);
+    }
+
     window.dispatchEvent(new CustomEvent('ngs:game-entered', {
       detail: {
         selectedClan: currentClanSelected,
@@ -269,16 +299,19 @@
   }
 
   function clearAllGameSaves() {
-    const keysToDelete = [];
-    for (let i = 0; i < localStorage.length; i += 1) {
-      const key = localStorage.key(i);
-      if (!key) continue;
-      if (key === SAVE_KEY || key.startsWith('ngs_')) {
-        keysToDelete.push(key);
+    if (window.GameSaveManager && typeof window.GameSaveManager.clearAll === 'function') {
+      window.GameSaveManager.clearAll();
+    } else {
+      const keysToDelete = [];
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const key = localStorage.key(i);
+        if (!key) continue;
+        if (key === SAVE_KEY || key.startsWith('ngs_')) {
+          keysToDelete.push(key);
+        }
       }
+      keysToDelete.forEach((key) => localStorage.removeItem(key));
     }
-
-    keysToDelete.forEach((key) => localStorage.removeItem(key));
     gameSavedData = null;
     currentClanSelected = null;
     currentCharacterSelected = null;
@@ -348,8 +381,11 @@
   }
 
   window.addEventListener('storage', (e) => {
-    if (e.key === SAVE_KEY) updateLoadPreview();
+    if (e.key === SAVE_KEY || e.key === window.GameSaveManager?.keys?.MAIN_SAVE_KEY) updateLoadPreview();
   });
+
+  window.addEventListener('ngs:save-updated', updateLoadPreview);
+  window.addEventListener('ngs:save-cleared', updateLoadPreview);
 
   init();
 })();

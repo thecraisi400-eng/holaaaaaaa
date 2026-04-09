@@ -365,6 +365,43 @@
     }
   }
 
+
+  function exportPersistentState() {
+    return {
+      slots: SLOTS.map((slot) => ({ id: slot.id, level: slot.level })),
+      selectedSpriteSrc
+    };
+  }
+
+  function importPersistentState(payload) {
+    if (!payload || !Array.isArray(payload.slots)) return;
+    const levelById = payload.slots.reduce((acc, slotState) => {
+      if (!slotState || !slotState.id) return acc;
+      acc[slotState.id] = Math.max(1, Number(slotState.level) || 1);
+      return acc;
+    }, {});
+
+    SLOTS.forEach((slot) => {
+      if (levelById[slot.id] != null) {
+        slot.level = levelById[slot.id];
+      }
+    });
+
+    if (typeof payload.selectedSpriteSrc === 'string') {
+      selectedSpriteSrc = payload.selectedSpriteSrc;
+    }
+
+    refreshCharacterFromHero(window.CharacterStatsSystem?.getActiveHero() || character.baseHero || DEFAULT_HERO);
+    syncHeroToGlobalState();
+
+    if (!mounted || !refs) return;
+    refs.grid.innerHTML = '';
+    SLOTS.forEach((slot) => refs.grid.appendChild(createSlotElement(slot)));
+    renderCharStats();
+    renderHeroIdentity();
+    applySpriteToPanel();
+  }
+
   function grantMissionRewards(reward) {
     const exp = Math.max(0, Number(reward?.exp) || 0);
     const gold = Math.max(0, Number(reward?.gold) || 0);
@@ -383,7 +420,9 @@
     setCharacterSprite,
     getHeroSnapshot,
     grantExperience,
-    grantMissionRewards
+    grantMissionRewards,
+    exportPersistentState,
+    importPersistentState
   };
 
   window.addEventListener('ngs:hero-stats-updated', (event) => {

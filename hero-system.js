@@ -174,6 +174,46 @@
     return character.hero ? { ...character.hero, stats: { ...character.hero.stats } } : null;
   }
 
+  function getPersistentState() {
+    return {
+      selectedSpriteSrc,
+      slots: SLOTS.map((slot) => ({ id: slot.id, level: Math.max(1, Number(slot.level) || 1) })),
+      hero: character.hero ? { ...character.hero, stats: { ...(character.hero.stats || {}) } } : null,
+      baseHero: character.baseHero ? { ...character.baseHero, stats: { ...(character.baseHero.stats || {}) } } : null
+    };
+  }
+
+  function applyPersistentState(savedState = {}) {
+    if (!savedState || typeof savedState !== 'object') return;
+    const slotLevelsById = new Map(
+      Array.isArray(savedState.slots) ? savedState.slots.map((slot) => [slot.id, slot.level]) : []
+    );
+    SLOTS.forEach((slot) => {
+      const nextLevel = Number(slotLevelsById.get(slot.id));
+      if (!Number.isFinite(nextLevel)) return;
+      slot.level = Math.max(1, Math.min(80, Math.round(nextLevel)));
+    });
+
+    if (savedState.selectedSpriteSrc) {
+      selectedSpriteSrc = String(savedState.selectedSpriteSrc);
+    }
+
+    const candidateHero = savedState.baseHero || savedState.hero;
+    if (candidateHero && typeof candidateHero === 'object') {
+      refreshCharacterFromHero(candidateHero);
+      syncHeroToGlobalState();
+    } else {
+      refreshCharacterFromHero(character.baseHero || DEFAULT_HERO);
+    }
+
+    if (!mounted || !refs) return;
+    refs.grid.innerHTML = '';
+    SLOTS.forEach((slot) => refs.grid.appendChild(createSlotElement(slot)));
+    renderCharStats();
+    renderHeroIdentity();
+    applySpriteToPanel();
+  }
+
   let currentSlot = null;
 
   function openModal(slot, rar) {
@@ -267,6 +307,9 @@
       }
 
       refs.btnUpgrade.textContent = '✓ ¡MEJORADO!';
+      window.dispatchEvent(new CustomEvent('ngs:hero-equipment-updated', {
+        detail: { slots: SLOTS.map((slot) => ({ id: slot.id, level: slot.level })) }
+      }));
       setTimeout(() => { refs.btnUpgrade.textContent = '▲ MEJORAR'; }, 1200);
     });
   }
@@ -382,6 +425,8 @@
     isMounted: () => mounted,
     setCharacterSprite,
     getHeroSnapshot,
+    getPersistentState,
+    applyPersistentState,
     grantExperience,
     grantMissionRewards
   };

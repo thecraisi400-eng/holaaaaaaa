@@ -1,5 +1,5 @@
 (function () {
-  const SAVE_KEY = 'ngs_rpg_save_data';
+  const LEGACY_SAVE_KEY = 'ngs_rpg_save_data';
 
   const CLANS = [
     {
@@ -138,6 +138,27 @@
     });
   }
 
+  function getSelectionData() {
+    return gameSavedData ? { ...gameSavedData } : null;
+  }
+
+  function applySelectionData(data = {}) {
+    if (!data || typeof data !== 'object') return;
+    gameSavedData = { ...data };
+    currentClanSelected = data.clan || null;
+    currentCharacterSelected = data.character || null;
+  }
+
+  function persistSelection(reason = 'selection') {
+    if (window.SaveManager && typeof window.SaveManager.save === 'function') {
+      window.SaveManager.save({ reason, scene: 'menu' });
+      return;
+    }
+    if (gameSavedData) {
+      localStorage.setItem(LEGACY_SAVE_KEY, JSON.stringify(gameSavedData));
+    }
+  }
+
   function renderCharactersByClan(clanId) {
     const characters = CHARACTERS_BY_CLAN[clanId];
     if (!characters) return;
@@ -182,7 +203,7 @@
       const selectCharBtn = card.querySelector('.ngs-select-char-btn');
       selectCharBtn.addEventListener('click', () => {
         const selectedClan = CLANS.find((c) => c.id === clanId);
-        const saveObject = {
+        gameSavedData = {
           characterId: character.id,
           character: character.name,
           characterSprite: character.img || '',
@@ -195,9 +216,8 @@
           playTime: '00:12:34'
         };
 
-        localStorage.setItem(SAVE_KEY, JSON.stringify(saveObject));
-        gameSavedData = saveObject;
         currentCharacterSelected = character.name;
+        persistSelection('new-game-character-selected');
         playPlaceholderSound('select');
         updateLoadPreview();
         enterGame();
@@ -207,38 +227,70 @@
     });
   }
 
-  function updateLoadPreview() {
-    const savedRaw = localStorage.getItem(SAVE_KEY);
-
-    if (savedRaw) {
-      try {
-        const data = JSON.parse(savedRaw);
-        gameSavedData = data;
-        currentCharacterSelected = data.character || null;
-        currentClanSelected = data.clan || null;
-        const dateStr = data.timestamp ? new Date(data.timestamp).toLocaleString() : 'desconocida';
-
-        loadPreviewDataDiv.innerHTML = `🎮 ${data.character} | Nivel ${data.level || 1} | Tiempo: ${data.playTime || '00:00'} <br> <span style="font-size:0.7rem;">Guardado: ${dateStr}</span>`;
-      } catch (e) {
-        loadPreviewDataDiv.innerHTML = 'Error al leer guardado';
+  function readSaveForPreview() {
+    if (window.SaveManager && typeof window.SaveManager.peekRawData === 'function') {
+      const payload = window.SaveManager.peekRawData();
+      if (payload?.systems?.startMenu) {
+        return { payload, data: payload.systems.startMenu };
       }
-    } else {
-      loadPreviewDataDiv.innerHTML = 'No hay partida guardada. Comienza una nueva aventura.';
+    }
+
+    const legacyRaw = localStorage.getItem(LEGACY_SAVE_KEY);
+    if (!legacyRaw) return null;
+    try {
+      const legacy = JSON.parse(legacyRaw);
+      return { payload: { savedAt: legacy.timestamp }, data: legacy };
+    } catch (error) {
+      return null;
     }
   }
 
+  function updateLoadPreview() {
+    const savePack = readSaveForPreview();
+
+    if (!savePack) {
+      loadPreviewDataDiv.innerHTML = 'No hay partida guardada. Comienza una nueva aventura.';
+      return;
+    }
+
+    const data = savePack.data;
+    gameSavedData = { ...data };
+    currentCharacterSelected = data.character || null;
+    currentClanSelected = data.clan || null;
+    const dateStr = savePack.payload?.savedAt
+      ? new Date(savePack.payload.savedAt).toLocaleString()
+      : (data.timestamp ? new Date(data.timestamp).toLocaleString() : 'desconocida');
+
+    loadPreviewDataDiv.innerHTML = `🎮 ${data.character} | Nivel ${data.level || 1} | Tiempo: ${data.playTime || '00:00'} <br> <span style="font-size:0.7rem;">Guardado: ${dateStr}</span>`;
+  }
+
   function loadGameFromStorage() {
-    const saved = localStorage.getItem(SAVE_KEY);
-    if (saved) {
-      const data = JSON.parse(saved);
-      gameSavedData = data;
-      currentClanSelected = data.clan || null;
-      currentCharacterSelected = data.character || null;
+    if (window.SaveManager && typeof window.SaveManager.exists === 'function' && window.SaveManager.exists()) {
+      const loadedPayload = window.SaveManager.load();
+      const data = loadedPayload?.systems?.startMenu;
+      if (data) {
+        applySelectionData(data);
+        playPlaceholderSound('select');
+        alert(`Partida cargada: ${data.character} (Clan ${data.clan}) - Nivel ${data.level || 1}\n¡Bienvenido de vuelta, héroe!`);
+        enterGame();
+        return;
+      }
+    }
+
+    const legacyRaw = localStorage.getItem(LEGACY_SAVE_KEY);
+    if (!legacyRaw) {
+      alert('No hay partidas guardadas. Comienza Nueva Partida.');
+      return;
+    }
+
+    try {
+      const data = JSON.parse(legacyRaw);
+      applySelectionData(data);
       playPlaceholderSound('select');
       alert(`Partida cargada: ${data.character} (Clan ${data.clan}) - Nivel ${data.level || 1}\n¡Bienvenido de vuelta, héroe!`);
       enterGame();
-    } else {
-      alert('No hay partidas guardadas. Comienza Nueva Partida.');
+    } catch (error) {
+      alert('No se pudo cargar la partida guardada.');
     }
   }
 
@@ -269,16 +321,15 @@
   }
 
   function clearAllGameSaves() {
-    const keysToDelete = [];
-    for (let i = 0; i < localStorage.length; i += 1) {
-      const key = localStorage.key(i);
-      if (!key) continue;
-      if (key === SAVE_KEY || key.startsWith('ngs_')) {
-        keysToDelete.push(key);
-      }
+    if (window.SaveManager && typeof window.SaveManager.clear === 'function') {
+      window.SaveManager.clear('namespace');
+    } else {
+      localStorage.removeItem(LEGACY_SAVE_KEY);
+      Object.keys(localStorage)
+        .filter((key) => key.startsWith('ngs_'))
+        .forEach((key) => localStorage.removeItem(key));
     }
 
-    keysToDelete.forEach((key) => localStorage.removeItem(key));
     gameSavedData = null;
     currentClanSelected = null;
     currentCharacterSelected = null;
@@ -347,8 +398,16 @@
     updateLoadPreview();
   }
 
+  window.NinjaGameStart = {
+    getSelectionData,
+    applySelectionData
+  };
+
   window.addEventListener('storage', (e) => {
-    if (e.key === SAVE_KEY) updateLoadPreview();
+    const managerKey = window.SaveManager && typeof window.SaveManager.getFullKey === 'function'
+      ? window.SaveManager.getFullKey()
+      : null;
+    if (e.key === managerKey || e.key === LEGACY_SAVE_KEY) updateLoadPreview();
   });
 
   init();

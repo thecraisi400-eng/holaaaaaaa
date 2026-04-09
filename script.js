@@ -41,6 +41,44 @@ window.GameState.getGold = () => state.gold;
 window.GameState.setGold = setGold;
 window.GameState.addGold = (gold) => setGold(state.gold + (Number(gold) || 0));
 window.GameState.getState = () => ({ ...state });
+window.GameState.exportForSave = () => ({
+  ...state,
+  characterVisual: { ...(state.characterVisual || {}) },
+  heroSnapshot: state.heroSnapshot
+    ? { ...state.heroSnapshot, stats: { ...(state.heroSnapshot.stats || {}) } }
+    : null
+});
+window.GameState.applyFromSave = (savedState = {}) => {
+  if (!savedState || typeof savedState !== 'object') return;
+  const nextState = {
+    hp: Number.isFinite(savedState.hp) ? Math.max(0, savedState.hp) : state.hp,
+    hpMax: Number.isFinite(savedState.hpMax) ? Math.max(1, savedState.hpMax) : state.hpMax,
+    mp: Number.isFinite(savedState.mp) ? Math.max(0, savedState.mp) : state.mp,
+    mpMax: Number.isFinite(savedState.mpMax) ? Math.max(1, savedState.mpMax) : state.mpMax,
+    exp: Number.isFinite(savedState.exp) ? Math.max(0, savedState.exp) : state.exp,
+    expMax: Number.isFinite(savedState.expMax) ? Math.max(1, savedState.expMax) : state.expMax,
+    gold: Number.isFinite(savedState.gold) ? Math.max(0, savedState.gold) : state.gold,
+    atk: Number.isFinite(savedState.atk) ? Math.max(0, savedState.atk) : state.atk,
+    def: Number.isFinite(savedState.def) ? Math.max(0, savedState.def) : state.def,
+    level: Number.isFinite(savedState.level) ? Math.max(1, savedState.level) : state.level,
+    rank: savedState.rank || state.rank,
+    heroSnapshot: savedState.heroSnapshot || null,
+    expCurrentLevelStart: Number.isFinite(savedState.expCurrentLevelStart)
+      ? Math.max(0, savedState.expCurrentLevelStart)
+      : state.expCurrentLevelStart,
+    activeSection: savedState.activeSection || state.activeSection,
+    characterVisual: {
+      spriteSrc: savedState.characterVisual?.spriteSrc || '',
+      characterId: savedState.characterVisual?.characterId || '',
+      characterName: savedState.characterVisual?.characterName || ''
+    }
+  };
+  updateState(nextState, 'load-save');
+};
+window.GameState.setActiveSection = (sectionKey) => {
+  if (!sectionKey) return;
+  updateState({ activeSection: sectionKey }, 'active-section');
+};
 window.GameState.syncHeroSnapshot = (snapshot) => {
   syncStateFromHero(snapshot);
   updateBars();
@@ -348,7 +386,11 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     cleanupBattleProcesses();
-    state.activeSection = sec;
+    if (window.GameState && typeof window.GameState.setActiveSection === 'function') {
+      window.GameState.setActiveSection(sec);
+    } else {
+      state.activeSection = sec;
+    }
     renderCenterSection(sec);
   });
 });

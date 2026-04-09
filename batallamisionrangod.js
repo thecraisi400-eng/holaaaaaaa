@@ -88,7 +88,12 @@ class BattleRunner {
     this.managedTimeouts = new Set();
     this.cacheDOM();
     this.playerAnimationClass = 'idle';
-    this.playerVisual = { src: '', status: 'placeholder' };
+    this.playerVisual = {
+      src: '',
+      status: 'placeholder',
+      requestId: 0,
+      lastStableSrc: ''
+    };
     this.enemyVisual = { timer: null };
 
     this.parallaxLayers = [];
@@ -185,9 +190,23 @@ class BattleRunner {
     return gameState?.characterVisual || null;
   }
 
-  syncPlayerVisualFromGlobal(force = false) {
+  resolvePlayerSpriteSrc() {
     const visual = this.getPlayerVisualFromState();
-    const nextSrc = visual?.spriteSrc || '';
+    if (visual?.spriteSrc) return visual.spriteSrc;
+
+    // Fallback resiliente por si la batalla inicia antes de sincronizar GameState.
+    try {
+      const rawSave = localStorage.getItem('ngs_rpg_save_data');
+      if (!rawSave) return '';
+      const parsed = JSON.parse(rawSave);
+      return parsed?.characterSprite || '';
+    } catch (error) {
+      return '';
+    }
+  }
+
+  syncPlayerVisualFromGlobal(force = false) {
+    const nextSrc = this.resolvePlayerSpriteSrc();
     if (!force && nextSrc === this.playerVisual.src) return;
     this.applyPlayerVisual(nextSrc);
   }
@@ -213,10 +232,18 @@ class BattleRunner {
 
   async applyPlayerVisual(spriteSrc = '') {
     this.ensurePlayerVisualElements();
+    const requestId = ++this.playerVisual.requestId;
     this.playerVisual.src = spriteSrc;
     this.dom.player.classList.add('player-sprite-mode');
 
+    // Mantener último sprite estable evita parpadeo en transiciones de estado.
     if (!spriteSrc) {
+      if (this.playerVisual.lastStableSrc) {
+        this.playerVisual.status = 'ready';
+        this.dom.player.classList.remove('player-sprite-fallback');
+        this.dom.playerSpriteSheet.style.backgroundImage = `url("${this.playerVisual.lastStableSrc}")`;
+        return;
+      }
       this.playerVisual.status = 'placeholder';
       this.dom.player.classList.add('player-sprite-fallback');
       this.dom.playerSpriteSheet.style.backgroundImage = '';
@@ -225,12 +252,19 @@ class BattleRunner {
 
     try {
       await loadAssetImage(spriteSrc);
-      if (this.playerVisual.src !== spriteSrc) return;
+      if (this.playerVisual.requestId !== requestId) return;
       this.playerVisual.status = 'ready';
+      this.playerVisual.lastStableSrc = spriteSrc;
       this.dom.player.classList.remove('player-sprite-fallback');
       this.dom.playerSpriteSheet.style.backgroundImage = `url("${spriteSrc}")`;
     } catch (error) {
+      if (this.playerVisual.requestId !== requestId) return;
       this.playerVisual.status = 'error';
+      if (this.playerVisual.lastStableSrc) {
+        this.dom.player.classList.remove('player-sprite-fallback');
+        this.dom.playerSpriteSheet.style.backgroundImage = `url("${this.playerVisual.lastStableSrc}")`;
+        return;
+      }
       this.dom.player.classList.add('player-sprite-fallback');
       this.dom.playerSpriteSheet.style.backgroundImage = '';
     }

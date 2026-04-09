@@ -55,6 +55,31 @@
     return snapshot;
   }
 
+  function getLocalStorageSnapshot() {
+    const snapshot = {};
+    storageAdapter.keys().forEach((key) => {
+      if (!key || key === SAVE_KEY) return;
+      const rawValue = storageAdapter.getItem(key);
+      snapshot[key] = safeJsonParse(rawValue) ?? rawValue;
+    });
+    return snapshot;
+  }
+
+  function applyStorageSnapshot(snapshot = {}, { namespaceOnly = false } = {}) {
+    if (!snapshot || typeof snapshot !== 'object') return;
+
+    Object.entries(snapshot).forEach(([key, value]) => {
+      if (!key || key === SAVE_KEY) return;
+      if (namespaceOnly && !key.startsWith(SAVE_NAMESPACE)) return;
+      try {
+        const serializedValue = typeof value === 'string' ? value : JSON.stringify(value);
+        storageAdapter.setItem(key, serializedValue);
+      } catch (error) {
+        console.warn(`[SaveManager] No se pudo restaurar la clave "${key}"`, error);
+      }
+    });
+  }
+
   function getCoreState() {
     const gameState = window.GameState && typeof window.GameState.getState === 'function'
       ? window.GameState.getState()
@@ -79,7 +104,8 @@
         visibility: document.visibilityState,
         activeElementId: document.activeElement?.id || null
       },
-      namespacedStorage: getNamespacedStorageSnapshot()
+      namespacedStorage: getNamespacedStorageSnapshot(),
+      localStorage: getLocalStorageSnapshot()
     };
   }
 
@@ -212,6 +238,8 @@
       window.MissionSystem.applySerializableState(data.missionState || null);
     }
 
+    applyStorageSnapshot(data.localStorage, { namespaceOnly: false });
+    applyStorageSnapshot(data.namespacedStorage, { namespaceOnly: true });
     runProvidersApply(data.modules);
     return true;
   }

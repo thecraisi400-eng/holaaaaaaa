@@ -22,6 +22,22 @@ const EnemyTypes = [
   { name: 'Demonio Bosque', hp: 120, mp: 50, atk: 4, def: 3, color: '#2a4a2a' }
 ];
 
+const BattleAssetCache = window.__ngsBattleAssetCache || new Map();
+window.__ngsBattleAssetCache = BattleAssetCache;
+
+function loadAssetImage(src) {
+  if (!src) return Promise.reject(new Error('Ruta de asset vacía'));
+  if (BattleAssetCache.has(src)) return BattleAssetCache.get(src);
+  const promise = new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(src);
+    img.onerror = () => reject(new Error(`No se pudo cargar asset: ${src}`));
+    img.src = src;
+  });
+  BattleAssetCache.set(src, promise);
+  return promise;
+}
+
 class BattleRunner {
   constructor(root, options = {}) {
     this.root = root;
@@ -71,6 +87,9 @@ class BattleRunner {
     this.rafId = null;
     this.managedTimeouts = new Set();
     this.cacheDOM();
+    this.playerAnimationClass = 'idle';
+    this.playerVisual = { src: '', status: 'placeholder' };
+    this.enemyVisual = { timer: null };
 
     this.parallaxLayers = [];
     this.initParallax();
@@ -80,6 +99,8 @@ class BattleRunner {
     this.handleStateUpdated = this.handleStateUpdated.bind(this);
     window.addEventListener('ngs:state-updated', this.handleStateUpdated);
     this.syncPlayerFromGlobal();
+    this.syncPlayerVisualFromGlobal(true);
+    this.configureEnemyVisual(this.options.enemyVisualConfig || null);
     this.startRunner();
   }
 
@@ -133,6 +154,7 @@ class BattleRunner {
 
   handleStateUpdated() {
     this.syncPlayerFromGlobal();
+    this.syncPlayerVisualFromGlobal();
     this.updatePlayerHP();
     this.updatePlayerMP();
   }
@@ -146,6 +168,150 @@ class BattleRunner {
     this.player.mp = Math.max(0, Math.min(this.player.maxMp, gameState.mp));
     this.player.atk = gameState.atk;
     this.player.defense = gameState.def;
+  }
+
+  setPlayerAnimation(nextClass) {
+    const allowed = ['idle', 'run', 'attack', 'victory'];
+    if (!allowed.includes(nextClass)) return;
+    this.dom.player.classList.remove(...allowed);
+    this.dom.player.classList.add(nextClass);
+    this.playerAnimationClass = nextClass;
+  }
+
+  getPlayerVisualFromState() {
+    const gameState = window.GameState && typeof window.GameState.getState === 'function'
+      ? window.GameState.getState()
+      : null;
+    return gameState?.characterVisual || null;
+  }
+
+  syncPlayerVisualFromGlobal(force = false) {
+    const visual = this.getPlayerVisualFromState();
+    const nextSrc = visual?.spriteSrc || '';
+    if (!force && nextSrc === this.playerVisual.src) return;
+    this.applyPlayerVisual(nextSrc);
+  }
+
+  ensurePlayerVisualElements() {
+    if (this.dom.playerSpriteSheet && this.dom.playerPlaceholder) return;
+    let spriteEl = this.dom.player.querySelector('.player-sprite-sheet');
+    if (!spriteEl) {
+      spriteEl = document.createElement('div');
+      spriteEl.className = 'player-sprite-sheet';
+      this.dom.player.appendChild(spriteEl);
+    }
+    let placeholderEl = this.dom.player.querySelector('.player-sprite-placeholder');
+    if (!placeholderEl) {
+      placeholderEl = document.createElement('div');
+      placeholderEl.className = 'player-sprite-placeholder';
+      placeholderEl.textContent = '🥷';
+      this.dom.player.appendChild(placeholderEl);
+    }
+    this.dom.playerSpriteSheet = spriteEl;
+    this.dom.playerPlaceholder = placeholderEl;
+  }
+
+  async applyPlayerVisual(spriteSrc = '') {
+    this.ensurePlayerVisualElements();
+    this.playerVisual.src = spriteSrc;
+    this.dom.player.classList.add('player-sprite-mode');
+
+    if (!spriteSrc) {
+      this.playerVisual.status = 'placeholder';
+      this.dom.player.classList.add('player-sprite-fallback');
+      this.dom.playerSpriteSheet.style.backgroundImage = '';
+      return;
+    }
+
+    try {
+      await loadAssetImage(spriteSrc);
+      if (this.playerVisual.src !== spriteSrc) return;
+      this.playerVisual.status = 'ready';
+      this.dom.player.classList.remove('player-sprite-fallback');
+      this.dom.playerSpriteSheet.style.backgroundImage = `url("${spriteSrc}")`;
+    } catch (error) {
+      this.playerVisual.status = 'error';
+      this.dom.player.classList.add('player-sprite-fallback');
+      this.dom.playerSpriteSheet.style.backgroundImage = '';
+    }
+  }
+
+  ensureEnemyVisualElements() {
+    if (this.dom.enemySpriteSheet && this.dom.enemyPlaceholder) return;
+    let spriteEl = this.dom.enemy.querySelector('.enemy-sprite-sheet');
+    if (!spriteEl) {
+      spriteEl = document.createElement('div');
+      spriteEl.className = 'enemy-sprite-sheet';
+      this.dom.enemy.appendChild(spriteEl);
+    }
+    let placeholderEl = this.dom.enemy.querySelector('.enemy-sprite-placeholder');
+    if (!placeholderEl) {
+      placeholderEl = document.createElement('div');
+      placeholderEl.className = 'enemy-sprite-placeholder';
+      placeholderEl.textContent = '👺';
+      this.dom.enemy.appendChild(placeholderEl);
+    }
+    this.dom.enemySpriteSheet = spriteEl;
+    this.dom.enemyPlaceholder = placeholderEl;
+  }
+
+  clearEnemyAnimationTimer() {
+    if (this.enemyVisual.timer) {
+      clearInterval(this.enemyVisual.timer);
+      this.enemyVisual.timer = null;
+    }
+  }
+
+  async configureEnemyVisual(enemyVisualConfig) {
+    this.clearEnemyAnimationTimer();
+    this.ensureEnemyVisualElements();
+    this.enemyVisual.config = enemyVisualConfig || null;
+
+    if (!enemyVisualConfig) {
+      this.dom.enemy.classList.add('enemy-sprite-fallback');
+      this.dom.enemy.classList.remove('enemy-sprite-mode');
+      return;
+    }
+
+    const frameWidth = enemyVisualConfig?.spriteSheet?.frameWidth || 64;
+    const frameHeight = enemyVisualConfig?.spriteSheet?.frameHeight || 64;
+    const frameCount = Math.max(1, enemyVisualConfig?.spriteSheet?.frameCount || 1);
+    const animationFps = Math.max(1, enemyVisualConfig?.spriteSheet?.animationFps || 6);
+    const spritePath = enemyVisualConfig?.spriteSheet?.path || enemyVisualConfig?.spritePath || '';
+    this.dom.enemy.style.setProperty('--enemy-hitbox-x', `${enemyVisualConfig?.hitbox?.x || 0}px`);
+    this.dom.enemy.style.setProperty('--enemy-hitbox-y', `${enemyVisualConfig?.hitbox?.y || 0}px`);
+    this.dom.enemy.style.setProperty('--enemy-hitbox-width', `${enemyVisualConfig?.hitbox?.width || frameWidth}px`);
+    this.dom.enemy.style.setProperty('--enemy-hitbox-height', `${enemyVisualConfig?.hitbox?.height || frameHeight}px`);
+
+    this.dom.enemySpriteSheet.style.width = `${frameWidth}px`;
+    this.dom.enemySpriteSheet.style.height = `${frameHeight}px`;
+    this.dom.enemySpriteSheet.style.backgroundSize = `${frameWidth * frameCount}px ${frameHeight}px`;
+
+    if (!spritePath) {
+      this.dom.enemy.classList.add('enemy-sprite-fallback');
+      this.dom.enemy.classList.remove('enemy-sprite-mode');
+      return;
+    }
+
+    try {
+      await loadAssetImage(spritePath);
+      this.dom.enemy.classList.add('enemy-sprite-mode');
+      this.dom.enemy.classList.remove('enemy-sprite-fallback');
+      this.dom.enemySpriteSheet.style.backgroundImage = `url("${spritePath}")`;
+
+      let frame = 0;
+      this.dom.enemySpriteSheet.style.backgroundPosition = '0px 0px';
+      if (frameCount > 1) {
+        this.enemyVisual.timer = setInterval(() => {
+          frame = (frame + 1) % frameCount;
+          this.dom.enemySpriteSheet.style.backgroundPosition = `-${frame * frameWidth}px 0px`;
+        }, Math.round(1000 / animationFps));
+      }
+    } catch (error) {
+      this.dom.enemy.classList.add('enemy-sprite-fallback');
+      this.dom.enemy.classList.remove('enemy-sprite-mode');
+      this.dom.enemySpriteSheet.style.backgroundImage = '';
+    }
   }
 
   pushPlayerVitalsToGlobal() {
@@ -174,7 +340,7 @@ class BattleRunner {
       layer.el.classList.add('parallax-scrolling', layer.speedClass);
     });
 
-    this.dom.player.className = 'run';
+    this.setPlayerAnimation('run');
     this.gameLoop();
   }
 
@@ -189,7 +355,7 @@ class BattleRunner {
       layer.el.classList.remove('parallax-scrolling', layer.speedClass);
     });
 
-    this.dom.player.className = 'idle';
+    this.setPlayerAnimation('idle');
   }
 
   gameLoop() {
@@ -281,7 +447,7 @@ class BattleRunner {
     if (this.state !== GameStates.COMBAT || this.combatLocked || !this.isPlayerTurn) return;
     this.combatLocked = true;
 
-    this.dom.player.className = 'attack';
+    this.setPlayerAnimation('attack');
 
     this.setManagedTimeout(() => {
       const baseDmg = this.player.atk;
@@ -306,7 +472,7 @@ class BattleRunner {
       }
 
       this.setManagedTimeout(() => {
-        this.dom.player.className = 'idle';
+        this.setPlayerAnimation('idle');
         this.combatLocked = false;
       }, 400);
     }, 350);
@@ -339,7 +505,7 @@ class BattleRunner {
     this.updatePlayerMP();
     this.pushPlayerVitalsToGlobal();
 
-    this.dom.player.className = 'attack';
+    this.setPlayerAnimation('attack');
 
     this.setManagedTimeout(() => {
       const damage = skill.dmg + Math.floor(Math.random() * 4) - 1;
@@ -361,7 +527,7 @@ class BattleRunner {
       }
 
       this.setManagedTimeout(() => {
-        this.dom.player.className = 'idle';
+        this.setPlayerAnimation('idle');
         this.combatLocked = false;
       }, 400);
     }, 350);
@@ -464,7 +630,7 @@ class BattleRunner {
     this.closeSubSkills();
 
     this.dom.enemy.classList.add('defeated');
-    this.dom.player.className = 'victory';
+    this.setPlayerAnimation('victory');
 
     this.showNotification('¡VICTORIA!', 1500);
     this.showCombatLog(`¡${this.enemy.name} derrotado!`);
@@ -479,7 +645,7 @@ class BattleRunner {
       this.dom.enemy.classList.remove('visible', 'defeated');
       this.dom.enemy.classList.add('visible');
       this.dom.enemy.classList.remove('visible');
-      this.dom.player.className = 'idle';
+      this.setPlayerAnimation('idle');
 
       this.state = GameStates.MOVING;
       this.startRunner();
@@ -639,7 +805,7 @@ class BattleRunner {
     this.updateEnemyHP();
     this.updateEnemyMP();
 
-    this.dom.player.className = 'idle';
+    this.setPlayerAnimation('idle');
     this.dom.enemy.classList.remove('visible', 'defeated');
     this.dom.missionComplete.classList.remove('visible');
     const iconSpan = this.dom.autoBtn.querySelector('.skill-icon');
@@ -667,6 +833,7 @@ class BattleRunner {
     this.state = GameStates.MISSION_DONE;
     this.combatLocked = false;
     this.isPlayerTurn = false;
+    this.clearEnemyAnimationTimer();
   }
 }
 

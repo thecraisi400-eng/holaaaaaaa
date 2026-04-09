@@ -54,6 +54,11 @@
     <div class="parallax-grass" id="layer-grass"></div>
     <div id="encounter-flash"></div>
     <div id="notification"></div>
+    <div id="enemy-preload-status" class="enemy-preload-status">
+      <div class="enemy-preload-title">Precargando enemigo...</div>
+      <div class="enemy-preload-bar-bg"><div id="enemy-preload-bar" class="enemy-preload-bar"></div></div>
+      <div id="enemy-preload-text" class="enemy-preload-text">0%</div>
+    </div>
 
     <div id="player" class="idle">
       <div class="ninja-head"></div><div class="ninja-body"></div><div class="ninja-scarf"></div>
@@ -250,7 +255,7 @@
       this.switchView('ms-view-ranks', 'ms-view-missions', 'forward');
     },
 
-    startFight(index, rank, btnEl) {
+    async startFight(index, rank, btnEl) {
       const mission = missionsData[rank]?.[index];
       if (!mission) return;
       const card = btnEl.closest('.ms-mission-card');
@@ -260,7 +265,7 @@
       setTimeout(() => card.classList.remove('ms-combat-flash'), 600);
 
       if (rank === 'D' && typeof window.initBattleRangoD === 'function') {
-        this.showBattleRunner(mission);
+        await this.showBattleRunner(mission, { rank, index });
         return;
       }
 
@@ -275,7 +280,7 @@
       if (popup) popup.classList.add('show');
     },
 
-    showBattleRunner(mission) {
+    async showBattleRunner(mission, missionContext = {}) {
       const host = this.root.querySelector('#ms-rangod-battle-host');
       if (!host) return;
 
@@ -283,8 +288,35 @@
       host.innerHTML = battleMarkup;
       const battleRoot = host.querySelector('.ms-rangod-battle-root');
       if (!battleRoot) return;
+      const preloadStatus = battleRoot.querySelector('#enemy-preload-status');
+      const preloadBar = battleRoot.querySelector('#enemy-preload-bar');
+      const preloadText = battleRoot.querySelector('#enemy-preload-text');
+
+      let enemyVisualConfig = null;
+      if (window.EnemySpriteRegistry && typeof window.EnemySpriteRegistry.preloadForMission === 'function') {
+        try {
+          await window.EnemySpriteRegistry.loadConfig('assets/config/enemy-sprites.json');
+          const preload = await window.EnemySpriteRegistry.preloadForMission({
+            rank: missionContext.rank,
+            index: missionContext.index,
+            name: mission.name
+          }, (progress) => {
+            const pct = progress.total > 0 ? Math.round((progress.loaded / progress.total) * 100) : 100;
+            if (preloadBar) preloadBar.style.width = `${pct}%`;
+            if (preloadText) preloadText.textContent = `${pct}%`;
+          });
+          enemyVisualConfig = preload.enemy;
+        } catch (error) {
+          if (preloadText) preloadText.textContent = 'Error de precarga (fallback activo)';
+        }
+      }
 
       this.battleGame = window.initBattleRangoD(battleRoot, {
+        missionContext: {
+          rank: missionContext.rank,
+          index: missionContext.index,
+          name: mission.name
+        },
         missionConfig: {
           hp: mission.hp,
           atk: mission.atk,
@@ -292,8 +324,10 @@
           mp: Math.max(10, Math.floor(mission.hp * 0.2)),
           name: mission.name
         },
+        enemyVisualConfig,
         onEnemyDefeated: () => this.grantMissionRewards(mission)
       });
+      if (preloadStatus) preloadStatus.classList.add('hidden');
 
       this.switchView('ms-view-missions', 'ms-view-battle', 'forward');
     },

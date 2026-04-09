@@ -12,6 +12,7 @@ const state = {
   heroSnapshot: null,
   expCurrentLevelStart: 0,
   activeSection: 'heroe',
+  characterVisual: { spriteSrc: '', characterId: '', characterName: '' }
 };
 
 function emitStateUpdated(reason = 'sync') {
@@ -43,6 +44,14 @@ window.GameState.getState = () => ({ ...state });
 window.GameState.syncHeroSnapshot = (snapshot) => {
   syncStateFromHero(snapshot);
   updateBars();
+};
+window.GameState.setCharacterVisual = (payload = {}) => {
+  const visual = {
+    spriteSrc: payload.spriteSrc || '',
+    characterId: payload.characterId || '',
+    characterName: payload.characterName || ''
+  };
+  updateState({ characterVisual: visual }, 'character-visual');
 };
 window.GameState.setPlayerVitals = ({ hp, mp }) => {
   const nextHp = hp == null ? state.hp : Math.max(0, Math.min(state.hpMax, Number(hp) || 0));
@@ -83,6 +92,13 @@ function syncCharacterIdentity(saveData) {
 
 function syncCharacterSprite(saveData) {
   const spriteSrc = saveData?.characterSprite;
+  if (window.GameState && typeof window.GameState.setCharacterVisual === 'function') {
+    window.GameState.setCharacterVisual({
+      spriteSrc: spriteSrc || '',
+      characterId: saveData?.characterId || '',
+      characterName: saveData?.character || ''
+    });
+  }
 
   const topSpriteImg = document.getElementById('topCharacterSprite');
   const topSpritePlaceholder = document.getElementById('topCharacterSpritePlaceholder');

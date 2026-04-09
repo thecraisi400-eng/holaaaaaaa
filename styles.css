@@ -1230,6 +1230,62 @@ html, body {
   text-align: center;
 }
 
+.ngs-load-card {
+  width: min(92vw, 520px);
+}
+
+.ngs-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: flex-start;
+  font-size: 0.85rem;
+  margin-top: 0.8rem;
+  color: var(--ngs-text-light);
+}
+
+.ngs-toggle-row input {
+  accent-color: var(--ngs-accent-cyan);
+}
+
+.ngs-slots-container {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 1rem;
+  text-align: left;
+}
+
+.ngs-slot-card {
+  border: 1px solid rgba(45,212,191,0.25);
+  background: rgba(22, 32, 53, 0.8);
+  border-radius: 1rem;
+  padding: 0.8rem;
+}
+
+.ngs-slot-title {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+}
+
+.ngs-slot-meta {
+  font-size: 0.75rem;
+  color: var(--ngs-text-dim);
+}
+
+.ngs-slot-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.55rem;
+}
+
+.ngs-slot-actions .ngs-btn {
+  border-radius: 0.8rem;
+  font-size: 0.78rem;
+  padding: 0.42rem 0.65rem;
+}
+
 .ngs-options-close {
   margin-top: 1rem;
 }

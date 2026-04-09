@@ -1,5 +1,5 @@
 (function () {
-  const SAVE_KEY = 'ngs_rpg_save_data';
+  const DEFAULT_SLOT = 1;
 
   const CLANS = [
     {
@@ -62,6 +62,8 @@
   let currentClanSelected = null;
   let gameSavedData = null;
   let currentCharacterSelected = null;
+  let activeSlotId = DEFAULT_SLOT;
+  let autoSaveTimer = null;
 
   const introRoot = document.getElementById('ngsIntroRoot');
   const app = document.getElementById('app');
@@ -72,8 +74,14 @@
   const charactersGrid = document.getElementById('ngsCharactersGrid');
   const selectedClanTitle = document.getElementById('ngsSelectedClanTitle');
   const loadPreviewDataDiv = document.getElementById('ngsSavePreviewData');
+  const loadSlotsModal = document.getElementById('ngsLoadSlotsModal');
+  const slotsContainer = document.getElementById('ngsSlotsContainer');
 
   if (!introRoot || !app || !startScreen || !clanScreen || !characterScreen) {
+    return;
+  }
+  if (!window.NGSSaveSystem) {
+    console.error('NGSSaveSystem no está disponible.');
     return;
   }
 
@@ -182,7 +190,7 @@
       const selectCharBtn = card.querySelector('.ngs-select-char-btn');
       selectCharBtn.addEventListener('click', () => {
         const selectedClan = CLANS.find((c) => c.id === clanId);
-        const saveObject = {
+        const freshSave = {
           characterId: character.id,
           character: character.name,
           characterSprite: character.img || '',
@@ -194,9 +202,9 @@
           timestamp: Date.now(),
           playTime: '00:12:34'
         };
-
-        localStorage.setItem(SAVE_KEY, JSON.stringify(saveObject));
-        gameSavedData = saveObject;
+        gameSavedData = freshSave;
+        activeSlotId = DEFAULT_SLOT;
+        window.NGSSaveSystem.save(activeSlotId, freshSave);
         currentCharacterSelected = character.name;
         playPlaceholderSound('select');
         updateLoadPreview();
@@ -208,38 +216,119 @@
   }
 
   function updateLoadPreview() {
-    const savedRaw = localStorage.getItem(SAVE_KEY);
-
-    if (savedRaw) {
-      try {
-        const data = JSON.parse(savedRaw);
-        gameSavedData = data;
-        currentCharacterSelected = data.character || null;
-        currentClanSelected = data.clan || null;
-        const dateStr = data.timestamp ? new Date(data.timestamp).toLocaleString() : 'desconocida';
-
-        loadPreviewDataDiv.innerHTML = `🎮 ${data.character} | Nivel ${data.level || 1} | Tiempo: ${data.playTime || '00:00'} <br> <span style="font-size:0.7rem;">Guardado: ${dateStr}</span>`;
-      } catch (e) {
-        loadPreviewDataDiv.innerHTML = 'Error al leer guardado';
-      }
-    } else {
+    const latest = window.NGSSaveSystem.findLatestSlot();
+    if (!latest) {
       loadPreviewDataDiv.innerHTML = 'No hay partida guardada. Comienza una nueva aventura.';
+      return;
     }
+
+    const dateStr = latest.timestamp ? new Date(latest.timestamp).toLocaleString() : 'desconocida';
+    loadPreviewDataDiv.innerHTML = `🎮 ${latest.character || 'Sin personaje'} | Nivel ${latest.level || 1} | Tiempo: ${latest.playTime || '00:00'} <br> <span style="font-size:0.7rem;">Slot ${latest.slotId} · Guardado: ${dateStr}</span>`;
   }
 
-  function loadGameFromStorage() {
-    const saved = localStorage.getItem(SAVE_KEY);
-    if (saved) {
-      const data = JSON.parse(saved);
-      gameSavedData = data;
-      currentClanSelected = data.clan || null;
-      currentCharacterSelected = data.character || null;
-      playPlaceholderSound('select');
-      alert(`Partida cargada: ${data.character} (Clan ${data.clan}) - Nivel ${data.level || 1}\n¡Bienvenido de vuelta, héroe!`);
-      enterGame();
-    } else {
-      alert('No hay partidas guardadas. Comienza Nueva Partida.');
+  function formatSlotDetails(slot) {
+    if (!slot.hasData) {
+      return '<div class=\"ngs-slot-meta\">Sin datos guardados</div>';
     }
+    const date = slot.timestamp ? new Date(slot.timestamp).toLocaleString() : 'desconocida';
+    return `<div class=\"ngs-slot-meta\">${slot.character || 'Sin personaje'} · Nivel ${slot.level || 1} · ${slot.rank || 'GENIN'}<br>Guardado: ${date}</div>`;
+  }
+
+  function renderLoadSlots() {
+    const slots = window.NGSSaveSystem.listSlots();
+    slotsContainer.innerHTML = '';
+
+    slots.forEach((slot) => {
+      const slotCard = document.createElement('div');
+      slotCard.className = 'ngs-slot-card';
+      slotCard.innerHTML = `
+        <div class=\"ngs-slot-title\"><span>Slot ${slot.slotId}</span><span>${slot.hasData ? '✅ Ocupado' : '⬜ Vacío'}</span></div>
+        ${formatSlotDetails(slot)}
+        <div class=\"ngs-slot-actions\">
+          <button class=\"ngs-btn\" data-load-slot=\"${slot.slotId}\" ${slot.hasData ? '' : 'disabled'}>Cargar</button>
+          <button class=\"ngs-btn ngs-btn-secondary\" data-delete-slot=\"${slot.slotId}\" ${slot.hasData ? '' : 'disabled'}>Eliminar</button>
+        </div>
+      `;
+      slotsContainer.appendChild(slotCard);
+    });
+  }
+
+  function openLoadSlotsModal() {
+    renderLoadSlots();
+    loadSlotsModal.style.display = 'flex';
+    loadSlotsModal.setAttribute('aria-hidden', 'false');
+  }
+
+  function closeLoadSlotsModal() {
+    loadSlotsModal.style.display = 'none';
+    loadSlotsModal.setAttribute('aria-hidden', 'true');
+  }
+
+  function loadGameFromSlot(slotId) {
+    const loaded = window.NGSSaveSystem.load(slotId);
+    if (!loaded.ok) {
+      alert('No se pudo cargar la partida. Intenta con otro slot.');
+      return;
+    }
+
+    const data = loaded.state;
+    activeSlotId = slotId;
+    gameSavedData = {
+      ...data,
+      playTime: loaded.meta?.playTime || '00:00:00'
+    };
+    currentClanSelected = data.clan || null;
+    currentCharacterSelected = data.character || null;
+    playPlaceholderSound('select');
+    if (loaded.recoveredFromBackup) {
+      alert('Se detectó corrupción en el guardado y se recuperó desde backup.');
+    }
+    closeLoadSlotsModal();
+    updateLoadPreview();
+    enterGame();
+  }
+
+  function collectRuntimeSaveData() {
+    const currentState = window.GameState && typeof window.GameState.getState === 'function'
+      ? window.GameState.getState()
+      : {};
+    const heroSnapshot = window.HeroSystem && typeof window.HeroSystem.getHeroSnapshot === 'function'
+      ? window.HeroSystem.getHeroSnapshot()
+      : null;
+
+    return {
+      ...(gameSavedData || {}),
+      characterId: heroSnapshot?.characterId || gameSavedData?.characterId || '',
+      character: gameSavedData?.character || currentCharacterSelected || '',
+      clan: gameSavedData?.clan || currentClanSelected || '',
+      clanName: gameSavedData?.clanName || '',
+      characterSprite: currentState.characterVisual?.spriteSrc || gameSavedData?.characterSprite || '',
+      level: heroSnapshot?.level || currentState.level || gameSavedData?.level || 1,
+      rank: heroSnapshot?.rank || currentState.rank || gameSavedData?.rank || 'GENIN',
+      exp: heroSnapshot?.exp || currentState.exp || gameSavedData?.exp || 0,
+      hp: currentState.hp,
+      mp: currentState.mp,
+      gold: currentState.gold,
+      timestamp: Date.now(),
+      playTime: gameSavedData?.playTime || '00:12:34'
+    };
+  }
+
+  function saveCurrentProgress(reason = 'manual') {
+    if (!gameSavedData) return;
+    const runtimeData = collectRuntimeSaveData();
+    const saveResult = window.NGSSaveSystem.save(activeSlotId, runtimeData);
+    if (!saveResult.ok) {
+      console.warn(`No se pudo guardar (${reason}):`, saveResult.error);
+      return;
+    }
+    gameSavedData = runtimeData;
+    updateLoadPreview();
+  }
+
+  function scheduleAutosave(reason = 'autosave') {
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(() => saveCurrentProgress(reason), 500);
   }
 
   function getCharacterById(characterId) {
@@ -269,24 +358,27 @@
   }
 
   function clearAllGameSaves() {
-    const keysToDelete = [];
-    for (let i = 0; i < localStorage.length; i += 1) {
-      const key = localStorage.key(i);
-      if (!key) continue;
-      if (key === SAVE_KEY || key.startsWith('ngs_')) {
-        keysToDelete.push(key);
-      }
+    for (let slotId = 1; slotId <= window.NGSSaveSystem.SLOT_COUNT; slotId += 1) {
+      window.NGSSaveSystem.delete(slotId);
     }
-
-    keysToDelete.forEach((key) => localStorage.removeItem(key));
     gameSavedData = null;
     currentClanSelected = null;
     currentCharacterSelected = null;
+    activeSlotId = DEFAULT_SLOT;
   }
 
   const optionsBtn = document.getElementById('ngsOptionsBtn');
   const optionsModal = document.getElementById('ngsOptionsModal');
   const closeOptionsBtn = document.getElementById('ngsCloseOptions');
+  const keepAwakeToggle = document.getElementById('ngsKeepAwakeToggle');
+  const closeLoadSlotsBtn = document.getElementById('ngsCloseLoadSlots');
+
+  if (window.NGSWakeLockService && keepAwakeToggle) {
+    keepAwakeToggle.checked = window.NGSWakeLockService.isEnabled();
+    keepAwakeToggle.addEventListener('change', () => {
+      window.NGSWakeLockService.setEnabled(keepAwakeToggle.checked);
+    });
+  }
 
   optionsBtn.addEventListener('click', () => {
     playPlaceholderSound('ui-click');
@@ -316,7 +408,32 @@
 
   document.getElementById('ngsLoadGameBtn').addEventListener('click', () => {
     playPlaceholderSound('ui-click');
-    loadGameFromStorage();
+    openLoadSlotsModal();
+  });
+  
+  slotsContainer.addEventListener('click', (event) => {
+    const loadBtn = event.target.closest('[data-load-slot]');
+    if (loadBtn) {
+      const slotId = Number(loadBtn.getAttribute('data-load-slot'));
+      if (slotId) loadGameFromSlot(slotId);
+      return;
+    }
+
+    const deleteBtn = event.target.closest('[data-delete-slot]');
+    if (deleteBtn) {
+      const slotId = Number(deleteBtn.getAttribute('data-delete-slot'));
+      if (!slotId) return;
+      const approved = confirm(`¿Eliminar Slot ${slotId}? Esta acción no se puede deshacer.`);
+      if (!approved) return;
+      window.NGSSaveSystem.delete(slotId);
+      renderLoadSlots();
+      updateLoadPreview();
+    }
+  });
+
+  closeLoadSlotsBtn.addEventListener('click', closeLoadSlotsModal);
+  loadSlotsModal.addEventListener('click', (e) => {
+    if (e.target === loadSlotsModal) closeLoadSlotsModal();
   });
 
   document.getElementById('ngsBackFromClan').addEventListener('click', () => {
@@ -347,9 +464,22 @@
     updateLoadPreview();
   }
 
-  window.addEventListener('storage', (e) => {
-    if (e.key === SAVE_KEY) updateLoadPreview();
+  window.addEventListener('ngs:game-entered', () => {
+    if (window.NGSWakeLockService && window.NGSWakeLockService.isEnabled()) {
+      window.NGSWakeLockService.request();
+    }
+    scheduleAutosave('enter-game');
   });
+
+  window.addEventListener('ngs:hero-stats-updated', () => scheduleAutosave('hero-stats'));
+  window.addEventListener('ngs:state-updated', () => scheduleAutosave('state-updated'));
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      saveCurrentProgress('visibility-hidden');
+    }
+  });
+  window.addEventListener('pagehide', () => saveCurrentProgress('pagehide'));
+  window.addEventListener('beforeunload', () => saveCurrentProgress('beforeunload'));
 
   init();
 })();

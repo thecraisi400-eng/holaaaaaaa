@@ -129,6 +129,8 @@
     heroLevel: 1,
     currentRank: null,
     battleGame: null,
+    currentMission: null,
+    pendingSnapshot: null,
 
     mount() {
       if (this.isMounted()) return;
@@ -144,6 +146,10 @@
       this.root = this.host.querySelector('#ms-game-container');
       this.bindEvents();
       this.resetToMain();
+      if (this.pendingSnapshot) {
+        this.applySnapshot(this.pendingSnapshot);
+        this.pendingSnapshot = null;
+      }
     },
 
     unmount() {
@@ -153,6 +159,7 @@
       this.root = null;
       this.currentView = 'ms-view-main';
       this.currentRank = null;
+      this.currentMission = null;
     },
 
     isMounted() {
@@ -262,6 +269,7 @@
     async startFight(index, rank, btnEl) {
       const mission = missionsData[rank]?.[index];
       if (!mission) return;
+      this.currentMission = { rank, index, name: mission.name };
       const card = btnEl.closest('.ms-mission-card');
       if (!card) return;
 
@@ -351,6 +359,45 @@
       if (host) host.innerHTML = '';
     },
 
+    getSnapshot() {
+      return {
+        currentView: this.currentView,
+        currentRank: this.currentRank,
+        heroLevel: this.heroLevel,
+        isBattleActive: this.currentView === 'ms-view-battle' && Boolean(this.battleGame),
+        currentMission: this.currentMission
+          ? { ...this.currentMission }
+          : { rank: '', index: -1, name: '' }
+      };
+    },
+
+    applySnapshot(snapshot = {}) {
+      if (!snapshot || typeof snapshot !== 'object') return;
+      if (!this.isMounted()) {
+        this.pendingSnapshot = snapshot;
+        return;
+      }
+
+      this.heroLevel = Math.max(1, Number(snapshot.heroLevel) || 1);
+      this.currentRank = snapshot.currentRank || null;
+      const mission = snapshot.currentMission || {};
+      this.currentMission = {
+        rank: mission.rank || '',
+        index: Number.isFinite(Number(mission.index)) ? Number(mission.index) : -1,
+        name: mission.name || ''
+      };
+
+      if (this.currentRank) {
+        this.showMissions(this.currentRank);
+        return;
+      }
+      if (snapshot.currentView === 'ms-view-ranks') {
+        this.showRanks();
+        return;
+      }
+      this.resetToMain();
+    },
+
     grantMissionRewards(mission) {
       if (!mission) return;
       if (window.HeroSystem && typeof window.HeroSystem.grantMissionRewards === 'function') {
@@ -402,6 +449,7 @@
       main.style.transform = 'translateX(0)';
       main.style.pointerEvents = 'all';
       this.currentView = 'ms-view-main';
+      this.currentMission = null;
     },
 
     spawnParticles(el) {

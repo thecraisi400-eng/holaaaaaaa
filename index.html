@@ -59,7 +59,19 @@
         <h3>Opciones de audio</h3>
         <p>🎵 Sonidos ambientales (placeholder)</p>
         <p>🔊 Efectos UI (simulados)</p>
+        <label class="ngs-toggle-row" for="ngsKeepAwakeToggle">
+          <input type="checkbox" id="ngsKeepAwakeToggle" />
+          <span>Mantener pantalla encendida durante la partida</span>
+        </label>
         <button id="ngsCloseOptions" class="ngs-btn ngs-options-close">Cerrar</button>
+      </div>
+    </div>
+
+    <div id="ngsLoadSlotsModal" class="ngs-options-modal" aria-hidden="true">
+      <div class="ngs-options-card ngs-load-card">
+        <h3>📀 Cargar Partida</h3>
+        <div id="ngsSlotsContainer" class="ngs-slots-container"></div>
+        <button id="ngsCloseLoadSlots" class="ngs-btn ngs-options-close">Cerrar</button>
       </div>
     </div>
   </div>
@@ -339,6 +351,8 @@
 <script src="enemy-sprites-manager.js"></script>
 <script src="batallamisionrangod.js"></script>
 <script src="mission-system.js"></script>
+<script src="save-system.js"></script>
+<script src="wake-lock-service.js"></script>
 <script src="ninja-game-start.js"></script>
 <script src="script.js"></script>
 </body>

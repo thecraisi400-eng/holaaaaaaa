@@ -293,20 +293,23 @@
       const preloadText = battleRoot.querySelector('#enemy-preload-text');
 
       let enemyVisualConfig = null;
-      if (window.EnemySpriteRegistry && typeof window.EnemySpriteRegistry.preloadForMission === 'function') {
+      if (window.EnemySpritesManager && typeof window.EnemySpritesManager.preloadMissionEnemies === 'function') {
         try {
-          await window.EnemySpriteRegistry.loadConfig('assets/config/enemy-sprites.json');
-          const preload = await window.EnemySpriteRegistry.preloadForMission({
-            rank: missionContext.rank,
-            index: missionContext.index,
-            name: mission.name
-          }, (progress) => {
-            const pct = progress.total > 0 ? Math.round((progress.loaded / progress.total) * 100) : 100;
-            if (preloadBar) preloadBar.style.width = `${pct}%`;
-            if (preloadText) preloadText.textContent = `${pct}%`;
-          });
-          enemyVisualConfig = preload.enemy;
+          await window.EnemySpritesManager.preloadMissionEnemies(
+            missionContext.rank,
+            [missionContext.index],
+            (progress) => {
+              const pct = progress.total > 0 ? Math.round((progress.loaded / progress.total) * 100) : 100;
+              if (preloadBar) preloadBar.style.width = `${pct}%`;
+              if (preloadText) preloadText.textContent = `${pct}%`;
+            }
+          );
+          enemyVisualConfig = window.EnemySpritesManager.resolveMissionEnemyVisual(
+            missionContext.rank,
+            missionContext.index
+          );
         } catch (error) {
+          enemyVisualConfig = window.EnemySpritesManager.getFallbackSprite();
           if (preloadText) preloadText.textContent = 'Error de precarga (fallback activo)';
         }
       }

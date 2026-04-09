@@ -417,6 +417,21 @@
         el.appendChild(p);
         setTimeout(() => p.remove(), 2200);
       }
+    },
+
+    exportPersistentState() {
+      return {
+        currentView: this.currentView,
+        heroLevel: this.heroLevel,
+        currentRank: this.currentRank
+      };
+    },
+
+    importPersistentState(payload) {
+      if (!payload || typeof payload !== 'object') return;
+      this.currentView = payload.currentView || 'ms-view-main';
+      this.heroLevel = Math.max(1, Number(payload.heroLevel) || 1);
+      this.currentRank = payload.currentRank || null;
     }
   };
 

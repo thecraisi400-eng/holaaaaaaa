@@ -348,7 +348,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     cleanupBattleProcesses();
-    state.activeSection = sec;
+    updateState({ activeSection: sec }, 'section-change');
     renderCenterSection(sec);
   });
 });
@@ -383,6 +383,32 @@ window.addEventListener('ngs:game-entered', (event) => {
       }
     }
   }
+});
+
+
+window.addEventListener('ngs:save-loaded', (event) => {
+  const payload = event?.detail;
+  if (!payload) return;
+
+  const loadedState = payload.gameState;
+  if (loadedState && typeof loadedState === 'object') {
+    updateState({ ...loadedState }, 'save-load');
+    if (loadedState.characterVisual) {
+      syncCharacterSprite({ characterSprite: loadedState.characterVisual.spriteSrc });
+    }
+  }
+
+  if (payload.heroSnapshot && window.CharacterStatsSystem && typeof window.CharacterStatsSystem.setActiveHero === 'function') {
+    window.CharacterStatsSystem.setActiveHero(payload.heroSnapshot);
+    syncStateFromHero(getSyncedHeroSnapshot(payload.heroSnapshot));
+  }
+
+  const activeSection = payload?.gameState?.activeSection || state.activeSection || 'heroe';
+  renderCenterSection(activeSection);
+  document.querySelectorAll('.nav-btn').forEach((button) => {
+    button.classList.toggle('active', button.dataset.section === activeSection);
+  });
+  updateBars();
 });
 
 window.addEventListener('ngs:hero-stats-updated', (event) => {

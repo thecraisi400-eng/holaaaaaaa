@@ -67,11 +67,15 @@ class BattleRunner {
     this.triggersFired = [false, false, false];
 
     this.dom = {};
+    this.destroyed = false;
+    this.rafId = null;
+    this.managedTimeouts = new Set();
     this.cacheDOM();
 
     this.parallaxLayers = [];
     this.initParallax();
 
+    this.handleRestart = this.restart.bind(this);
     this.bindRestart();
     this.handleStateUpdated = this.handleStateUpdated.bind(this);
     window.addEventListener('ngs:state-updated', this.handleStateUpdated);
@@ -107,8 +111,24 @@ class BattleRunner {
 
   bindRestart() {
     if (this.dom.restartBtn) {
-      this.dom.restartBtn.addEventListener('click', () => this.restart());
+      this.dom.restartBtn.addEventListener('click', this.handleRestart);
     }
+  }
+
+  setManagedTimeout(callback, delay) {
+    if (this.destroyed) return null;
+    const timeoutId = setTimeout(() => {
+      this.managedTimeouts.delete(timeoutId);
+      if (this.destroyed) return;
+      callback();
+    }, delay);
+    this.managedTimeouts.add(timeoutId);
+    return timeoutId;
+  }
+
+  clearManagedTimeouts() {
+    this.managedTimeouts.forEach((timeoutId) => clearTimeout(timeoutId));
+    this.managedTimeouts.clear();
   }
 
   handleStateUpdated() {
@@ -160,6 +180,10 @@ class BattleRunner {
 
   stopRunner() {
     this.isRunning = false;
+    if (this.rafId != null) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
 
     this.parallaxLayers.forEach((layer) => {
       layer.el.classList.remove('parallax-scrolling', layer.speedClass);
@@ -191,7 +215,7 @@ class BattleRunner {
       }
     }
 
-    requestAnimationFrame(() => this.gameLoop());
+    this.rafId = requestAnimationFrame(() => this.gameLoop());
   }
 
   updateProgressBar() {
@@ -216,7 +240,7 @@ class BattleRunner {
     this.stopRunner();
 
     this.dom.encounterFlash.classList.add('active');
-    setTimeout(() => this.dom.encounterFlash.classList.remove('active'), 400);
+    this.setManagedTimeout(() => this.dom.encounterFlash.classList.remove('active'), 400);
 
     this.showNotification('¡ENCUENTRO!', 1200);
 
@@ -235,7 +259,7 @@ class BattleRunner {
       index: enemyIdx
     };
 
-    setTimeout(() => {
+    this.setManagedTimeout(() => {
       this.dom.enemy.classList.add('visible');
       this.updateEnemyHP();
       this.updateEnemyMP();
@@ -248,7 +272,7 @@ class BattleRunner {
       this.showCombatLog(`¡${this.enemy.name} aparece!`);
 
       if (this.autoMode && this.isPlayerTurn) {
-        setTimeout(() => this.autoCombatAction(), 500);
+        this.setManagedTimeout(() => this.autoCombatAction(), 500);
       }
     }, 600);
   }
@@ -259,7 +283,7 @@ class BattleRunner {
 
     this.dom.player.className = 'attack';
 
-    setTimeout(() => {
+    this.setManagedTimeout(() => {
       const baseDmg = this.player.atk;
       const variance = Math.floor(Math.random() * 5) - 2;
       const damage = Math.max(1, baseDmg + variance - this.enemy.def);
@@ -270,18 +294,18 @@ class BattleRunner {
       this.showDamageNumber(damage, this.dom.enemy);
       this.showHitEffect(this.dom.enemy);
       this.dom.container.classList.add('shake');
-      setTimeout(() => this.dom.container.classList.remove('shake'), 300);
+      this.setManagedTimeout(() => this.dom.container.classList.remove('shake'), 300);
 
       this.showCombatLog(`Atacas por ${damage} de daño!`);
 
       if (this.enemy.hp <= 0) {
-        setTimeout(() => this.enemyDefeated(), 400);
+        this.setManagedTimeout(() => this.enemyDefeated(), 400);
       } else {
         this.isPlayerTurn = false;
-        setTimeout(() => this.enemyTurn(), 800);
+        this.setManagedTimeout(() => this.enemyTurn(), 800);
       }
 
-      setTimeout(() => {
+      this.setManagedTimeout(() => {
         this.dom.player.className = 'idle';
         this.combatLocked = false;
       }, 400);
@@ -317,7 +341,7 @@ class BattleRunner {
 
     this.dom.player.className = 'attack';
 
-    setTimeout(() => {
+    this.setManagedTimeout(() => {
       const damage = skill.dmg + Math.floor(Math.random() * 4) - 1;
       this.enemy.hp = Math.max(0, this.enemy.hp - damage);
       this.updateEnemyHP();
@@ -325,18 +349,18 @@ class BattleRunner {
       this.showDamageNumber(damage, this.dom.enemy);
       this.showHitEffect(this.dom.enemy);
       this.dom.container.classList.add('shake');
-      setTimeout(() => this.dom.container.classList.remove('shake'), 300);
+      this.setManagedTimeout(() => this.dom.container.classList.remove('shake'), 300);
 
       this.showCombatLog(`${skill.name} — ${damage} de daño!`);
 
       if (this.enemy.hp <= 0) {
-        setTimeout(() => this.enemyDefeated(), 400);
+        this.setManagedTimeout(() => this.enemyDefeated(), 400);
       } else {
         this.isPlayerTurn = false;
-        setTimeout(() => this.enemyTurn(), 800);
+        this.setManagedTimeout(() => this.enemyTurn(), 800);
       }
 
-      setTimeout(() => {
+      this.setManagedTimeout(() => {
         this.dom.player.className = 'idle';
         this.combatLocked = false;
       }, 400);
@@ -348,7 +372,7 @@ class BattleRunner {
 
     this.dom.enemy.classList.add('enemy-attack');
 
-    setTimeout(() => {
+    this.setManagedTimeout(() => {
       const baseDmg = this.enemy.atk;
       const variance = Math.floor(Math.random() * 4) - 2;
       const damage = Math.max(1, baseDmg + variance - this.player.defense);
@@ -360,13 +384,13 @@ class BattleRunner {
       this.showDamageNumber(damage, this.dom.player);
       this.showHitEffect(this.dom.player);
       this.dom.container.classList.add('shake');
-      setTimeout(() => this.dom.container.classList.remove('shake'), 300);
+      this.setManagedTimeout(() => this.dom.container.classList.remove('shake'), 300);
 
       this.showCombatLog(`${this.enemy.name} ataca por ${damage}!`);
 
       if (this.player.hp <= 0) {
         this.showNotification('¡DERROTADO!', 2000);
-        setTimeout(() => {
+        this.setManagedTimeout(() => {
           this.stopAutoCombat();
           this.missionComplete();
           if (typeof this.options.onDefeat === 'function') {
@@ -376,13 +400,13 @@ class BattleRunner {
         return;
       }
 
-      setTimeout(() => {
+      this.setManagedTimeout(() => {
         this.dom.enemy.classList.remove('enemy-attack');
         this.isPlayerTurn = true;
         this.combatLocked = false;
 
         if (this.autoMode) {
-          setTimeout(() => this.autoCombatAction(), 500);
+          this.setManagedTimeout(() => this.autoCombatAction(), 500);
         }
       }, 400);
     }, 450);
@@ -418,7 +442,7 @@ class BattleRunner {
       iconSpan.textContent = '✅';
       this.showCombatLog('🔄 Auto Combat ACTIVADO');
       if (this.isPlayerTurn && this.state === GameStates.COMBAT) {
-        setTimeout(() => this.autoCombatAction(), 300);
+        this.setManagedTimeout(() => this.autoCombatAction(), 300);
       }
     } else {
       this.dom.autoBtn.classList.remove('active');
@@ -451,7 +475,7 @@ class BattleRunner {
 
     this.spawnVictoryParticles();
 
-    setTimeout(() => {
+    this.setManagedTimeout(() => {
       this.dom.enemy.classList.remove('visible', 'defeated');
       this.dom.enemy.classList.add('visible');
       this.dom.enemy.classList.remove('visible');
@@ -506,7 +530,7 @@ class BattleRunner {
     el.style.top = `${rect.top - containerRect.top}px`;
 
     this.dom.container.appendChild(el);
-    setTimeout(() => el.remove(), 800);
+    this.setManagedTimeout(() => el.remove(), 800);
   }
 
   showHitEffect(target) {
@@ -520,7 +544,7 @@ class BattleRunner {
     el.style.top = `${rect.top - containerRect.top + rect.height / 2 - 15}px`;
 
     this.dom.container.appendChild(el);
-    setTimeout(() => el.remove(), 400);
+    this.setManagedTimeout(() => el.remove(), 400);
   }
 
   showNotification(text, duration = 1200) {
@@ -528,7 +552,7 @@ class BattleRunner {
     this.dom.notification.className = '';
     void this.dom.notification.offsetWidth;
     this.dom.notification.classList.add('show');
-    setTimeout(() => {
+    this.setManagedTimeout(() => {
       this.dom.notification.classList.remove('show');
     }, duration);
   }
@@ -537,7 +561,7 @@ class BattleRunner {
     this.dom.combatLog.textContent = text;
     this.dom.combatLog.classList.add('visible');
     clearTimeout(this._logTimeout);
-    this._logTimeout = setTimeout(() => {
+    this._logTimeout = this.setManagedTimeout(() => {
       this.dom.combatLog.classList.remove('visible');
     }, 2000);
   }
@@ -558,7 +582,7 @@ class BattleRunner {
       this.dom.victoryParticles.appendChild(p);
     }
 
-    setTimeout(() => {
+    this.setManagedTimeout(() => {
       this.dom.victoryParticles.innerHTML = '';
     }, 1200);
   }
@@ -591,7 +615,7 @@ class BattleRunner {
       this.showNotification('¡MISIÓN COMPLETADA!', 2000);
     }
 
-    setTimeout(() => {
+    this.setManagedTimeout(() => {
       this.dom.missionComplete.classList.add('visible');
     }, 1000);
   }
@@ -628,9 +652,21 @@ class BattleRunner {
   }
 
   destroy() {
+    if (this.destroyed) return;
+    this.destroyed = true;
     this.stopRunner();
+    this.clearManagedTimeouts();
     clearTimeout(this._logTimeout);
+    this._logTimeout = null;
     window.removeEventListener('ngs:state-updated', this.handleStateUpdated);
+    if (this.dom.restartBtn) {
+      this.dom.restartBtn.removeEventListener('click', this.handleRestart);
+    }
+    this.stopAutoCombat();
+    this.closeSubSkills();
+    this.state = GameStates.MISSION_DONE;
+    this.combatLocked = false;
+    this.isPlayerTurn = false;
   }
 }
 

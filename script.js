@@ -229,10 +229,52 @@ const overlay      = document.getElementById('section-overlay');
 const overlayTitle = document.getElementById('overlayTitle');
 const overlayDesc  = document.getElementById('overlayDesc');
 const overlayClose = document.getElementById('overlayClose');
+let heroRegenInterval = null;
+
+function cleanupBattleProcesses() {
+  if (window.MissionSystem && typeof window.MissionSystem.destroyBattle === 'function') {
+    window.MissionSystem.destroyBattle();
+  }
+  if (window.game && typeof window.game.destroy === 'function') {
+    window.game.destroy();
+  }
+  window.game = null;
+}
+
+function stopHeroRegeneration() {
+  if (!heroRegenInterval) return;
+  clearInterval(heroRegenInterval);
+  heroRegenInterval = null;
+}
+
+function startHeroRegeneration() {
+  if (heroRegenInterval) return;
+
+  heroRegenInterval = setInterval(() => {
+    if (state.activeSection !== 'heroe') {
+      stopHeroRegeneration();
+      return;
+    }
+
+    const hpRegen = Math.max(1, Math.round(state.hpMax * 0.07));
+    const mpRegen = Math.max(1, Math.round(state.mpMax * 0.07));
+    const nextHp = Math.min(state.hpMax, state.hp + hpRegen);
+    const nextMp = Math.min(state.mpMax, state.mp + mpRegen);
+
+    if (nextHp === state.hp && nextMp === state.mp) return;
+    updateState({ hp: nextHp, mp: nextMp }, 'hero-regen');
+  }, 1000);
+}
 
 function renderCenterSection(sectionKey) {
   const isHero = sectionKey === 'heroe';
   const isMissions = sectionKey === 'misiones';
+
+  if (isHero) {
+    startHeroRegeneration();
+  } else {
+    stopHeroRegeneration();
+  }
 
   if (isHero) {
     overlay.classList.remove('visible');
@@ -289,6 +331,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
 
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
+    cleanupBattleProcesses();
     state.activeSection = sec;
     renderCenterSection(sec);
   });

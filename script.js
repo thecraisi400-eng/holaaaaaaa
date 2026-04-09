@@ -1,7 +1,7 @@
 /* ─────────────────────────────────────────────
    ESTADO DEL JUEGO - VALORES FIJOS SOLICITADOS
 ───────────────────────────────────────────── */
-const state = {
+const INITIAL_STATE = {
   hp: 100, hpMax: 100,
   mp: 100, mpMax: 100,
   exp: 0, expMax: 1000,
@@ -14,6 +14,7 @@ const state = {
   activeSection: 'heroe',
   characterVisual: { spriteSrc: '', characterId: '', characterName: '' }
 };
+const state = { ...INITIAL_STATE, characterVisual: { ...INITIAL_STATE.characterVisual } };
 
 function emitStateUpdated(reason = 'sync') {
   window.dispatchEvent(new CustomEvent('ngs:state-updated', {
@@ -28,6 +29,12 @@ function updateState(partial, reason = 'update') {
   Object.assign(state, partial);
   updateBars();
   emitStateUpdated(reason);
+  if (window.SaveManager && typeof window.SaveManager.save === 'function') {
+    const strategicReasons = new Set(['level-change', 'section-change', 'pause', 'resume', 'manual']);
+    if (strategicReasons.has(reason)) {
+      window.SaveManager.save(reason);
+    }
+  }
 }
 
 function setGold(nextGold) {
@@ -41,6 +48,14 @@ window.GameState.getGold = () => state.gold;
 window.GameState.setGold = setGold;
 window.GameState.addGold = (gold) => setGold(state.gold + (Number(gold) || 0));
 window.GameState.getState = () => ({ ...state });
+window.GameState.resetState = () => {
+  Object.keys(state).forEach((key) => delete state[key]);
+  Object.assign(state, { ...INITIAL_STATE, characterVisual: { ...INITIAL_STATE.characterVisual } });
+  stopHeroRegeneration();
+  cleanupBattleProcesses();
+  updateBars();
+  emitStateUpdated('reset');
+};
 window.GameState.syncHeroSnapshot = (snapshot) => {
   syncStateFromHero(snapshot);
   updateBars();
@@ -145,6 +160,9 @@ function syncStateFromHero(snapshot) {
   const defEl = document.getElementById('statDef');
   if (defEl) defEl.textContent = state.def.toLocaleString();
   emitStateUpdated('hero-snapshot');
+  if (window.SaveManager && typeof window.SaveManager.save === 'function') {
+    window.SaveManager.save('level-change');
+  }
 }
 
 function getSyncedHeroSnapshot(snapshot) {
@@ -246,6 +264,80 @@ const overlayTitle = document.getElementById('overlayTitle');
 const overlayDesc  = document.getElementById('overlayDesc');
 const overlayClose = document.getElementById('overlayClose');
 let heroRegenInterval = null;
+const WakeLockManager = (() => {
+  let lock = null;
+  let fallbackTimer = null;
+  let enabled = false;
+
+  async function requestNativeWakeLock() {
+    if (!('wakeLock' in navigator) || !navigator.wakeLock?.request) return false;
+    try {
+      lock = await navigator.wakeLock.request('screen');
+      lock.addEventListener('release', () => {
+        lock = null;
+        if (enabled && document.visibilityState === 'visible') {
+          requestNativeWakeLock();
+        }
+      });
+      return true;
+    } catch (_error) {
+      lock = null;
+      return false;
+    }
+  }
+
+  function startFallback() {
+    stopFallback();
+    fallbackTimer = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      window.dispatchEvent(new Event('ngs:wake-fallback-ping'));
+    }, 20000);
+  }
+
+  function stopFallback() {
+    if (!fallbackTimer) return;
+    clearInterval(fallbackTimer);
+    fallbackTimer = null;
+  }
+
+  async function acquire() {
+    enabled = true;
+    if (document.visibilityState !== 'visible') return;
+    const nativeOk = await requestNativeWakeLock();
+    if (!nativeOk) startFallback();
+  }
+
+  async function release() {
+    enabled = false;
+    stopFallback();
+    if (lock) {
+      try {
+        await lock.release();
+      } catch (_error) {
+        // noop
+      } finally {
+        lock = null;
+      }
+    }
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && enabled) acquire();
+    if (document.visibilityState === 'hidden') release();
+  });
+
+  window.addEventListener('ngs:game-paused', () => {
+    updateState({}, 'pause');
+    release();
+  });
+  window.addEventListener('ngs:game-resumed', () => {
+    updateState({}, 'resume');
+    acquire();
+  });
+  window.addEventListener('ngs:game-over', release);
+
+  return { acquire, release };
+})();
 
 function cleanupBattleProcesses() {
   if (window.MissionSystem && typeof window.MissionSystem.destroyBattle === 'function') {
@@ -349,6 +441,9 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.classList.add('active');
     cleanupBattleProcesses();
     state.activeSection = sec;
+    if (window.SaveManager && typeof window.SaveManager.save === 'function') {
+      window.SaveManager.save('section-change');
+    }
     renderCenterSection(sec);
   });
 });
@@ -383,6 +478,7 @@ window.addEventListener('ngs:game-entered', (event) => {
       }
     }
   }
+  WakeLockManager.acquire();
 });
 
 window.addEventListener('ngs:hero-stats-updated', (event) => {
@@ -394,3 +490,36 @@ window.addEventListener('ngs:hero-stats-updated', (event) => {
     window.MissionSystem.setHeroLevel(state.level);
   }
 });
+
+window.addEventListener('ngs:game-reset', () => {
+  stopHeroRegeneration();
+  cleanupBattleProcesses();
+  if (window.HeroSystem?.resetState) window.HeroSystem.resetState();
+  if (window.MissionSystem?.resetState) window.MissionSystem.resetState();
+  if (window.GameState?.resetState) window.GameState.resetState();
+  WakeLockManager.release();
+});
+
+if (window.SaveManager && typeof window.SaveManager.registerProvider === 'function') {
+  window.SaveManager.registerProvider('runtime', {
+    serialize: () => ({
+      hudState: { ...state },
+      heroState: window.HeroSystem?.getSerializableState ? window.HeroSystem.getSerializableState() : null,
+      missionState: window.MissionSystem?.getSerializableState ? window.MissionSystem.getSerializableState() : null
+    }),
+    deserialize: (savedState) => {
+      if (!savedState) return;
+      if (savedState.hudState) {
+        Object.assign(state, savedState.hudState);
+        updateBars();
+        renderCenterSection(state.activeSection || 'heroe');
+      }
+      if (window.HeroSystem?.applySerializableState && savedState.heroState) {
+        window.HeroSystem.applySerializableState(savedState.heroState);
+      }
+      if (window.MissionSystem?.applySerializableState && savedState.missionState) {
+        window.MissionSystem.applySerializableState(savedState.missionState);
+      }
+    }
+  });
+}

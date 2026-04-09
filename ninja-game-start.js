@@ -1,6 +1,4 @@
 (function () {
-  const SAVE_KEY = 'ngs_rpg_save_data';
-
   const CLANS = [
     {
       id: 'uchiha',
@@ -195,9 +193,11 @@
           playTime: '00:12:34'
         };
 
-        localStorage.setItem(SAVE_KEY, JSON.stringify(saveObject));
         gameSavedData = saveObject;
         currentCharacterSelected = character.name;
+        if (window.SaveManager && typeof window.SaveManager.save === 'function') {
+          window.SaveManager.save('new-character-selected');
+        }
         playPlaceholderSound('select');
         updateLoadPreview();
         enterGame();
@@ -208,11 +208,12 @@
   }
 
   function updateLoadPreview() {
-    const savedRaw = localStorage.getItem(SAVE_KEY);
+    const savedRaw = window.SaveManager?.getRawSave?.();
 
     if (savedRaw) {
       try {
-        const data = JSON.parse(savedRaw);
+        const profileSystem = savedRaw.systems?.profile || {};
+        const data = profileSystem.saveData || {};
         gameSavedData = data;
         currentCharacterSelected = data.character || null;
         currentClanSelected = data.clan || null;
@@ -228,9 +229,13 @@
   }
 
   function loadGameFromStorage() {
-    const saved = localStorage.getItem(SAVE_KEY);
+    const saved = window.SaveManager?.getRawSave?.();
     if (saved) {
-      const data = JSON.parse(saved);
+      if (window.SaveManager && typeof window.SaveManager.load === 'function') {
+        window.SaveManager.load();
+      }
+      const profileSystem = saved.systems?.profile || {};
+      const data = profileSystem.saveData || {};
       gameSavedData = data;
       currentClanSelected = data.clan || null;
       currentCharacterSelected = data.character || null;
@@ -269,16 +274,9 @@
   }
 
   function clearAllGameSaves() {
-    const keysToDelete = [];
-    for (let i = 0; i < localStorage.length; i += 1) {
-      const key = localStorage.key(i);
-      if (!key) continue;
-      if (key === SAVE_KEY || key.startsWith('ngs_')) {
-        keysToDelete.push(key);
-      }
+    if (window.SaveManager && typeof window.SaveManager.clear === 'function') {
+      window.SaveManager.clear();
     }
-
-    keysToDelete.forEach((key) => localStorage.removeItem(key));
     gameSavedData = null;
     currentClanSelected = null;
     currentCharacterSelected = null;
@@ -307,11 +305,18 @@
   });
 
   document.getElementById('ngsNewGameBtn').addEventListener('click', () => {
+    const shouldConfirm = window.SaveManager?.config?.confirmNewGame !== false;
+    if (shouldConfirm && !window.confirm('¿Seguro que quieres iniciar una nueva partida? Se perderá todo el progreso guardado.')) {
+      return;
+    }
     playPlaceholderSound('select');
     clearAllGameSaves();
+    window.dispatchEvent(new CustomEvent('ngs:game-reset'));
+    loadPreviewDataDiv.innerHTML = '✅ Progreso anterior eliminado. Preparando nueva partida...';
     updateLoadPreview();
-    renderClans();
-    showScreen('clan');
+    setTimeout(() => {
+      window.location.reload();
+    }, 250);
   });
 
   document.getElementById('ngsLoadGameBtn').addEventListener('click', () => {
@@ -343,12 +348,27 @@
   });
 
   function init() {
+    if (window.SaveManager && typeof window.SaveManager.registerProvider === 'function') {
+      window.SaveManager.registerProvider('profile', {
+        serialize: () => ({
+          selectedClan: currentClanSelected,
+          selectedCharacter: currentCharacterSelected,
+          saveData: gameSavedData ? { ...gameSavedData } : null
+        }),
+        deserialize: (savedSystemState) => {
+          const profile = savedSystemState || {};
+          gameSavedData = profile.saveData ? { ...profile.saveData } : null;
+          currentClanSelected = profile.selectedClan || gameSavedData?.clan || null;
+          currentCharacterSelected = profile.selectedCharacter || gameSavedData?.character || null;
+        }
+      });
+    }
     showScreen('start');
     updateLoadPreview();
   }
 
   window.addEventListener('storage', (e) => {
-    if (e.key === SAVE_KEY) updateLoadPreview();
+    if (e.key && e.key.startsWith('ngs_')) updateLoadPreview();
   });
 
   init();

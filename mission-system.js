@@ -129,6 +129,7 @@
     heroLevel: 1,
     currentRank: null,
     battleGame: null,
+    completedMissions: {},
 
     mount() {
       if (this.isMounted()) return;
@@ -219,6 +220,8 @@
 
       data.forEach((mission, i) => {
         const locked = this.heroLevel < mission.lvl;
+        const missionKey = `${rank}-${i}`;
+        const completedTimes = this.completedMissions[missionKey] || 0;
         const card = document.createElement('div');
         card.className = `ms-mission-card${locked ? ' locked' : ''}`;
         card.innerHTML = `
@@ -238,6 +241,7 @@
           <div class="ms-mission-lock ${!locked ? 'unlocked' : ''}">
             ${locked ? `🔒 Nivel ${mission.lvl} requerido` : '✅ Desbloqueado'}
           </div>
+          <div class="ms-mission-lock unlocked">🏁 Completada: ${completedTimes}x</div>
         `;
 
         const fightBtn = card.querySelector('.ms-fight-btn');
@@ -353,6 +357,8 @@
 
     grantMissionRewards(mission) {
       if (!mission) return;
+      const missionKey = `${this.currentRank}-${(missionsData[this.currentRank] || []).indexOf(mission)}`;
+      this.completedMissions[missionKey] = (this.completedMissions[missionKey] || 0) + 1;
       if (window.HeroSystem && typeof window.HeroSystem.grantMissionRewards === 'function') {
         window.HeroSystem.grantMissionRewards({
           exp: mission.xp,
@@ -365,6 +371,34 @@
       }
       if (window.GameState && typeof window.GameState.getGold === 'function' && typeof window.GameState.setGold === 'function') {
         window.GameState.setGold(window.GameState.getGold() + mission.gold);
+      }
+    },
+
+    getSerializableState() {
+      return {
+        currentView: this.currentView,
+        currentRank: this.currentRank,
+        heroLevel: this.heroLevel,
+        completedMissions: { ...this.completedMissions }
+      };
+    },
+
+    applySerializableState(savedState) {
+      if (!savedState || typeof savedState !== 'object') return;
+      this.heroLevel = Math.max(1, Number(savedState.heroLevel) || 1);
+      this.currentRank = savedState.currentRank || null;
+      this.currentView = savedState.currentView || 'ms-view-main';
+      this.completedMissions = { ...(savedState.completedMissions || {}) };
+    },
+
+    resetState() {
+      this.currentView = 'ms-view-main';
+      this.currentRank = null;
+      this.heroLevel = 1;
+      this.completedMissions = {};
+      if (this.isMounted()) {
+        this.destroyBattle();
+        this.resetToMain();
       }
     },
 

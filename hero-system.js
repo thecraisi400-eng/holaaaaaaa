@@ -22,6 +22,7 @@
     { id: 'gloves', icon: '🧤', name: 'GUANTELETES', level: 1, stats: { DEF: 2.0, ATK: 1.0, CDMG: 0.10, LCK: 1.0 }, statIcons: { DEF: '🛡', ATK: '⚔', CDMG: '💥', LCK: '✦' } },
     { id: 'boots', icon: '👟', name: 'BOTAS NINJA', level: 1, stats: { AGI: 3.0, EVA: 0.15, HP: 5.0, REGEN: 0.08 }, statIcons: { AGI: '💨', EVA: '〇', HP: '❤️', REGEN: '♥' } }
   ];
+  const DEFAULT_SLOT_LEVEL = 1;
 
   let mounted = false;
   let refs = null;
@@ -74,6 +75,12 @@
     character.equipmentBonuses = calcEquipmentBonuses();
     character.hero = applyEquipmentToHero(character.baseHero, character.equipmentBonuses);
     character.stats = { ...(character.hero?.stats || {}) };
+  }
+
+  function resetSlotsToDefault() {
+    SLOTS.forEach((slot) => {
+      slot.level = DEFAULT_SLOT_LEVEL;
+    });
   }
   function syncHeroToGlobalState() {
     if (!window.CharacterStatsSystem || typeof window.CharacterStatsSystem.setActiveHero !== 'function' || !character.hero) return;
@@ -172,6 +179,43 @@
 
   function getHeroSnapshot() {
     return character.hero ? { ...character.hero, stats: { ...character.hero.stats } } : null;
+  }
+
+  function getSerializableState() {
+    return {
+      selectedSpriteSrc,
+      slots: SLOTS.map((slot) => ({ id: slot.id, level: slot.level }))
+    };
+  }
+
+  function applySerializableState(savedState) {
+    if (!savedState || typeof savedState !== 'object') return;
+    selectedSpriteSrc = savedState.selectedSpriteSrc || '';
+    const levelBySlot = new Map((savedState.slots || []).map((slot) => [slot.id, Math.max(1, Number(slot.level) || 1)]));
+    SLOTS.forEach((slot) => {
+      slot.level = levelBySlot.get(slot.id) || DEFAULT_SLOT_LEVEL;
+    });
+    refreshCharacterFromHero(window.CharacterStatsSystem?.getActiveHero() || DEFAULT_HERO);
+    if (mounted && refs) {
+      refs.grid.innerHTML = '';
+      SLOTS.forEach((slot) => refs.grid.appendChild(createSlotElement(slot)));
+      renderCharStats();
+      renderHeroIdentity();
+      applySpriteToPanel();
+    }
+  }
+
+  function resetState() {
+    selectedSpriteSrc = '';
+    resetSlotsToDefault();
+    refreshCharacterFromHero(window.CharacterStatsSystem?.getActiveHero() || DEFAULT_HERO);
+    if (mounted && refs) {
+      refs.grid.innerHTML = '';
+      SLOTS.forEach((slot) => refs.grid.appendChild(createSlotElement(slot)));
+      renderCharStats();
+      renderHeroIdentity();
+      applySpriteToPanel();
+    }
   }
 
   let currentSlot = null;
@@ -382,6 +426,9 @@
     isMounted: () => mounted,
     setCharacterSprite,
     getHeroSnapshot,
+    getSerializableState,
+    applySerializableState,
+    resetState,
     grantExperience,
     grantMissionRewards
   };

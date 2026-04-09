@@ -195,7 +195,11 @@
           playTime: '00:12:34'
         };
 
-        localStorage.setItem(SAVE_KEY, JSON.stringify(saveObject));
+        if (window.SaveManager && typeof window.SaveManager.save === 'function') {
+          window.SaveManager.save({ profile: saveObject }, 'new-game-character-selected');
+        } else {
+          localStorage.setItem(SAVE_KEY, JSON.stringify(saveObject));
+        }
         gameSavedData = saveObject;
         currentCharacterSelected = character.name;
         playPlaceholderSound('select');
@@ -208,11 +212,20 @@
   }
 
   function updateLoadPreview() {
-    const savedRaw = localStorage.getItem(SAVE_KEY);
-
-    if (savedRaw) {
+    const envelope = window.SaveManager && typeof window.SaveManager.load === 'function'
+      ? window.SaveManager.load()
+      : null;
+    const data = envelope?.data?.profile || (() => {
+      const savedRaw = localStorage.getItem(SAVE_KEY);
       try {
-        const data = JSON.parse(savedRaw);
+        return savedRaw ? JSON.parse(savedRaw) : null;
+      } catch (error) {
+        return null;
+      }
+    })();
+
+    if (data) {
+      try {
         gameSavedData = data;
         currentCharacterSelected = data.character || null;
         currentClanSelected = data.clan || null;
@@ -228,12 +241,27 @@
   }
 
   function loadGameFromStorage() {
-    const saved = localStorage.getItem(SAVE_KEY);
-    if (saved) {
-      const data = JSON.parse(saved);
+    let envelope = null;
+    let data = null;
+    try {
+      envelope = window.SaveManager && typeof window.SaveManager.load === 'function'
+        ? window.SaveManager.load()
+        : null;
+      data = envelope?.data?.profile || (() => {
+        const saved = localStorage.getItem(SAVE_KEY);
+        return saved ? JSON.parse(saved) : null;
+      })();
+    } catch (error) {
+      console.warn('Error al cargar guardado', error);
+      data = null;
+    }
+    if (data) {
       gameSavedData = data;
       currentClanSelected = data.clan || null;
       currentCharacterSelected = data.character || null;
+      if (window.SaveManager && typeof window.SaveManager.applyLoadedState === 'function' && envelope) {
+        window.SaveManager.applyLoadedState(envelope);
+      }
       playPlaceholderSound('select');
       alert(`Partida cargada: ${data.character} (Clan ${data.clan}) - Nivel ${data.level || 1}\n¡Bienvenido de vuelta, héroe!`);
       enterGame();
@@ -269,16 +297,19 @@
   }
 
   function clearAllGameSaves() {
-    const keysToDelete = [];
-    for (let i = 0; i < localStorage.length; i += 1) {
-      const key = localStorage.key(i);
-      if (!key) continue;
-      if (key === SAVE_KEY || key.startsWith('ngs_')) {
-        keysToDelete.push(key);
+    if (window.SaveManager && typeof window.SaveManager.clear === 'function') {
+      window.SaveManager.clear();
+    } else {
+      const keysToDelete = [];
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const key = localStorage.key(i);
+        if (!key) continue;
+        if (key === SAVE_KEY || key.startsWith('ngs_')) {
+          keysToDelete.push(key);
+        }
       }
+      keysToDelete.forEach((key) => localStorage.removeItem(key));
     }
-
-    keysToDelete.forEach((key) => localStorage.removeItem(key));
     gameSavedData = null;
     currentClanSelected = null;
     currentCharacterSelected = null;
@@ -343,12 +374,23 @@
   });
 
   function init() {
+    if (window.SaveManager && typeof window.SaveManager.initAutoSave === 'function') {
+      window.SaveManager.initAutoSave({ autoSaveIntervalMs: 30000 });
+      window.SaveManager.registerProvider('heroSystem', {
+        collect: () => (window.HeroSystem?.getSerializableState?.() || null),
+        apply: (payload) => window.HeroSystem?.applySerializableState?.(payload)
+      });
+      window.SaveManager.registerProvider('missionSystem', {
+        collect: () => (window.MissionSystem?.getSerializableState?.() || null),
+        apply: (payload) => window.MissionSystem?.applySerializableState?.(payload)
+      });
+    }
     showScreen('start');
     updateLoadPreview();
   }
 
   window.addEventListener('storage', (e) => {
-    if (e.key === SAVE_KEY) updateLoadPreview();
+    if (e.key === SAVE_KEY || e.key === window.SaveManager?.SAVE_KEY) updateLoadPreview();
   });
 
   init();

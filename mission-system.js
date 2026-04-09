@@ -159,6 +159,21 @@
       return Boolean(this.host && this.root && this.host.contains(this.root));
     },
 
+    getSerializableState() {
+      return {
+        currentView: this.currentView,
+        currentRank: this.currentRank,
+        heroLevel: this.heroLevel
+      };
+    },
+
+    applySerializableState(payload = {}) {
+      if (!payload || typeof payload !== 'object') return;
+      this.heroLevel = Math.max(1, Number(payload.heroLevel) || this.heroLevel || 1);
+      this.currentRank = payload.currentRank || null;
+      this.currentView = payload.currentView || 'ms-view-main';
+    },
+
     setHeroLevel(level) {
       this.heroLevel = Math.max(1, Number(level) || 1);
       if (this.isMounted() && this.currentView === 'ms-view-missions' && this.currentRank) {

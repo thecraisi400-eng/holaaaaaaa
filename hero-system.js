@@ -174,6 +174,35 @@
     return character.hero ? { ...character.hero, stats: { ...character.hero.stats } } : null;
   }
 
+  function getSerializableState() {
+    return {
+      slots: SLOTS.map((slot) => ({ id: slot.id, level: slot.level })),
+      selectedSpriteSrc
+    };
+  }
+
+  function applySerializableState(payload = {}) {
+    if (!payload || typeof payload !== 'object') return;
+    const savedSlots = Array.isArray(payload.slots) ? payload.slots : [];
+    savedSlots.forEach((savedSlot) => {
+      const slot = SLOTS.find((entry) => entry.id === savedSlot.id);
+      if (!slot) return;
+      slot.level = Math.max(1, Number(savedSlot.level) || 1);
+    });
+    if (typeof payload.selectedSpriteSrc === 'string') {
+      selectedSpriteSrc = payload.selectedSpriteSrc;
+    }
+    refreshCharacterFromHero(resolveHeroFromState());
+    syncHeroToGlobalState();
+    if (mounted && refs) {
+      refs.grid.innerHTML = '';
+      SLOTS.forEach((slot) => refs.grid.appendChild(createSlotElement(slot)));
+      renderCharStats();
+      renderHeroIdentity();
+      applySpriteToPanel();
+    }
+  }
+
   let currentSlot = null;
 
   function openModal(slot, rar) {
@@ -382,6 +411,8 @@
     isMounted: () => mounted,
     setCharacterSprite,
     getHeroSnapshot,
+    getSerializableState,
+    applySerializableState,
     grantExperience,
     grantMissionRewards
   };

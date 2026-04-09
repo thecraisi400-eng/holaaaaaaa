@@ -58,6 +58,18 @@ window.GameState.setPlayerVitals = ({ hp, mp }) => {
   const nextMp = mp == null ? state.mp : Math.max(0, Math.min(state.mpMax, Number(mp) || 0));
   updateState({ hp: nextHp, mp: nextMp }, 'player-vitals');
 };
+window.GameState.hydrate = (savedState = {}) => {
+  if (!savedState || typeof savedState !== 'object') return;
+  const merged = {
+    ...state,
+    ...savedState,
+    characterVisual: {
+      ...state.characterVisual,
+      ...(savedState.characterVisual || {})
+    }
+  };
+  updateState(merged, 'hydrate');
+};
 
 const sections = {
   heroe:        { icon:'🥷', title:'HÉROE',           desc:'Consulta y mejora el equipo de tu shinobi. Cambia armadura, armas y accesorios para maximizar tu poder de combate.' },
@@ -350,6 +362,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     cleanupBattleProcesses();
     state.activeSection = sec;
     renderCenterSection(sec);
+    window.dispatchEvent(new CustomEvent('ngs:section-changed', { detail: { section: sec } }));
   });
 });
 
@@ -392,5 +405,13 @@ window.addEventListener('ngs:hero-stats-updated', (event) => {
   updateBars();
   if (window.MissionSystem) {
     window.MissionSystem.setHeroLevel(state.level);
+  }
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    window.dispatchEvent(new CustomEvent('ngs:game-paused'));
+  } else {
+    window.dispatchEvent(new CustomEvent('ngs:game-resumed'));
   }
 });

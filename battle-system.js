@@ -40,6 +40,7 @@
         enemyScale: Number(options.spriteConfig?.enemyScale) || 1.2,
         baseSpriteHeight: Number(options.spriteConfig?.baseSpriteHeight) || 108,
       };
+      this.spriteMovementMultiplier = Math.max(1, Number(options.spriteMovementMultiplier) || 1);
       this.spriteImageCache = new Map();
 
       this.STARS = Array.from({ length: 18 }, () => ({
@@ -191,11 +192,11 @@
           const tdx = this.dashTarget.x - this.x;
           const tdy = this.dashTarget.y - this.y;
           const td = Math.hypot(tdx, tdy) || 1;
-          const spd = 5.0 * this.awakeSpd;
+          const spd = 5.0 * this.awakeSpd * engine.spriteMovementMultiplier;
           if (td > 8) {
             this.vx = (tdx / td) * spd;
             if (this.dashTarget.y < this.y - 10 && this.onGround && this.jumpCD <= 0) {
-              this.vy = -(9 + 2 * (this.awakeSpd - 1));
+              this.vy = -(9 + 2 * (this.awakeSpd - 1)) * engine.spriteMovementMultiplier;
               this.jumpCD = 55;
             }
           } else {
@@ -206,7 +207,7 @@
         doHealRetreat(enemy) {
           this.healTick--;
           const dir = this.x < enemy.x ? -1 : 1;
-          this.vx = dir * 3.0 * this.awakeSpd;
+          this.vx = dir * 3.0 * this.awakeSpd * engine.spriteMovementMultiplier;
           if (this.healTick <= 0) {
             this.hp = Math.min(this.maxHP, this.hp + 100);
             this.healing = false;
@@ -577,7 +578,7 @@
       const dx = target.x - shooter.x;
       const dy = (target.y - 30 * this.SS) - (shooter.y - 30 * this.SS);
       const d = Math.hypot(dx, dy) || 1;
-      const spd = 6.5;
+      const spd = 6.5 * this.spriteMovementMultiplier;
       this.projectiles.push({
         x: shooter.x,
         y: shooter.y - 30 * this.SS,
@@ -943,6 +944,7 @@
         playerSpriteSrc: this.getPlayerSpriteSrc(),
         enemySpriteSrc: this.getEnemySpriteSrcForMission(this.pendingMission),
         spriteConfig: this.spriteConfig,
+        spriteMovementMultiplier: this.getSpriteMovementMultiplierForMission(this.pendingMission),
       });
       this.engine.start((winner) => {
         const isWin = winner?.team === 1;
@@ -1026,6 +1028,11 @@
       if (!mission || mission.rank !== 'D') return '';
       const missionNumber = Number(mission.missionNumber) || 0;
       return D_RANK_ENEMY_SPRITES[missionNumber] || '';
+    },
+
+    getSpriteMovementMultiplierForMission(mission) {
+      if (!mission || mission.rank !== 'D') return 1;
+      return 3;
     },
 
     configureSpriteSizes({ playerScale, enemyScale, baseSpriteHeight } = {}) {

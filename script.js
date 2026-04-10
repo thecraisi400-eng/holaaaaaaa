@@ -12,6 +12,8 @@ const state = {
   heroSnapshot: null,
   expCurrentLevelStart: 0,
   activeSection: 'heroe',
+  characterSprite: '',
+  characterName: '',
 };
 
 function setGold(nextGold) {
@@ -24,6 +26,10 @@ function setGold(nextGold) {
 window.GameState = window.GameState || {};
 window.GameState.getGold = () => state.gold;
 window.GameState.setGold = setGold;
+window.GameState.getCharacterSprite = () => state.characterSprite || '';
+window.GameState.setCharacterSprite = (spriteSrc = '') => { state.characterSprite = spriteSrc || ''; };
+window.GameState.getCharacterName = () => state.characterName || '';
+window.GameState.setCharacterName = (name = '') => { state.characterName = name || ''; };
 
 const sections = {
   heroe:        { icon:'🥷', title:'HÉROE',           desc:'Consulta y mejora el equipo de tu shinobi. Cambia armadura, armas y accesorios para maximizar tu poder de combate.' },
@@ -43,6 +49,10 @@ function syncCharacterIdentity(saveData) {
   const topNameEl = document.getElementById('charName');
   if (topNameEl && saveData.character) {
     topNameEl.textContent = saveData.character.toUpperCase();
+  }
+
+  if (window.GameState && typeof window.GameState.setCharacterName === 'function') {
+    window.GameState.setCharacterName(saveData.character || '');
   }
 
   const heroNameEl = document.querySelector('.hs-char-name');
@@ -71,6 +81,10 @@ function syncCharacterSprite(saveData) {
       topSpriteImg.style.display = '';
       if (topSpritePlaceholder) topSpritePlaceholder.style.display = '';
     }
+  }
+
+  if (window.GameState && typeof window.GameState.setCharacterSprite === 'function') {
+    window.GameState.setCharacterSprite(spriteSrc || '');
   }
 
   if (window.HeroSystem && typeof window.HeroSystem.setCharacterSprite === 'function') {

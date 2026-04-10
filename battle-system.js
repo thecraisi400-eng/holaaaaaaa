@@ -842,6 +842,10 @@
     root: null,
     engine: null,
     pendingMission: null,
+    round: 1,
+    roundsWon: 0,
+    continueTimer: null,
+    callbacks: null,
 
     mount(mission, onComplete) {
       this.host = document.getElementById('hero-system-host');
@@ -856,16 +860,42 @@
       if (!canvas) return;
 
       this.pendingMission = mission;
+      this.callbacks = typeof onComplete === 'function'
+        ? { onBattleEnd: onComplete }
+        : (onComplete || {});
+      this.round = 1;
+      this.roundsWon = 0;
+      this.clearContinueTimer();
       this.engine = new ShinobiBattleEngine(canvas);
-      this.bindEvents(onComplete);
       this.engine.start((winner) => {
         const isWin = winner?.team === 1;
-        this.setStatus(isWin ? '✅ ¡Victoria ninja!' : '❌ Derrota en combate.');
-        this.root?.classList.add('bs-finished');
-        const continueBtn = this.root?.querySelector('#bs-continue-btn');
-        if (continueBtn) continueBtn.disabled = false;
+        if (isWin) {
+          this.roundsWon += 1;
+          if (typeof this.callbacks.onRoundWin === 'function') {
+            this.callbacks.onRoundWin({
+              round: this.round,
+              roundsWon: this.roundsWon,
+              mission: this.pendingMission,
+              winner,
+            });
+          }
+          this.round += 1;
+          this.showRoundBanner(`RONDA ${this.round}`);
+          this.clearContinueTimer();
+          this.continueTimer = setTimeout(() => {
+            if (!this.engine || !this.isMounted()) return;
+            this.engine.initGame();
+          }, 1300);
+        } else if (typeof this.callbacks.onBattleEnd === 'function') {
+          this.callbacks.onBattleEnd({
+            didWin: false,
+            winner,
+            mission: this.pendingMission,
+            roundsWon: this.roundsWon,
+          });
+        }
       });
-      this.setStatus(`⚔️ ${mission?.name || 'Combate'} en progreso...`);
+      this.showRoundBanner(`RONDA ${this.round}`);
     },
 
     isMounted() {
@@ -873,40 +903,36 @@
     },
 
     unmount() {
+      this.clearContinueTimer();
       if (this.engine) this.engine.destroy();
       if (this.host) this.host.innerHTML = '';
       this.host = null;
       this.root = null;
       this.engine = null;
       this.pendingMission = null;
+      this.round = 1;
+      this.roundsWon = 0;
+      this.callbacks = null;
     },
 
-    setStatus(text) {
-      const el = this.root?.querySelector('#bs-info');
-      if (el) el.textContent = text;
-    },
-
-    bindEvents(onComplete) {
-      const restartBtn = this.root.querySelector('#bs-restart-btn');
-      const continueBtn = this.root.querySelector('#bs-continue-btn');
-
-      if (restartBtn) {
-        restartBtn.addEventListener('click', () => {
-          this.engine.initGame();
-          this.root.classList.remove('bs-finished');
-          if (continueBtn) continueBtn.disabled = true;
-          this.setStatus(`⚔️ ${this.pendingMission?.name || 'Combate'} reiniciado...`);
-        });
-      }
-
-      if (continueBtn) {
-        continueBtn.addEventListener('click', () => {
-          if (!this.engine?.winner) return;
-          const didWin = this.engine.winner.team === 1;
-          if (typeof onComplete === 'function') onComplete({ didWin, winner: this.engine.winner, mission: this.pendingMission });
-        });
+    clearContinueTimer() {
+      if (this.continueTimer) {
+        clearTimeout(this.continueTimer);
+        this.continueTimer = null;
       }
     },
+
+    showRoundBanner(text) {
+      const banner = this.root?.querySelector('#bs-round-banner');
+      if (!banner) return;
+      banner.textContent = text;
+      banner.classList.add('show');
+      setTimeout(() => {
+        if (banner.textContent === text) {
+          banner.classList.remove('show');
+        }
+      }, 1100);
+    }
   };
 
   window.BattleSystem = BattleSystem;

@@ -186,8 +186,14 @@
       card.classList.add('ms-combat-flash');
       setTimeout(() => card.classList.remove('ms-combat-flash'), 600);
 
+      const missionForBattle = {
+        ...mission,
+        rank,
+        missionNumber: index + 1
+      };
+
       if (rank === 'D' && window.BattleSystem && typeof window.BattleSystem.mount === 'function') {
-        window.BattleSystem.mount(mission, {
+        window.BattleSystem.mount(missionForBattle, {
           onRoundWin: () => {
             this.grantMissionRewards(mission);
           },

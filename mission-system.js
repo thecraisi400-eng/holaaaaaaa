@@ -228,9 +228,16 @@
         const locked = this.heroLevel < mission.lvl;
         const card = document.createElement('div');
         card.className = `ms-mission-card${locked ? ' locked' : ''}`;
+        card.dataset.missionIndex = String(i);
+        card.dataset.missionRank = rank;
+        if (!locked) {
+          card.classList.add('selectable');
+          card.tabIndex = 0;
+          card.setAttribute('role', 'button');
+          card.setAttribute('aria-label', `Iniciar misión: ${mission.name}`);
+        }
         card.innerHTML = `
           <div class="ms-mission-name">⚔️ ${mission.name}</div>
-          <button class="ms-fight-btn" ${locked ? 'disabled' : ''}>⚔️ Luchar</button>
           <div class="ms-mission-body">
             <div class="ms-mission-rewards">
               <span class="ms-xp">✨ ${mission.xp} XP</span>
@@ -247,9 +254,13 @@
           </div>
         `;
 
-        const fightBtn = card.querySelector('.ms-fight-btn');
-        if (fightBtn) {
-          fightBtn.addEventListener('click', () => this.startFight(i, rank, fightBtn));
+        if (!locked) {
+          card.addEventListener('click', () => this.startFight(i, rank, card));
+          card.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            this.startFight(i, rank, card);
+          });
         }
 
         card.style.opacity = '0';
@@ -266,11 +277,11 @@
       this.switchView('ms-view-ranks', 'ms-view-missions', 'forward');
     },
 
-    async startFight(index, rank, btnEl) {
+    async startFight(index, rank, cardEl) {
       const mission = missionsData[rank]?.[index];
       if (!mission) return;
       this.currentMission = { rank, index, name: mission.name };
-      const card = btnEl.closest('.ms-mission-card');
+      const card = cardEl?.closest ? cardEl.closest('.ms-mission-card') : cardEl;
       if (!card) return;
 
       card.classList.add('ms-combat-flash');

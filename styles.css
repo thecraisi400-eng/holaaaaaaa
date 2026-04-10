@@ -593,6 +593,11 @@ html, body {
 }
 
 .ms-mission-card:hover { border-color: #3b82f6; box-shadow: 0 0 12px #3b82f622; }
+.ms-mission-card.selectable { cursor: pointer; }
+.ms-mission-card.selectable:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+}
 .ms-mission-card.locked { opacity: .55; filter: grayscale(.3); }
 
 .ms-mission-lock {
@@ -627,42 +632,8 @@ html, body {
   margin-bottom: 3px;
 }
 
-.ms-fight-btn {
-  display: block;
-  width: 70%;
-  margin: 3px auto;
-  padding: 4px 0;
-  background: linear-gradient(135deg, #dc2626, #991b1b);
-  border: 1px solid #ef4444;
-  border-radius: 6px;
-  color: #fff;
-  font-size: 10px;
-  font-weight: 800;
-  cursor: pointer;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  transition: all .2s ease;
-  text-shadow: 0 1px 2px rgba(0,0,0,.5);
-}
-
-.ms-fight-btn:hover {
-  background: linear-gradient(135deg, #ef4444, #dc2626);
-  box-shadow: 0 0 14px #ef444455;
-  transform: scale(1.05);
-}
-
-.ms-fight-btn:active { transform: scale(.97); }
-
-.ms-mission-card.locked .ms-fight-btn {
-  background: #374151;
-  border-color: #4b5563;
-  cursor: not-allowed;
-  box-shadow: none;
-  pointer-events: none;
-}
-
 .ms-mission-body { display: flex; justify-content: space-between; gap: 6px; }
-.ms-mission-rewards, .ms-mission-enemy { display: flex; flex-direction: column; gap: 1px; min-width: 0; font-size: 9px; color: #94a3b8; }
+.ms-mission-rewards, .ms-mission-enemy { display: flex; flex-direction: column; gap: 1px; min-width: 0; font-size: 11.7px; color: #94a3b8; }
 .ms-mission-enemy { text-align: right; }
 .ms-mission-rewards span, .ms-mission-enemy span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ms-xp { color: #34d399; }

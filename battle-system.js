@@ -2,7 +2,7 @@
   const TEMPLATE_ID = 'battleSystemTemplate';
 
   class ShinobiBattleEngine {
-    constructor(canvas) {
+    constructor(canvas, config = {}) {
       this.canvas = canvas;
       this.ctx = canvas.getContext('2d');
       this.W = 460;
@@ -32,6 +32,25 @@
       }));
 
       this.Fighter = this.createFighterClass();
+      this.playerSpriteImage = null;
+      this.enemySpriteImage = null;
+      this.playerName = 'KAGE';
+      this.enemyName = 'AKUMA';
+      this.setBattleAssets(config);
+    }
+
+    createSpriteImage(src) {
+      if (!src) return null;
+      const img = new Image();
+      img.src = src;
+      return img;
+    }
+
+    setBattleAssets(config = {}) {
+      this.playerName = config.playerName || 'KAGE';
+      this.enemyName = config.enemyName || 'AKUMA';
+      this.playerSpriteImage = this.createSpriteImage(config.playerSprite || '');
+      this.enemySpriteImage = this.createSpriteImage(config.enemySprite || '');
     }
 
     rng(min, max) { return min + Math.random() * (max - min); }
@@ -70,7 +89,7 @@
         constructor(startX, team) {
           this.x = startX; this.y = engine.GROUND; this.vx = 0; this.vy = 0;
           this.team = team; this.facing = team === 1 ? 1 : -1; this.zIndex = team;
-          this.name = team === 1 ? 'KAGE' : 'AKUMA';
+          this.name = team === 1 ? engine.playerName : engine.enemyName;
           this.bodyColor = team === 1 ? '#2255bb' : '#bb2222';
           this.auraColor = team === 1 ? '#55aaff' : '#ff8833';
           this.awakeColor = team === 1 ? '#00ffcc' : '#ffdd00';
@@ -88,6 +107,7 @@
           this.hitFlash = 0; this.stunTimer = 0;
           this.dead = false; this.deathTimer = 180;
           this.animTime = Math.random() * 100; this.legPhase = 0;
+          this.spriteImage = team === 1 ? engine.playerSpriteImage : engine.enemySpriteImage;
         }
 
         get inAwakening() { return this.hp / this.maxHP < 0.2; }
@@ -386,6 +406,16 @@
           ctx.ellipse(0, 1, 15 * s, 4 * s, 0, 0, Math.PI * 2);
           ctx.fill();
           ctx.scale(f, 1);
+
+          if (!overrideColor && this.spriteImage && this.spriteImage.complete && this.spriteImage.naturalWidth > 0) {
+            const w = 44 * s;
+            const h = 60 * s;
+            const bob = this.onGround ? Math.sin(this.animTime * 4) * 1.2 : 0;
+            ctx.imageSmoothingEnabled = true;
+            ctx.drawImage(this.spriteImage, -w / 2, -h + bob, w, h);
+            ctx.restore();
+            return;
+          }
 
           const legOff = this.onGround ? Math.sin(this.animTime * 4) * 4 : 0;
           ctx.fillStyle = aw ? '#111133' : '#1e1e1e';
@@ -866,7 +896,21 @@
       this.round = 1;
       this.roundsWon = 0;
       this.clearContinueTimer();
-      this.engine = new ShinobiBattleEngine(canvas);
+      const playerSprite = window.GameState && typeof window.GameState.getCharacterSprite === 'function'
+        ? window.GameState.getCharacterSprite()
+        : '';
+      const playerName = window.GameState && typeof window.GameState.getCharacterName === 'function'
+        ? window.GameState.getCharacterName()
+        : 'KAGE';
+      const enemySprite = mission?.enemySprite || '';
+      const enemyName = mission?.name ? `ENEMIGO ${this.round}` : 'AKUMA';
+
+      this.engine = new ShinobiBattleEngine(canvas, {
+        playerSprite,
+        enemySprite,
+        playerName: (playerName || 'KAGE').toUpperCase(),
+        enemyName,
+      });
       this.engine.start((winner) => {
         const isWin = winner?.team === 1;
         if (isWin) {

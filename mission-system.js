@@ -42,6 +42,24 @@
     ]
   };
 
+
+  const enemySpritesByRankMission = {
+    D: [
+      'assets/images/enemies/rank-d/mission-1.png',
+      'assets/images/enemies/rank-d/mission-2.png',
+      'assets/images/enemies/rank-d/mission-3.png',
+      'assets/images/enemies/rank-d/mission-4.png',
+      'assets/images/enemies/rank-d/mission-5.png',
+      'assets/images/enemies/rank-d/mission-6.png'
+    ]
+  };
+
+  function resolveEnemySprite(rank, index) {
+    const rankSprites = enemySpritesByRankMission[rank];
+    if (!Array.isArray(rankSprites)) return '';
+    return rankSprites[index] || '';
+  }
+
   const MissionSystem = {
     host: null,
     root: null,
@@ -180,6 +198,12 @@
     startFight(index, rank, btnEl) {
       const mission = missionsData[rank]?.[index];
       if (!mission) return;
+      const missionWithAssets = {
+        ...mission,
+        rank,
+        missionIndex: index,
+        enemySprite: resolveEnemySprite(rank, index),
+      };
       const card = btnEl.closest('.ms-mission-card');
       if (!card) return;
 
@@ -187,9 +211,9 @@
       setTimeout(() => card.classList.remove('ms-combat-flash'), 600);
 
       if (rank === 'D' && window.BattleSystem && typeof window.BattleSystem.mount === 'function') {
-        window.BattleSystem.mount(mission, {
+        window.BattleSystem.mount(missionWithAssets, {
           onRoundWin: () => {
-            this.grantMissionRewards(mission);
+            this.grantMissionRewards(missionWithAssets);
           },
           onBattleEnd: ({ roundsWon }) => {
             window.BattleSystem.unmount();
@@ -197,20 +221,20 @@
             this.showMissions(rank);
             if ((roundsWon || 0) > 0) {
               this.showVictory(
-                mission,
+                missionWithAssets,
                 `+${mission.xp * roundsWon} XP (${roundsWon} rondas)`,
                 `+${mission.gold * roundsWon} Oro`
               );
             } else {
-              this.showVictory(mission, 'Sin recompensas', 'Inténtalo de nuevo');
+              this.showVictory(missionWithAssets, 'Sin recompensas', 'Inténtalo de nuevo');
             }
           }
         });
         return;
       }
 
-      this.grantMissionRewards(mission);
-      this.showVictory(mission, `+${mission.xp} XP`, `+${mission.gold} Oro`);
+      this.grantMissionRewards(missionWithAssets);
+      this.showVictory(missionWithAssets, `+${mission.xp} XP`, `+${mission.gold} Oro`);
     },
 
     grantMissionRewards(mission) {

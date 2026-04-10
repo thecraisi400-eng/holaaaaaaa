@@ -187,15 +187,23 @@
       setTimeout(() => card.classList.remove('ms-combat-flash'), 600);
 
       if (rank === 'D' && window.BattleSystem && typeof window.BattleSystem.mount === 'function') {
-        window.BattleSystem.mount(mission, ({ didWin }) => {
-          window.BattleSystem.unmount();
-          this.mount();
-          this.showMissions(rank);
-          if (didWin) {
+        window.BattleSystem.mount(mission, {
+          onRoundWin: () => {
             this.grantMissionRewards(mission);
-            this.showVictory(mission, `+${mission.xp} XP`, `+${mission.gold} Oro`);
-          } else {
-            this.showVictory(mission, 'Sin recompensas', 'Inténtalo de nuevo');
+          },
+          onBattleEnd: ({ roundsWon }) => {
+            window.BattleSystem.unmount();
+            this.mount();
+            this.showMissions(rank);
+            if ((roundsWon || 0) > 0) {
+              this.showVictory(
+                mission,
+                `+${mission.xp * roundsWon} XP (${roundsWon} rondas)`,
+                `+${mission.gold * roundsWon} Oro`
+              );
+            } else {
+              this.showVictory(mission, 'Sin recompensas', 'Inténtalo de nuevo');
+            }
           }
         });
         return;

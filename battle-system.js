@@ -1,8 +1,17 @@
 (function () {
   const TEMPLATE_ID = 'battleSystemTemplate';
+  const SAVE_KEY = 'ngs_rpg_save_data';
+  const D_RANK_ENEMY_SPRITES = {
+    1: 'assets/images/enemies/rank-d/mission-1.png',
+    2: 'assets/images/enemies/rank-d/mission-2.png',
+    3: 'assets/images/enemies/rank-d/mission-3.png',
+    4: 'assets/images/enemies/rank-d/mission-4.png',
+    5: 'assets/images/enemies/rank-d/mission-5.png',
+    6: 'assets/images/enemies/rank-d/mission-6.png',
+  };
 
   class ShinobiBattleEngine {
-    constructor(canvas) {
+    constructor(canvas, options = {}) {
       this.canvas = canvas;
       this.ctx = canvas.getContext('2d');
       this.W = 460;
@@ -24,6 +33,14 @@
       this.lastTS = 0;
       this.rafId = null;
       this.onBattleEnd = null;
+      this.playerSpriteSrc = options.playerSpriteSrc || '';
+      this.enemySpriteSrc = options.enemySpriteSrc || '';
+      this.spriteConfig = {
+        playerScale: Number(options.spriteConfig?.playerScale) || 1.2,
+        enemyScale: Number(options.spriteConfig?.enemyScale) || 1.2,
+        baseSpriteHeight: Number(options.spriteConfig?.baseSpriteHeight) || 108,
+      };
+      this.spriteImageCache = new Map();
 
       this.STARS = Array.from({ length: 18 }, () => ({
         x: Math.random() * this.W,
@@ -88,6 +105,9 @@
           this.hitFlash = 0; this.stunTimer = 0;
           this.dead = false; this.deathTimer = 180;
           this.animTime = Math.random() * 100; this.legPhase = 0;
+          this.spriteSrc = team === 1 ? engine.playerSpriteSrc : engine.enemySpriteSrc;
+          this.spriteScale = team === 1 ? engine.spriteConfig.playerScale : engine.spriteConfig.enemyScale;
+          this.spriteImage = this.spriteSrc ? engine.getSpriteImage(this.spriteSrc) : null;
         }
 
         get inAwakening() { return this.hp / this.maxHP < 0.2; }
@@ -328,11 +348,7 @@
             ctx.restore();
           }
 
-          if (this.hitFlash > 0 && (this.hitFlash % 4) < 2) {
-            ctx.save(); ctx.globalAlpha = 0.7; this._drawSprite('#ff2200'); ctx.restore();
-          } else {
-            this._drawSprite();
-          }
+          this._drawSprite();
         }
 
         _drawAura(color, r) {
@@ -375,6 +391,10 @@
         }
 
         _drawSprite(overrideColor) {
+          const didDrawImage = this._drawImageSprite();
+          if (!didDrawImage) this._drawMissingSprite();
+          return;
+
           const { ctx, SS } = engine;
           const x = this.x; const y = this.y; const s = SS; const f = this.facing;
           const aw = this.awakening;
@@ -450,7 +470,55 @@
 
           ctx.restore();
         }
+
+        _drawImageSprite() {
+          if (!this.spriteImage || !this.spriteImage.complete || this.spriteImage.naturalWidth <= 0) return false;
+
+          const { ctx } = engine;
+          const desiredHeight = Math.max(1, engine.spriteConfig.baseSpriteHeight * this.spriteScale);
+          const aspect = this.spriteImage.naturalWidth / this.spriteImage.naturalHeight;
+          const drawWidth = desiredHeight * aspect;
+          const drawHeight = desiredHeight;
+
+          ctx.save();
+          ctx.translate(this.x, this.y);
+          ctx.scale(this.facing, 1);
+          ctx.fillStyle = 'rgba(0,0,0,0.28)';
+          ctx.beginPath();
+          ctx.ellipse(0, 1, Math.max(14, drawWidth * 0.24), Math.max(4, drawHeight * 0.06), 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.imageSmoothingEnabled = true;
+          ctx.drawImage(this.spriteImage, -drawWidth / 2, -drawHeight, drawWidth, drawHeight);
+          ctx.restore();
+          return true;
+        }
+
+        _drawMissingSprite() {
+          const { ctx } = engine;
+          const desiredHeight = Math.max(1, engine.spriteConfig.baseSpriteHeight * this.spriteScale);
+          const drawWidth = desiredHeight * 0.7;
+          const drawHeight = desiredHeight;
+          ctx.save();
+          ctx.translate(this.x, this.y);
+          ctx.scale(this.facing, 1);
+          ctx.fillStyle = 'rgba(0,0,0,0.28)';
+          ctx.beginPath();
+          ctx.ellipse(0, 1, Math.max(14, drawWidth * 0.24), Math.max(4, drawHeight * 0.06), 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = 'rgba(255,255,255,0.20)';
+          ctx.fillRect(-drawWidth / 2, -drawHeight, drawWidth, drawHeight);
+          ctx.restore();
+        }
       };
+    }
+
+    getSpriteImage(src) {
+      if (!src) return null;
+      if (this.spriteImageCache.has(src)) return this.spriteImageCache.get(src);
+      const img = new Image();
+      img.src = src;
+      this.spriteImageCache.set(src, img);
+      return img;
     }
 
     spawnP(x, y, o = {}) {
@@ -846,6 +914,11 @@
     roundsWon: 0,
     continueTimer: null,
     callbacks: null,
+    spriteConfig: {
+      playerScale: 1.2,
+      enemyScale: 1.2,
+      baseSpriteHeight: 108,
+    },
 
     mount(mission, onComplete) {
       this.host = document.getElementById('hero-system-host');
@@ -866,7 +939,11 @@
       this.round = 1;
       this.roundsWon = 0;
       this.clearContinueTimer();
-      this.engine = new ShinobiBattleEngine(canvas);
+      this.engine = new ShinobiBattleEngine(canvas, {
+        playerSpriteSrc: this.getPlayerSpriteSrc(),
+        enemySpriteSrc: this.getEnemySpriteSrcForMission(this.pendingMission),
+        spriteConfig: this.spriteConfig,
+      });
       this.engine.start((winner) => {
         const isWin = winner?.team === 1;
         if (isWin) {
@@ -932,6 +1009,29 @@
           banner.classList.remove('show');
         }
       }, 1100);
+    },
+
+    getPlayerSpriteSrc() {
+      try {
+        const saved = localStorage.getItem(SAVE_KEY);
+        if (!saved) return '';
+        const data = JSON.parse(saved);
+        return typeof data?.characterSprite === 'string' ? data.characterSprite : '';
+      } catch (err) {
+        return '';
+      }
+    },
+
+    getEnemySpriteSrcForMission(mission) {
+      if (!mission || mission.rank !== 'D') return '';
+      const missionNumber = Number(mission.missionNumber) || 0;
+      return D_RANK_ENEMY_SPRITES[missionNumber] || '';
+    },
+
+    configureSpriteSizes({ playerScale, enemyScale, baseSpriteHeight } = {}) {
+      if (Number.isFinite(playerScale) && playerScale > 0) this.spriteConfig.playerScale = playerScale;
+      if (Number.isFinite(enemyScale) && enemyScale > 0) this.spriteConfig.enemyScale = enemyScale;
+      if (Number.isFinite(baseSpriteHeight) && baseSpriteHeight > 0) this.spriteConfig.baseSpriteHeight = baseSpriteHeight;
     }
   };
 

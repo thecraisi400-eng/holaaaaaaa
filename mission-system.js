@@ -186,19 +186,43 @@
       card.classList.add('ms-combat-flash');
       setTimeout(() => card.classList.remove('ms-combat-flash'), 600);
 
+      if (rank === 'D' && window.BattleSystem && typeof window.BattleSystem.mount === 'function') {
+        window.BattleSystem.mount(mission, ({ didWin }) => {
+          window.BattleSystem.unmount();
+          this.mount();
+          this.showMissions(rank);
+          if (didWin) {
+            this.grantMissionRewards(mission);
+            this.showVictory(mission, `+${mission.xp} XP`, `+${mission.gold} Oro`);
+          } else {
+            this.showVictory(mission, 'Sin recompensas', 'Inténtalo de nuevo');
+          }
+        });
+        return;
+      }
+
+      this.grantMissionRewards(mission);
+      this.showVictory(mission, `+${mission.xp} XP`, `+${mission.gold} Oro`);
+    },
+
+    grantMissionRewards(mission) {
+      if (!mission) return;
+
       if (window.HeroSystem && typeof window.HeroSystem.grantExperience === 'function') {
         window.HeroSystem.grantExperience(mission.xp);
       }
       if (window.GameState && typeof window.GameState.getGold === 'function' && typeof window.GameState.setGold === 'function') {
         window.GameState.setGold(window.GameState.getGold() + mission.gold);
       }
+    },
 
+    showVictory(mission, xpText, goldText) {
       const popup = this.root.querySelector('#ms-victoryPopup');
       const info = this.root.querySelector('#ms-victoryInfo');
       const rewards = this.root.querySelector('#ms-victoryRewards');
       if (info) info.textContent = `Misión: ${mission.name}`;
       if (rewards) {
-        rewards.innerHTML = `<span style="color:#34d399">+${mission.xp} XP</span> &nbsp;|&nbsp; <span style="color:#fbbf24">+${mission.gold} Oro</span>`;
+        rewards.innerHTML = `<span style="color:#34d399">${xpText}</span> &nbsp;|&nbsp; <span style="color:#fbbf24">${goldText}</span>`;
       }
       if (popup) popup.classList.add('show');
     },

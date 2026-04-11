@@ -180,7 +180,9 @@
       };
 
       onClick('#ms-openMissionsBtn', () => this.showRanks());
+      onClick('#ms-openDailyMissionsBtn', () => this.showDailyMissions());
       onClick('#ms-backToMainBtn', () => this.goBack('ms-view-main'));
+      onClick('#ms-backFromDailyBtn', () => this.goBack('ms-view-main'));
       onClick('#ms-backToRanksBtn', () => this.goBack('ms-view-ranks'));
       onClick('#ms-closeVictoryBtn', () => this.closeVictory());
 
@@ -214,6 +216,10 @@
 
     showRanks() {
       this.switchView('ms-view-main', 'ms-view-ranks', 'forward');
+    },
+
+    showDailyMissions() {
+      this.switchView('ms-view-main', 'ms-view-daily', 'forward');
     },
 
     showMissions(rank) {
@@ -406,6 +412,10 @@
         this.showRanks();
         return;
       }
+      if (snapshot.currentView === 'ms-view-daily') {
+        this.showDailyMissions();
+        return;
+      }
       this.resetToMain();
     },
 
@@ -433,7 +443,11 @@
 
     goBack(target) {
       if (target === 'ms-view-main') {
-        this.switchView('ms-view-ranks', 'ms-view-main', 'back');
+        if (this.currentView === 'ms-view-ranks') {
+          this.switchView('ms-view-ranks', 'ms-view-main', 'back');
+        } else if (this.currentView === 'ms-view-daily') {
+          this.switchView('ms-view-daily', 'ms-view-main', 'back');
+        }
       } else if (target === 'ms-view-ranks') {
         this.switchView('ms-view-missions', 'ms-view-ranks', 'back');
       } else if (target === 'ms-view-missions' && this.currentView === 'ms-view-battle') {
@@ -443,7 +457,7 @@
     },
 
     resetToMain() {
-      const views = ['ms-view-main', 'ms-view-ranks', 'ms-view-missions', 'ms-view-battle'];
+      const views = ['ms-view-main', 'ms-view-daily', 'ms-view-ranks', 'ms-view-missions', 'ms-view-battle'];
       views.forEach((id) => {
         const view = this.root?.querySelector(`#${id}`);
         if (!view) return;

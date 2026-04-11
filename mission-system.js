@@ -186,7 +186,7 @@
       onClick('#ms-backToRanksBtn', () => this.goBack('ms-view-ranks'));
       onClick('#ms-closeVictoryBtn', () => this.closeVictory());
 
-      this.root.querySelectorAll('.ms-rank-btn').forEach((btn) => {
+      this.root.querySelectorAll('.ms-rank-btn[data-rank]').forEach((btn) => {
         btn.addEventListener('click', () => this.showMissions(btn.dataset.rank));
       });
     },

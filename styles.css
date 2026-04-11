@@ -496,6 +496,12 @@ html, body {
   padding: 12px 12px 0;
 }
 
+
+.ms-daily-missions-container {
+  width: 100%;
+  padding: 0 12px;
+}
+
 .ms-main-btn {
   display: flex;
   align-items: center;

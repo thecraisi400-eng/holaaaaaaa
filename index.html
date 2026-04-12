@@ -320,6 +320,13 @@
       </div>
     </div>
 
+    <div id="ms-view-battle" class="ms-view ms-view-battle">
+      <div id="ms-battle-stage" class="ms-battle-stage"></div>
+      <div class="ms-back-container">
+        <button id="ms-backToMissionsBtn" class="ms-back-btn">← Volver a misiones</button>
+      </div>
+    </div>
+
     <div id="ms-victoryPopup" class="ms-victory-popup">
       <h3>⚔️ ¡VICTORIA!</h3>
       <p id="ms-victoryInfo"></p>
@@ -329,9 +336,27 @@
   </div>
 </template>
 
+
+<template id="missionBattleTemplate">
+  <div class="ms-battle-shell" id="msBattleShell">
+    <canvas class="ms-battle-canvas" id="msBattleCanvas" width="460" height="360"></canvas>
+    <div class="ms-battle-veil" id="msBattleVeil"></div>
+    <div class="ms-battle-winner" id="msBattleWinner">
+      <div class="ms-battle-win-banner">
+        <div class="ms-battle-win-label">VENCEDOR</div>
+        <div class="ms-battle-win-name" id="msBattleWinName">UZUMAKI</div>
+        <div class="ms-battle-win-sub">★ &nbsp; VICTORIA &nbsp; ★</div>
+      </div>
+      <button class="ms-battle-restart" id="msBattleRestart">▶ &nbsp; NUEVA BATALLA</button>
+      <button class="ms-battle-exit" id="msBattleExit">← VOLVER A MISIONES</button>
+    </div>
+  </div>
+</template>
+
 <script src="character-stats-container.js"></script>
 <script src="hero-system.js"></script>
 <script src="mission-system.js"></script>
+<script src="mission-battle-system.js"></script>
 <script src="ninja-game-start.js"></script>
 <script src="script.js"></script>
 </body>

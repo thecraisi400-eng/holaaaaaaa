@@ -1,4 +1,32 @@
 (function () {
+  const PLAYER_BATTLE_SPRITES = {
+    asura: 'assets/images/asura_battle.png',
+    hagoromo: 'assets/images/hagoromo_battle.png',
+    hashirama: 'assets/images/hashirama_battle.png',
+    indra: 'assets/images/indra_battle.png',
+    itachi: 'assets/images/itachi_battle.png',
+    itama: 'assets/images/itama_battle.png',
+    kaguya: 'assets/images/kaguya_battle.png',
+    karin: 'assets/images/karin_battle.png',
+    kushina: 'assets/images/kushina_battle.png',
+    madara: 'assets/images/madara_battle.png',
+    nagato: 'assets/images/nagato_battle.png',
+    naruto: 'assets/images/naruto_battle.png',
+    obito: 'assets/images/obito_battle.png',
+    sasuke: 'assets/images/susuke_battle.png',
+    tobirama: 'assets/images/tobirama_battle.png',
+    tsunade: 'assets/images/tsunade_battle.png'
+  };
+
+  const ENEMY_MISSION_SPRITES = {
+    0: 'assets/images/enemies/rank-d/mission-1.png',
+    1: 'assets/images/enemies/rank-d/mission-2.png',
+    2: 'assets/images/enemies/rank-d/mission-3.png',
+    3: 'assets/images/enemies/rank-d/mission-4.png',
+    4: 'assets/images/enemies/rank-d/mission-5.png',
+    5: 'assets/images/enemies/rank-d/mission-6.png'
+  };
+
   const BattleSystem = {
     host: null,
     root: null,
@@ -11,6 +39,7 @@
     onExit: null,
     rafId: 0,
     lastTs: 0,
+    options: {},
 
     mount(host, options = {}) {
       if (!host) return;
@@ -31,6 +60,7 @@
       this.winName = this.host.querySelector('#msBattleWinName');
       this.onVictory = options.onVictory;
       this.onExit = options.onExit;
+      this.options = options;
 
       const restartBtn = this.host.querySelector('#msBattleRestart');
       const exitBtn = this.host.querySelector('#msBattleExit');
@@ -39,7 +69,7 @@
         if (typeof this.onExit === 'function') this.onExit();
       });
 
-      this.engine = this.createEngine();
+      this.engine = this.createEngine(options);
       this.engine.genBG();
       this.engine.initSprites();
       this.startGame();
@@ -64,6 +94,7 @@
       this.winName = null;
       this.onVictory = null;
       this.onExit = null;
+      this.options = {};
     },
 
     startGame() {
@@ -72,12 +103,12 @@
       if (this.winScreen) this.winScreen.style.display = 'none';
     },
 
-    showWinner(name) {
+    showWinner(name, winnerId) {
       if (!this.winName || !this.winScreen) return;
       this.winName.textContent = name;
-      this.winName.style.color = name === 'SUSUKE' ? '#FFD700' : '#CC88FF';
+      this.winName.style.color = winnerId === 0 ? '#FFD700' : '#CC88FF';
       this.winScreen.style.display = 'flex';
-      if (typeof this.onVictory === 'function') this.onVictory(name);
+      if (typeof this.onVictory === 'function') this.onVictory({ name, winnerId });
     },
 
     loop(ts) {
@@ -91,7 +122,7 @@
       this.rafId = requestAnimationFrame((nextTs) => this.loop(nextTs));
     },
 
-    createEngine() {
+    createEngine(options = {}) {
       const self = this;
       const TIME_SCALE = 1.0;
       const SPRITE_SCALE = 0.70;
@@ -107,6 +138,49 @@
       const NH = Math.round(FRAME_SIZE * SPRITE_SCALE);
       const DASH_EW = Math.round(DASH_EFFECT_W * SPRITE_SCALE);
       const DASH_EH = Math.round(DASH_EFFECT_H * SPRITE_SCALE);
+
+      const hero = options.heroSnapshot || window.CharacterStatsSystem?.getActiveHero?.() || null;
+      const mission = options.mission || {};
+      const missionIndex = Number(options.missionIndex || 0);
+      const playerCharacterId = hero?.characterId || 'naruto';
+      const playerName = hero?.name || playerCharacterId.toUpperCase();
+
+      const playerStats = {
+        hp: Math.max(1, Math.round(hero?.stats?.HP || 100)),
+        atk: Math.max(1, Number(hero?.stats?.ATK || 10)),
+        def: Math.max(0, Number(hero?.stats?.DEF || 0))
+      };
+
+      const enemyStats = {
+        hp: Math.max(1, Math.round(options.enemyStats?.hp || mission.hp || 120)),
+        atk: Math.max(1, Number(options.enemyStats?.atk || mission.atk || 20)),
+        def: Math.max(0, Number(options.enemyStats?.def || mission.def || 10))
+      };
+
+      const playerSprite = PLAYER_BATTLE_SPRITES[playerCharacterId] || PLAYER_BATTLE_SPRITES.naruto;
+      const enemySprite = ENEMY_MISSION_SPRITES[missionIndex] || ENEMY_MISSION_SPRITES[0];
+
+      const playerFighterCfg = {
+        id: 0,
+        x: 70,
+        name: playerName.toUpperCase(),
+        color: '#E8A030',
+        glowColor: '#FF8C00',
+        stats: playerStats,
+        spritePath: playerSprite,
+        isPlayer: true
+      };
+
+      const enemyFighterCfg = {
+        id: 1,
+        x: 360,
+        name: `ENEMIGO M-${missionIndex + 1}`,
+        color: '#6855CC',
+        glowColor: '#9932CC',
+        stats: enemyStats,
+        spritePath: enemySprite,
+        isPlayer: false
+      };
 
       const ctx = this.ctx;
       const veil = this.veil;
@@ -134,16 +208,28 @@
       function initSprites() {
         let loaded = 0;
         const total = 2;
-        loadSpriteSheet('assets/images/susuke_battle.png', (img) => {
+        loadSpriteSheet(playerFighterCfg.spritePath, (img) => {
           spriteSheets[0] = img;
           loaded += 1;
           if (loaded === total) spritesLoaded = true;
         });
-        loadSpriteSheet('assets/images/kaguya_battle.png', (img) => {
+        loadSpriteSheet(enemyFighterCfg.spritePath, (img) => {
           spriteSheets[1] = img;
           loaded += 1;
           if (loaded === total) spritesLoaded = true;
         });
+      }
+
+      function syncMainHp(nextHp) {
+        if (window.GameState && typeof window.GameState.setHp === 'function') {
+          window.GameState.setHp(nextHp);
+        }
+      }
+
+      function calcDamage(baseAttack, targetDefense, varianceMin, varianceMax) {
+        const raw = baseAttack * (varianceMin + Math.random() * (varianceMax - varianceMin));
+        const reduced = raw - (targetDefense * 0.35);
+        return Math.max(1, Math.round(reduced));
       }
 
       class Particle {
@@ -253,15 +339,21 @@
       }
 
       class Fighter {
-        constructor(x, id) {
-          this.id = id; this.x = x; this.y = GROUND - NH;
+        constructor(cfg) {
+          this.id = cfg.id;
+          this.x = cfg.x;
+          this.y = GROUND - NH;
           this.vx = 0; this.vy = 0; this.onGround = true;
-          this.facingRight = (id === 0);
-          this.name = id === 0 ? 'SUSUKE' : 'KAGUYA';
-          this.color = id === 0 ? '#E8A030' : '#6855CC';
-          this.glowColor = id === 0 ? '#FF8C00' : '#9932CC';
-          this.hp = 100; this.maxHp = 100;
-          this.dashTimer = 0; this.dashInterval = 800; this.tX = x; this.tY = GROUND - NH;
+          this.facingRight = (cfg.id === 0);
+          this.name = cfg.name;
+          this.color = cfg.color;
+          this.glowColor = cfg.glowColor;
+          this.baseAtk = cfg.stats.atk;
+          this.baseDef = cfg.stats.def;
+          this.hp = cfg.stats.hp;
+          this.maxHp = cfg.stats.hp;
+          this.isPlayer = cfg.isPlayer;
+          this.dashTimer = 0; this.dashInterval = 800; this.tX = cfg.x; this.tY = GROUND - NH;
           this.atkCD = 0; this.jutsuCD = 0; this.stunTimer = 0;
           this.invincible = false; this.invTimer = 0;
           this.animF = 0; this.animT = 0; this.animState = 'idle'; this.trail = [];
@@ -275,7 +367,8 @@
           if (this.isDead || this.invincible) return;
           if (Math.random() < 0.15 && this.stunTimer <= 0) { this.doKawarimi(attacker); return; }
           this.hp = Math.max(0, this.hp - rawDmg);
-          const isCrit = rawDmg >= 14;
+          if (this.isPlayer) syncMainHp(this.hp);
+          const isCrit = rawDmg >= Math.max(14, this.maxHp * 0.12);
           damageNums.push(new DamageNum(this.cx + (Math.random() - 0.5) * 8, this.y - 5, rawDmg, isCrit));
           const dir = (fromX < this.cx) ? 1 : -1;
           const clr = isCrit ? '#FFD700' : '#FF4422';
@@ -316,7 +409,7 @@
         die() {
           this.isDead = true; slowMo = 0.16; gameOver = true;
           const winner = fighters.find((f) => !f.isDead);
-          setTimeout(() => self.showWinner(winner ? winner.name : '???'), 2600);
+          setTimeout(() => self.showWinner(winner ? winner.name : '???', winner ? winner.id : -1), 2600);
         }
 
         update(dt, dms, enemy) {
@@ -374,7 +467,7 @@
             const dist = Math.hypot(this.cx - enemy.cx, this.cy - enemy.cy);
             if (dist < 55 && this.atkCD <= 0) {
               if (Math.random() < PHYSICAL_ATTACK_CHANCE) {
-                const dmg = 8 + Math.random() * 7;
+                const dmg = calcDamage(this.baseAtk, enemy.baseDef, 0.75, 1.05);
                 enemy.receiveHit(dmg, this.cx, this);
                 this.atkCD = 42;
                 this.animState = 'attack'; this.animF = 0; this.animT = 0;
@@ -573,7 +666,7 @@
           for (const f of fighters) {
             if (f === j.owner || f.isDead || f.invincible) continue;
             if (Math.hypot(j.x - f.cx, j.y - f.cy) < j.size + NW / 2) {
-              const dmg = 10 + Math.random() * 10;
+              const dmg = calcDamage(j.owner.baseAtk, f.baseDef, 0.9, 1.3);
               f.receiveHit(dmg, j.x, j.owner);
               for (let i = 0; i < 16; i += 1) {
                 const ang = Math.random() * Math.PI * 2; const spd = 2 + Math.random() * 4;
@@ -610,7 +703,14 @@
         hitStop = 0; slowMo = 1; frameN = 0; gameOver = false;
         shakeX = 0; shakeY = 0; shakeDur = 0; shakeAmp = 0;
         jutsuVeil = 0; if (veil) veil.style.background = 'rgba(0,0,0,0)';
-        fighters = [new Fighter(70, 0), new Fighter(360, 1)];
+        fighters = [new Fighter(playerFighterCfg), new Fighter(enemyFighterCfg)];
+
+        const currentMainHp = window.GameState?.getHp?.();
+        if (Number.isFinite(currentMainHp)) {
+          fighters[0].hp = Math.max(1, Math.min(fighters[0].maxHp, Math.round(currentMainHp)));
+        }
+        syncMainHp(fighters[0].hp);
+
         fighters[0].tX = 120 + Math.random() * 80;
         fighters[1].tX = 250 + Math.random() * 80;
       }

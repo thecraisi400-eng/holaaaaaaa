@@ -224,9 +224,18 @@
 
       this.activeBattle = { mission, rank, index };
 
+      const heroSnapshot = window.HeroSystem && typeof window.HeroSystem.getHeroSnapshot === 'function'
+        ? window.HeroSystem.getHeroSnapshot()
+        : window.CharacterStatsSystem?.getActiveHero?.() || null;
+
       window.MissionBattleSystem.mount(battleHost, {
-        onVictory: (winner) => {
-          if (winner !== 'KAGUYA') {
+        mission,
+        missionIndex: index,
+        rank,
+        heroSnapshot,
+        enemyStats: { hp: mission.hp, atk: mission.atk, def: mission.def },
+        onVictory: (result) => {
+          if (result?.winnerId === 0) {
             this.applyRewardsAndPopup(mission);
           }
         },

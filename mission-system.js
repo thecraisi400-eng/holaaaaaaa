@@ -48,6 +48,7 @@
     currentView: 'ms-view-main',
     heroLevel: 1,
     currentRank: null,
+    activeBattle: null,
 
     mount() {
       if (this.isMounted()) return;
@@ -68,9 +69,13 @@
     unmount() {
       if (!this.host) return;
       this.host.innerHTML = '';
+      if (window.MissionBattleSystem && typeof window.MissionBattleSystem.unmount === 'function') {
+        window.MissionBattleSystem.unmount();
+      }
       this.root = null;
       this.currentView = 'ms-view-main';
       this.currentRank = null;
+      this.activeBattle = null;
     },
 
     isMounted() {
@@ -93,6 +98,7 @@
       onClick('#ms-openMissionsBtn', () => this.showRanks());
       onClick('#ms-backToMainBtn', () => this.goBack('ms-view-main'));
       onClick('#ms-backToRanksBtn', () => this.goBack('ms-view-ranks'));
+      onClick('#ms-backToMissionsBtn', () => this.goBack('ms-view-missions'));
       onClick('#ms-closeVictoryBtn', () => this.closeVictory());
 
       this.root.querySelectorAll('.ms-rank-btn').forEach((btn) => {
@@ -141,7 +147,7 @@
         card.className = `ms-mission-card${locked ? ' locked' : ''}`;
         card.innerHTML = `
           <div class="ms-mission-name">⚔️ ${mission.name}</div>
-          <button class="ms-fight-btn" ${locked ? 'disabled' : ''}>⚔️ Luchar</button>
+          <button class="ms-fight-btn" ${locked ? 'disabled' : ''}>⚔️ LUCHAR</button>
           <div class="ms-mission-body">
             <div class="ms-mission-rewards">
               <span class="ms-xp">✨ ${mission.xp} XP</span>
@@ -186,6 +192,15 @@
       card.classList.add('ms-combat-flash');
       setTimeout(() => card.classList.remove('ms-combat-flash'), 600);
 
+      if (rank === 'D' && window.MissionBattleSystem) {
+        this.openBattle(mission, rank, index);
+        return;
+      }
+
+      this.applyRewardsAndPopup(mission);
+    },
+
+    applyRewardsAndPopup(mission) {
       if (window.HeroSystem && typeof window.HeroSystem.grantExperience === 'function') {
         window.HeroSystem.grantExperience(mission.xp);
       }
@@ -203,6 +218,26 @@
       if (popup) popup.classList.add('show');
     },
 
+    openBattle(mission, rank, index) {
+      const battleHost = this.root?.querySelector('#ms-battle-stage');
+      if (!battleHost || !window.MissionBattleSystem) return;
+
+      this.activeBattle = { mission, rank, index };
+
+      window.MissionBattleSystem.mount(battleHost, {
+        onVictory: (winner) => {
+          if (winner !== 'KAGUYA') {
+            this.applyRewardsAndPopup(mission);
+          }
+        },
+        onExit: () => {
+          this.goBack('ms-view-missions');
+        }
+      });
+
+      this.switchView('ms-view-missions', 'ms-view-battle', 'forward');
+    },
+
     closeVictory() {
       const popup = this.root?.querySelector('#ms-victoryPopup');
       if (popup) popup.classList.remove('show');
@@ -213,6 +248,11 @@
         this.switchView('ms-view-ranks', 'ms-view-main', 'back');
       } else if (target === 'ms-view-ranks') {
         this.switchView('ms-view-missions', 'ms-view-ranks', 'back');
+      } else if (target === 'ms-view-missions') {
+        if (window.MissionBattleSystem && typeof window.MissionBattleSystem.unmount === 'function') {
+          window.MissionBattleSystem.unmount();
+        }
+        this.switchView('ms-view-battle', 'ms-view-missions', 'back');
       }
     },
 
@@ -222,7 +262,7 @@
       const missions = this.root?.querySelector('#ms-view-missions');
       if (!main || !ranks || !missions) return;
 
-      [main, ranks, missions].forEach((view) => {
+      [main, ranks, missions, this.root?.querySelector('#ms-view-battle')].filter(Boolean).forEach((view) => {
         view.classList.remove('active');
         view.style.opacity = '0';
         view.style.transform = 'translateX(100%)';

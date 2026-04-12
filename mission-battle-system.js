@@ -278,6 +278,9 @@
           window.GameState.setHp(nextHp);
         }
       }
+      function emitBattleSync(type, detail = {}) {
+        window.dispatchEvent(new CustomEvent('ngs:battle-sync', { detail: { type, ...detail } }));
+      }
 
       function finalizeRound(winner) {
         if (roundResolved) return;
@@ -438,6 +441,14 @@
           if (Math.random() < 0.15 && this.stunTimer <= 0) { this.doKawarimi(attacker); return; }
           this.hp = Math.max(0, this.hp - rawDmg);
           if (this.isPlayer) syncMainHp(this.hp);
+          emitBattleSync('damage', {
+            targetId: this.id,
+            targetName: this.name,
+            hp: this.hp,
+            maxHp: this.maxHp,
+            damage: rawDmg,
+            fromX
+          });
           const isCrit = rawDmg >= Math.max(14, this.maxHp * 0.12);
           damageNums.push(new DamageNum(this.cx + (Math.random() - 0.5) * 8, this.y - 5, rawDmg, isCrit));
           const dir = (fromX < this.cx) ? 1 : -1;
@@ -496,6 +507,17 @@
           if (this.invTimer > 0) { this.invTimer -= dt; if (this.invTimer <= 0) this.invincible = false; }
           if (!this.onGround) this.vy += G * dt;
           this.x += this.vx * dt; this.y += this.vy * dt;
+          emitBattleSync('fighter-update', {
+            fighterId: this.id,
+            x: this.x,
+            y: this.y,
+            vx: this.vx,
+            vy: this.vy,
+            stunTimer: this.stunTimer,
+            atkCD: this.atkCD,
+            jutsuCD: this.jutsuCD,
+            invTimer: this.invTimer
+          });
           this.vx *= 0.87;
           if (this.y >= GROUND - NH) { this.y = GROUND - NH; this.vy = 0; this.onGround = true; } else this.onGround = false;
           if (this.y < 4) { this.y = 4; this.vy = 0; }

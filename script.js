@@ -1,6 +1,7 @@
 /* ─────────────────────────────────────────────
    ESTADO DEL JUEGO - VALORES FIJOS SOLICITADOS
 ───────────────────────────────────────────── */
+const SAVE_KEY = 'ngs_rpg_save_data';
 const state = {
   hp: 100, hpMax: 100,
   mp: 100, mpMax: 100,
@@ -14,10 +15,28 @@ const state = {
   activeSection: 'heroe',
 };
 
+function persistCoreStateToSave() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return;
+    const saveData = JSON.parse(raw);
+    const next = {
+      ...saveData,
+      level: state.level,
+      rank: state.rank,
+      exp: state.exp
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(next));
+  } catch (error) {
+    console.warn('[GameState] No se pudo persistir estado base.', error);
+  }
+}
+
 function setGold(nextGold) {
   const normalizedGold = Math.max(0, Number(nextGold) || 0);
   state.gold = normalizedGold;
   updateBars();
+  persistCoreStateToSave();
   window.dispatchEvent(new CustomEvent('ngs:gold-updated', { detail: { gold: state.gold } }));
 }
 
@@ -29,12 +48,16 @@ function setHp(nextHp) {
   const normalized = Math.max(0, Math.min(state.hpMax, Math.round(Number(nextHp) || 0)));
   state.hp = normalized;
   updateBars();
+  persistCoreStateToSave();
   window.dispatchEvent(new CustomEvent('ngs:hp-updated', { detail: { hp: state.hp, hpMax: state.hpMax } }));
 }
 
 window.GameState.getHp = () => state.hp;
 window.GameState.setHp = setHp;
 window.GameState.getHeroSnapshot = () => state.heroSnapshot;
+window.GameState.getLevel = () => state.level;
+window.GameState.getExp = () => state.exp;
+window.GameState.getExpMax = () => state.expMax;
 
 const sections = {
   heroe:        { icon:'🥷', title:'HÉROE',           desc:'Consulta y mejora el equipo de tu shinobi. Cambia armadura, armas y accesorios para maximizar tu poder de combate.' },
@@ -103,6 +126,7 @@ function syncStateFromHero(snapshot) {
   state.atk = snapshot.stats.ATK;
   state.def = snapshot.stats.DEF;
   state.rank = snapshot.rank || 'GENIN';
+  persistCoreStateToSave();
 
   const rankEl = document.getElementById('charRank');
   if (rankEl) rankEl.textContent = state.rank;

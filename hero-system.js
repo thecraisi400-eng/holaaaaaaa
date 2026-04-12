@@ -1,4 +1,6 @@
 (function () {
+  const SAVE_KEY = 'ngs_rpg_save_data';
+  const EQUIPMENT_SAVE_PREFIX = 'ngs_equipment_';
   const DEFAULT_HERO = window.CharacterStatsSystem
     ? window.CharacterStatsSystem.buildHeroSnapshot('naruto', 1, 0, window.CharacterStatsSystem.DEFAULT_RANK)
     : null;
@@ -27,6 +29,62 @@
   let refs = null;
   let selectedSpriteSrc = '';
   const character = { gold: 0, stats: {}, hero: DEFAULT_HERO, baseHero: DEFAULT_HERO, equipmentBonuses: {} };
+  let loadedEquipmentForCharacterId = null;
+  function clampSlotLevel(level) {
+    const normalized = Math.round(Number(level) || 1);
+    return Math.max(1, Math.min(80, normalized));
+  }
+  function getEquipmentSaveKey(characterId) {
+    return `${EQUIPMENT_SAVE_PREFIX}${characterId || 'default'}`;
+  }
+  function persistSaveProgress() {
+    if (!character.hero || !character.hero.characterId) return;
+    try {
+      const raw = localStorage.getItem(SAVE_KEY);
+      if (!raw) return;
+      const saveData = JSON.parse(raw);
+      const updated = {
+        ...saveData,
+        characterId: character.hero.characterId,
+        level: character.hero.level,
+        exp: character.hero.exp,
+        rank: character.hero.rank || saveData.rank || 'GENIN'
+      };
+      localStorage.setItem(SAVE_KEY, JSON.stringify(updated));
+    } catch (error) {
+      console.warn('[HeroSystem] No se pudo persistir el progreso.', error);
+    }
+  }
+  function loadEquipmentLevels(characterId) {
+    if (!characterId) return;
+    const resetToDefault = () => {
+      SLOTS.forEach((slot) => {
+        slot.level = 1;
+      });
+    };
+    try {
+      const raw = localStorage.getItem(getEquipmentSaveKey(characterId));
+      if (!raw) {
+        resetToDefault();
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      SLOTS.forEach((slot) => {
+        slot.level = clampSlotLevel(parsed?.[slot.id]);
+      });
+    } catch (error) {
+      console.warn('[HeroSystem] No se pudieron cargar los niveles de equipo.', error);
+      resetToDefault();
+    }
+  }
+  function saveEquipmentLevels(characterId) {
+    if (!characterId) return;
+    const payload = SLOTS.reduce((acc, slot) => {
+      acc[slot.id] = clampSlotLevel(slot.level);
+      return acc;
+    }, {});
+    localStorage.setItem(getEquipmentSaveKey(characterId), JSON.stringify(payload));
+  }
   function syncGoldFromGlobalState() {
     if (window.GameState && typeof window.GameState.getGold === 'function') {
       character.gold = window.GameState.getGold();
@@ -71,6 +129,10 @@
     character.baseHero = heroSnapshot
       ? { ...heroSnapshot, stats: { ...(heroSnapshot.baseStats || heroSnapshot.stats || {}) } }
       : (character.baseHero || character.hero || DEFAULT_HERO);
+    if (character.baseHero?.characterId && loadedEquipmentForCharacterId !== character.baseHero.characterId) {
+      loadEquipmentLevels(character.baseHero.characterId);
+      loadedEquipmentForCharacterId = character.baseHero.characterId;
+    }
     character.equipmentBonuses = calcEquipmentBonuses();
     character.hero = applyEquipmentToHero(character.baseHero, character.equipmentBonuses);
     character.stats = { ...(character.hero?.stats || {}) };
@@ -173,6 +235,36 @@
   function getHeroSnapshot() {
     return character.hero ? { ...character.hero, stats: { ...character.hero.stats } } : null;
   }
+  function grantExperience(expGained) {
+    if (!window.CharacterStatsSystem || !character.baseHero?.characterId) return null;
+    const gain = Math.max(0, Math.round(Number(expGained) || 0));
+    if (gain <= 0) return getHeroSnapshot();
+
+    const currentBase = character.baseHero;
+    const characterId = currentBase.characterId;
+    const rank = currentBase.rank || window.CharacterStatsSystem.DEFAULT_RANK;
+    const getXpAtLevel = window.CharacterStatsSystem.getXpAtLevel;
+    if (typeof getXpAtLevel !== 'function') return getHeroSnapshot();
+
+    const totalExp = Math.max(0, Math.round(Number(currentBase.exp) || 0)) + gain;
+    let nextLevel = Math.max(1, Math.round(Number(currentBase.level) || 1));
+
+    while (nextLevel < 100 && totalExp >= getXpAtLevel(characterId, nextLevel + 1)) {
+      nextLevel += 1;
+    }
+
+    const updatedBase = window.CharacterStatsSystem.buildHeroSnapshot(characterId, nextLevel, totalExp, rank);
+    if (!updatedBase) return getHeroSnapshot();
+
+    refreshCharacterFromHero(updatedBase);
+    syncHeroToGlobalState();
+    persistSaveProgress();
+    window.dispatchEvent(new CustomEvent('ngs:hero-exp-gained', {
+      detail: { amount: gain, totalExp, level: nextLevel, characterId }
+    }));
+
+    return getHeroSnapshot();
+  }
 
   let currentSlot = null;
 
@@ -228,8 +320,10 @@
         window.GameState.setGold(character.gold);
       }
       currentSlot.level += 1;
+      saveEquipmentLevels(character.baseHero?.characterId);
       refreshCharacterFromHero(character.baseHero);
       syncHeroToGlobalState();
+      persistSaveProgress();
       const rar = getRarity(currentSlot.level);
       renderCharStats();
       openModal(currentSlot, rar);
@@ -322,7 +416,14 @@
     refs = null;
   }
 
-  window.HeroSystem = { mount, unmount, isMounted: () => mounted, setCharacterSprite, getHeroSnapshot };
+  window.HeroSystem = {
+    mount,
+    unmount,
+    isMounted: () => mounted,
+    setCharacterSprite,
+    getHeroSnapshot,
+    grantExperience
+  };
 
   window.addEventListener('ngs:hero-stats-updated', (event) => {
     const hero = event?.detail?.hero;

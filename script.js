@@ -25,6 +25,17 @@ window.GameState = window.GameState || {};
 window.GameState.getGold = () => state.gold;
 window.GameState.setGold = setGold;
 
+function setHp(nextHp) {
+  const normalized = Math.max(0, Math.min(state.hpMax, Math.round(Number(nextHp) || 0)));
+  state.hp = normalized;
+  updateBars();
+  window.dispatchEvent(new CustomEvent('ngs:hp-updated', { detail: { hp: state.hp, hpMax: state.hpMax } }));
+}
+
+window.GameState.getHp = () => state.hp;
+window.GameState.setHp = setHp;
+window.GameState.getHeroSnapshot = () => state.heroSnapshot;
+
 const sections = {
   heroe:        { icon:'🥷', title:'HÉROE',           desc:'Consulta y mejora el equipo de tu shinobi. Cambia armadura, armas y accesorios para maximizar tu poder de combate.' },
   misiones:     { icon:'📜', title:'MISIONES',         desc:'Acepta misiones de rango D a S. Completa objetivos para ganar EXP, oro y recompensas exclusivas.' },

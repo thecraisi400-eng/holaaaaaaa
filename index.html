@@ -354,10 +354,86 @@
   </div>
 </template>
 
+<template id="jutsuSystemTemplate">
+  <div id="jts-core" class="jts-core">
+    <div class="jts-library-panel">
+      <div class="jts-library-header">
+        <span class="jts-header-icon">📜</span>
+        <h2>Biblioteca de Jutsus</h2>
+      </div>
+      <div class="jts-library-grid-wrapper">
+        <div id="jts-library-grid" class="jts-library-grid"></div>
+      </div>
+    </div>
+
+    <div class="jts-slots-panel">
+      <div class="jts-equip-slot jts-is-empty" data-slot="0" id="jts-slot-0">
+        <div class="jts-slot-ring"></div>
+        <div class="jts-slot-inner">
+          <div class="jts-slot-empty-text">⊕</div>
+          <div class="jts-slot-name">Vacío</div>
+        </div>
+        <div class="jts-particle-container"></div>
+      </div>
+      <div class="jts-slot-label">Jutsu Primario</div>
+
+      <div class="jts-equip-slot jts-is-empty" data-slot="1" id="jts-slot-1">
+        <div class="jts-slot-ring"></div>
+        <div class="jts-slot-inner">
+          <div class="jts-slot-empty-text">⊕</div>
+          <div class="jts-slot-name">Vacío</div>
+        </div>
+        <div class="jts-particle-container"></div>
+      </div>
+      <div class="jts-slot-label">Jutsu Secundario</div>
+
+      <div class="jts-equip-slot jts-is-empty" data-slot="2" id="jts-slot-2">
+        <div class="jts-slot-ring"></div>
+        <div class="jts-slot-inner">
+          <div class="jts-slot-empty-text">⊕</div>
+          <div class="jts-slot-name">Vacío</div>
+        </div>
+        <div class="jts-particle-container"></div>
+      </div>
+      <div class="jts-slot-label">Técnica Secreta</div>
+    </div>
+
+    <div id="jts-detail-overlay" class="jts-detail-overlay">
+      <div id="jts-detail-popup" class="jts-detail-popup">
+        <button id="jts-popup-close" class="jts-popup-close">✕</button>
+        <div class="jts-popup-header">
+          <span id="jts-popup-icon" class="jts-popup-icon"></span>
+          <div class="jts-popup-title">
+            <h3 id="jts-popup-name"></h3>
+            <div id="jts-popup-element" class="jts-popup-subtitle"></div>
+          </div>
+          <div id="jts-popup-level" class="jts-popup-level"></div>
+        </div>
+        <div class="jts-popup-body">
+          <div class="jts-stat-row"><span class="jts-stat-label">⚔️ Daño</span><span id="jts-popup-damage" class="jts-stat-value jts-damage"></span></div>
+          <div class="jts-stat-row"><span class="jts-stat-label">💀 Efecto</span><span id="jts-popup-effect" class="jts-stat-value jts-effect"></span></div>
+          <div class="jts-stat-row"><span class="jts-stat-label">🛡️ Buff</span><span id="jts-popup-buff" class="jts-stat-value jts-buff"></span></div>
+          <div class="jts-stat-row"><span class="jts-stat-label">⏱️ Enfriamiento</span><span id="jts-popup-cd" class="jts-stat-value jts-cd"></span></div>
+          <div id="jts-popup-passive" class="jts-popup-passive">✦ Efecto Pasivo Desbloqueado ✦</div>
+        </div>
+        <div class="jts-popup-footer">
+          <button id="jts-btn-upgrade" class="jts-btn-upgrade">⬆ Mejorar</button>
+          <button id="jts-btn-equip-slot" class="jts-btn-equip-slot">Equipar</button>
+          <div class="jts-resources-display">
+            <div class="jts-resource-item"><span class="jts-res-icon">📜</span><span id="jts-res-scrolls" class="jts-res-count">50</span></div>
+            <div class="jts-resource-item"><span class="jts-res-icon">🔵</span><span id="jts-res-chakra" class="jts-res-count">200</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
 <script src="character-stats-container.js"></script>
 <script src="hero-system.js"></script>
 <script src="mission-system.js"></script>
 <script src="mission-battle-system.js"></script>
+<script src="jutsus-system.js"></script>
 <script src="ninja-game-start.js"></script>
 <script src="script.js"></script>
 </body>

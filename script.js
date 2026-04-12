@@ -237,9 +237,13 @@ const overlayClose = document.getElementById('overlayClose');
 function renderCenterSection(sectionKey) {
   const isHero = sectionKey === 'heroe';
   const isMissions = sectionKey === 'misiones';
+  const isJutsus = sectionKey === 'jutsus';
 
   if (isHero) {
     overlay.classList.remove('visible');
+    if (window.JutsuSystem && window.JutsuSystem.isMounted()) {
+      window.JutsuSystem.unmount();
+    }
     if (window.MissionSystem && window.MissionSystem.isMounted()) {
       window.MissionSystem.unmount();
     }
@@ -251,6 +255,9 @@ function renderCenterSection(sectionKey) {
 
   if (isMissions) {
     overlay.classList.remove('visible');
+    if (window.JutsuSystem && window.JutsuSystem.isMounted()) {
+      window.JutsuSystem.unmount();
+    }
     if (window.HeroSystem && window.HeroSystem.isMounted()) {
       window.HeroSystem.unmount();
     }
@@ -263,6 +270,23 @@ function renderCenterSection(sectionKey) {
     return;
   }
 
+  if (isJutsus) {
+    overlay.classList.remove('visible');
+    if (window.HeroSystem && window.HeroSystem.isMounted()) {
+      window.HeroSystem.unmount();
+    }
+    if (window.MissionSystem && window.MissionSystem.isMounted()) {
+      window.MissionSystem.unmount();
+    }
+    if (window.JutsuSystem && !window.JutsuSystem.isMounted()) {
+      window.JutsuSystem.mount();
+    }
+    return;
+  }
+
+  if (window.JutsuSystem && window.JutsuSystem.isMounted()) {
+    window.JutsuSystem.unmount();
+  }
   if (window.HeroSystem && window.HeroSystem.isMounted()) {
     window.HeroSystem.unmount();
   }

@@ -1270,6 +1270,7 @@ html, body {
 
 .ms-battle-canvas,
 .ms-battle-veil,
+.ms-battle-round-banner,
 .ms-battle-winner {
   position: absolute;
   inset: 0;
@@ -1287,6 +1288,24 @@ html, body {
   z-index: 8;
   background: rgba(0,0,0,0);
   transition: background .2s ease;
+}
+
+.ms-battle-round-banner {
+  display: none;
+  z-index: 18;
+  inset: auto 0 24px 0;
+  margin: 0 auto;
+  width: fit-content;
+  padding: 10px 24px;
+  border: 1px solid rgba(253, 224, 71, 0.75);
+  border-radius: 10px;
+  font-size: 14px;
+  letter-spacing: 3px;
+  font-weight: 800;
+  color: #fde047;
+  background: rgba(0, 0, 0, 0.72);
+  text-transform: uppercase;
+  animation: ms-battle-roundPulse .8s ease-in-out infinite alternate;
 }
 
 .ms-battle-winner {
@@ -1341,4 +1360,9 @@ html, body {
 @keyframes ms-battle-winPulse {
   from { filter: drop-shadow(0 0 8px rgba(255,200,0,0.3)); }
   to   { filter: drop-shadow(0 0 25px rgba(255,200,0,0.7)); }
+}
+
+@keyframes ms-battle-roundPulse {
+  from { box-shadow: 0 0 10px rgba(253, 224, 71, 0.2); }
+  to { box-shadow: 0 0 20px rgba(253, 224, 71, 0.45); }
 }

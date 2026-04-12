@@ -49,6 +49,7 @@
     heroLevel: 1,
     currentRank: null,
     activeBattle: null,
+    navCancelHandler: null,
 
     mount() {
       if (this.isMounted()) return;
@@ -63,6 +64,7 @@
       this.host.appendChild(fragment);
       this.root = this.host.querySelector('#ms-game-container');
       this.bindEvents();
+      this.bindExternalNavigationCancel();
       this.resetToMain();
     },
 
@@ -76,6 +78,10 @@
       this.currentView = 'ms-view-main';
       this.currentRank = null;
       this.activeBattle = null;
+      if (this.navCancelHandler) {
+        window.removeEventListener('ngs:navigation-selected', this.navCancelHandler);
+        this.navCancelHandler = null;
+      }
     },
 
     isMounted() {
@@ -104,6 +110,16 @@
       this.root.querySelectorAll('.ms-rank-btn').forEach((btn) => {
         btn.addEventListener('click', () => this.showMissions(btn.dataset.rank));
       });
+    },
+
+    bindExternalNavigationCancel() {
+      if (this.navCancelHandler) return;
+      this.navCancelHandler = (event) => {
+        const section = event?.detail?.section;
+        if (!section || this.currentView !== 'ms-view-battle' || !this.activeBattle) return;
+        this.cancelBattleAndReturn();
+      };
+      window.addEventListener('ngs:navigation-selected', this.navCancelHandler);
     },
 
     switchView(fromId, toId, direction) {
@@ -197,16 +213,17 @@
         return;
       }
 
-      this.applyRewardsAndPopup(mission);
+      this.applyRewards(mission, true);
     },
 
-    applyRewardsAndPopup(mission) {
+    applyRewards(mission, showPopup = false) {
       if (window.HeroSystem && typeof window.HeroSystem.grantExperience === 'function') {
         window.HeroSystem.grantExperience(mission.xp);
       }
       if (window.GameState && typeof window.GameState.getGold === 'function' && typeof window.GameState.setGold === 'function') {
         window.GameState.setGold(window.GameState.getGold() + mission.gold);
       }
+      if (!showPopup) return;
 
       const popup = this.root.querySelector('#ms-victoryPopup');
       const info = this.root.querySelector('#ms-victoryInfo');
@@ -234,13 +251,10 @@
         rank,
         heroSnapshot,
         enemyStats: { hp: mission.hp, atk: mission.atk, def: mission.def },
-        onVictory: (result) => {
-          if (result?.winnerId === 0) {
-            this.applyRewardsAndPopup(mission);
-          }
-        },
+        onRoundComplete: () => this.applyRewards(mission, false),
+        onDefeat: () => this.cancelBattleAndReturn(),
         onExit: () => {
-          this.goBack('ms-view-missions');
+          this.cancelBattleAndReturn();
         }
       });
 
@@ -258,9 +272,16 @@
       } else if (target === 'ms-view-ranks') {
         this.switchView('ms-view-missions', 'ms-view-ranks', 'back');
       } else if (target === 'ms-view-missions') {
-        if (window.MissionBattleSystem && typeof window.MissionBattleSystem.unmount === 'function') {
-          window.MissionBattleSystem.unmount();
-        }
+        this.cancelBattleAndReturn();
+      }
+    },
+
+    cancelBattleAndReturn() {
+      if (window.MissionBattleSystem && typeof window.MissionBattleSystem.unmount === 'function') {
+        window.MissionBattleSystem.unmount();
+      }
+      this.activeBattle = null;
+      if (this.currentView === 'ms-view-battle') {
         this.switchView('ms-view-battle', 'ms-view-missions', 'back');
       }
     },

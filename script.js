@@ -266,6 +266,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     const sec = btn.dataset.section;
     const labels = { heroe:'HÉROE', misiones:'MISIONES', clanes:'CLANES', eventos:'EVENTOS', jutsus:'JUTSUS', batallas:'BATALLAS', invocaciones:'INVOCAR', habilidades:'ÁRBOL', ajustes:'AJUSTES' };
     spawnFloatText(cx, cy, '▶ ' + (labels[sec] || sec), '#e8923a');
+    window.dispatchEvent(new CustomEvent('ngs:navigation-selected', { detail: { section: sec } }));
 
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');

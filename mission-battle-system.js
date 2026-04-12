@@ -27,6 +27,34 @@
     5: 'assets/images/enemies/rank-d/mission-6.png'
   };
 
+  const PLAYER_GLOW_COLORS = {
+    asura: '#FFFFFF',
+    hagoromo: '#FFFFFF',
+    hashirama: '#FACC15',
+    indra: '#A855F7',
+    itachi: '#EF4444',
+    itama: '#2DD4BF',
+    kaguya: '#FFFFFF',
+    karin: '#F97316',
+    kushina: '#EF4444',
+    madara: '#EF4444',
+    nagato: '#A855F7',
+    naruto: '#F97316',
+    obito: '#A855F7',
+    sasuke: '#A855F7',
+    tobirama: '#3B82F6',
+    tsunade: '#22C55E'
+  };
+
+  const ENEMY_GLOW_COLORS = {
+    0: '#22C55E',
+    1: '#3B82F6',
+    2: '#92400E',
+    3: '#92400E',
+    4: '#22C55E',
+    5: '#111111'
+  };
+
   const BattleSystem = {
     host: null,
     root: null,
@@ -35,7 +63,11 @@
     veil: null,
     winScreen: null,
     winName: null,
+    roundBanner: null,
+    roundBannerTimer: 0,
     onVictory: null,
+    onRoundComplete: null,
+    onDefeat: null,
     onExit: null,
     rafId: 0,
     lastTs: 0,
@@ -58,7 +90,10 @@
       this.veil = this.host.querySelector('#msBattleVeil');
       this.winScreen = this.host.querySelector('#msBattleWinner');
       this.winName = this.host.querySelector('#msBattleWinName');
+      this.roundBanner = this.host.querySelector('#msBattleRoundBanner');
       this.onVictory = options.onVictory;
+      this.onRoundComplete = options.onRoundComplete;
+      this.onDefeat = options.onDefeat;
       this.onExit = options.onExit;
       this.options = options;
 
@@ -84,6 +119,8 @@
       this.rafId = 0;
       this.lastTs = 0;
       this.engine = null;
+      clearTimeout(this.roundBannerTimer);
+      this.roundBannerTimer = 0;
       if (this.host) this.host.innerHTML = '';
       this.host = null;
       this.root = null;
@@ -92,7 +129,10 @@
       this.veil = null;
       this.winScreen = null;
       this.winName = null;
+      this.roundBanner = null;
       this.onVictory = null;
+      this.onRoundComplete = null;
+      this.onDefeat = null;
       this.onExit = null;
       this.options = {};
     },
@@ -101,6 +141,16 @@
       if (!this.engine) return;
       this.engine.startGame();
       if (this.winScreen) this.winScreen.style.display = 'none';
+      if (this.roundBanner) this.roundBanner.style.display = 'none';
+    },
+
+    showRoundBanner() {
+      if (!this.roundBanner) return;
+      this.roundBanner.style.display = 'block';
+      clearTimeout(this.roundBannerTimer);
+      this.roundBannerTimer = setTimeout(() => {
+        if (this.roundBanner) this.roundBanner.style.display = 'none';
+      }, 1500);
     },
 
     showWinner(name, winnerId) {
@@ -159,13 +209,15 @@
 
       const playerSprite = PLAYER_BATTLE_SPRITES[playerCharacterId] || PLAYER_BATTLE_SPRITES.naruto;
       const enemySprite = ENEMY_MISSION_SPRITES[missionIndex] || ENEMY_MISSION_SPRITES[0];
+      const playerGlowColor = PLAYER_GLOW_COLORS[playerCharacterId] || '#FF8C00';
+      const enemyGlowColor = ENEMY_GLOW_COLORS[missionIndex] || '#9932CC';
 
       const playerFighterCfg = {
         id: 0,
         x: 70,
         name: playerName.toUpperCase(),
         color: '#E8A030',
-        glowColor: '#FF8C00',
+        glowColor: playerGlowColor,
         stats: playerStats,
         spritePath: playerSprite,
         isPlayer: true
@@ -176,7 +228,7 @@
         x: 360,
         name: `ENEMIGO M-${missionIndex + 1}`,
         color: '#6855CC',
-        glowColor: '#9932CC',
+        glowColor: enemyGlowColor,
         stats: enemyStats,
         spritePath: enemySprite,
         isPlayer: false
@@ -196,6 +248,7 @@
       let jutsuVeil = 0;
       const spriteSheets = {};
       let spritesLoaded = false;
+      let roundResolved = false;
       let bgMountains; let bgTrees; let bgStars;
 
       function loadSpriteSheet(path, callback) {
@@ -224,6 +277,23 @@
         if (window.GameState && typeof window.GameState.setHp === 'function') {
           window.GameState.setHp(nextHp);
         }
+      }
+
+      function finalizeRound(winner) {
+        if (roundResolved) return;
+        roundResolved = true;
+        if (winner?.id === 0) {
+          if (typeof self.onRoundComplete === 'function') self.onRoundComplete();
+          if (typeof self.onVictory === 'function') self.onVictory({ name: winner.name, winnerId: winner.id });
+          self.showRoundBanner();
+          setTimeout(() => {
+            if (!self.engine) return;
+            startGame();
+          }, 1500);
+          return;
+        }
+
+        if (typeof self.onDefeat === 'function') self.onDefeat({ name: winner?.name || 'ENEMIGO', winnerId: winner?.id ?? -1 });
       }
 
       function calcDamage(baseAttack, targetDefense, varianceMin, varianceMax) {
@@ -409,7 +479,7 @@
         die() {
           this.isDead = true; slowMo = 0.16; gameOver = true;
           const winner = fighters.find((f) => !f.isDead);
-          setTimeout(() => self.showWinner(winner ? winner.name : '???', winner ? winner.id : -1), 2600);
+          setTimeout(() => finalizeRound(winner), 900);
         }
 
         update(dt, dms, enemy) {
@@ -701,6 +771,7 @@
       function startGame() {
         particles = []; damageNums = []; jutsus = [];
         hitStop = 0; slowMo = 1; frameN = 0; gameOver = false;
+        roundResolved = false;
         shakeX = 0; shakeY = 0; shakeDur = 0; shakeAmp = 0;
         jutsuVeil = 0; if (veil) veil.style.background = 'rgba(0,0,0,0)';
         fighters = [new Fighter(playerFighterCfg), new Fighter(enemyFighterCfg)];

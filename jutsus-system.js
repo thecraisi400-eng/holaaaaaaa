@@ -1,16 +1,25 @@
 (function () {
+  function randInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
   const JUTSU_DB = [
-    { id: 0, name: 'Llama Voraz', icon: '🔥', element: 'fire', baseDamage: 27, baseEffect: 'Ceguera (-30% puntería)', baseBuff: '+10% Ataque físico', baseCD: 3, currentLevel: 1 },
-    { id: 1, name: 'Rayo Destellante', icon: '⚡', element: 'lightning', baseDamage: 29, baseEffect: 'Parálisis (-80% velocidad)', baseBuff: '+15% Evasión', baseCD: 2, currentLevel: 1 },
-    { id: 2, name: 'Ráfaga Cortante', icon: '🌪️', element: 'wind', baseDamage: 20, baseEffect: 'Hemorragia', baseBuff: '+Velocidad de ataque', baseCD: 2, currentLevel: 1 },
-    { id: 3, name: 'Prisión Hidráulica', icon: '🌊', element: 'water', baseDamage: 23, baseEffect: 'Asfixia (No habilidades)', baseBuff: '-CD (Tiempos de espera)', baseCD: 3, currentLevel: 1 },
-    { id: 4, name: 'Escudo Telúrico', icon: '🪨', element: 'earth', baseDamage: 26, baseEffect: 'Pesadez (No saltos)', baseBuff: 'Inmunidad a empujones', baseCD: 3, currentLevel: 1 },
-    { id: 5, name: 'Sello Prohibido', icon: '🔮', element: 'seal', baseDamage: 19, baseEffect: 'Silencio (Bloquea especiales)', baseBuff: '+5% Chakra', baseCD: 2, currentLevel: 1 },
-    { id: 6, name: 'Espejismo Mental', icon: '👁️', element: 'genjutsu', baseDamage: 24, baseEffect: 'Confusión (Controles invertidos)', baseBuff: 'Invisibilidad', baseCD: 2, currentLevel: 1 },
-    { id: 7, name: 'Bosque Viviente', icon: '🌿', element: 'wood', baseDamage: 29, baseEffect: 'Drenado energía', baseBuff: 'Curación constante', baseCD: 3, currentLevel: 1 },
-    { id: 8, name: 'Impacto Brutal', icon: '💥', element: 'taijutsu', baseDamage: 21, baseEffect: 'Aturdimiento', baseBuff: 'Próximo golpe crítico', baseCD: 2, currentLevel: 1 },
-    { id: 9, name: 'Aliento Vital', icon: '💚', element: 'medical', baseDamage: 22, baseEffect: 'Sordera (-20% defensa)', baseBuff: 'Limpieza de debuffs', baseCD: 3, currentLevel: 1 }
-  ];
+    { id: 0, name: 'Llama Voraz', icon: '🔥', element: 'fire', baseDamage: 27, baseEffect: 'Ceguera (30% fallo por 4s)', baseBuff: '+10% ATK por 5s', baseCD: 3, currentLevel: 1 },
+    { id: 1, name: 'Rayo Destellante', icon: '⚡', element: 'lightning', baseDamage: 29, baseEffect: 'Parálisis (-80% velocidad por 4s)', baseBuff: '+15% Evasión por 5s', baseCD: 2, currentLevel: 1 },
+    { id: 2, name: 'Ráfaga Cortante', icon: '🌪️', element: 'wind', baseDamage: 20, baseEffect: 'Hemorragia (5% HP/s por 4s)', baseBuff: '+50% velocidad de ataque por 5s', baseCD: 2, currentLevel: 1 },
+    { id: 3, name: 'Prisión Hidráulica', icon: '🌊', element: 'water', baseDamage: 23, baseEffect: 'Asfixia (4% HP/s por 4s)', baseBuff: '-35% cooldown a jutsus equipados (1 turno)', baseCD: 3, currentLevel: 1 },
+    { id: 4, name: 'Escudo Telúrico', icon: '🪨', element: 'earth', baseDamage: 26, baseEffect: 'Pesadez (sin saltar por 4s)', baseBuff: 'Recibe 0 daño por 5s', baseCD: 3, currentLevel: 1 },
+    { id: 5, name: 'Sello Prohibido', icon: '🔮', element: 'seal', baseDamage: 19, baseEffect: 'Silencio (sin habilidades por 4s)', baseBuff: '+5% regeneración de Chakra por 5s', baseCD: 2, currentLevel: 1 },
+    { id: 6, name: 'Espejismo Mental', icon: '👁️', element: 'genjutsu', baseDamage: 24, baseEffect: 'Confusión (autodaño por 3s)', baseBuff: '+50% DEF por 5s', baseCD: 2, currentLevel: 1 },
+    { id: 7, name: 'Bosque Viviente', icon: '🌿', element: 'wood', baseDamage: 29, baseEffect: 'Drenado de energía (5% HP/s por 4s)', baseBuff: '+7% regeneración HP por 5s', baseCD: 3, currentLevel: 1 },
+    { id: 8, name: 'Impacto Brutal', icon: '💥', element: 'taijutsu', baseDamage: 21, baseEffect: 'Aturdimiento (inmóvil 4s)', baseBuff: 'Próximo golpe crítico', baseCD: 2, currentLevel: 1 },
+    { id: 9, name: 'Aliento Vital', icon: '💚', element: 'medical', baseDamage: 22, baseEffect: 'Sordera (-20% DEF por 4s)', baseBuff: 'Limpieza + Inmunidad a debuffs por 5s', baseCD: 3, currentLevel: 1 }
+  ].map((jutsu) => ({
+    ...jutsu,
+    baseMpCost: randInt(27, 37),
+    extraDamageFromUpgrades: 0,
+    extraMpFromUpgrades: 0
+  }));
 
   const MAX_LEVEL = 10;
 
@@ -51,10 +60,33 @@
 
     getStats(jutsu) {
       const lvl = jutsu.currentLevel;
-      const damage = Math.round(jutsu.baseDamage * (1 + (lvl - 1) * 0.12));
+      const damage = jutsu.baseDamage + jutsu.extraDamageFromUpgrades;
       const cdReduction = (lvl - 1) * 0.08;
       const cd = Math.max(0.5, parseFloat((jutsu.baseCD * (1 - cdReduction)).toFixed(1)));
-      return { damage, cd, level: lvl, isMax: lvl >= MAX_LEVEL };
+      const mpCost = jutsu.baseMpCost + jutsu.extraMpFromUpgrades;
+      return { damage, cd, mpCost, level: lvl, isMax: lvl >= MAX_LEVEL };
+    },
+
+    getEquippedBattleLoadout() {
+      return this.equipped
+        .map((jutsuId, slot) => {
+          if (jutsuId === null) return null;
+          const jutsu = JUTSU_DB.find((entry) => entry.id === jutsuId);
+          if (!jutsu) return null;
+          const stats = this.getStats(jutsu);
+          return {
+            id: jutsu.id,
+            slot,
+            name: jutsu.name,
+            icon: jutsu.icon,
+            element: jutsu.element,
+            damage: stats.damage,
+            mpCost: stats.mpCost,
+            cooldownMs: Math.round(stats.cd * 1000),
+            level: stats.level
+          };
+        })
+        .filter(Boolean);
     },
 
     bindEvents() {
@@ -194,6 +226,7 @@
       this.root.querySelector('#jts-popup-effect').textContent = jutsu.baseEffect;
       this.root.querySelector('#jts-popup-buff').textContent = jutsu.baseBuff;
       this.root.querySelector('#jts-popup-cd').textContent = `${stats.cd}s`;
+      this.root.querySelector('#jts-popup-mp').textContent = `${stats.mpCost} MP`;
 
       const levelEl = this.root.querySelector('#jts-popup-level');
       const popupEl = this.root.querySelector('#jts-detail-popup');
@@ -247,6 +280,8 @@
       this.resources.scrolls -= costScrolls;
       this.resources.chakra -= costChakra;
       jutsu.currentLevel += 1;
+      jutsu.extraMpFromUpgrades += randInt(10, 19);
+      jutsu.extraDamageFromUpgrades += randInt(17, 29);
 
       this.renderLibrary();
       this.renderAllSlots();

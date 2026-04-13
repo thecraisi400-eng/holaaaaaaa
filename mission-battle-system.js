@@ -921,17 +921,26 @@
         for (let i = 0; i < jutsus.length; i += 1) {
           for (let j = i + 1; j < jutsus.length; j += 1) {
             const a = jutsus[i]; const b = jutsus[j];
-            if (a instanceof BattleSkillOrb || b instanceof BattleSkillOrb) continue;
             if (a.owner === b.owner || a.dead || b.dead) continue;
             if (Math.hypot(a.x - b.x, a.y - b.y) < a.size + b.size + 6) {
               const ex = (a.x + b.x) / 2; const ey = (a.y + b.y) / 2;
+              const aIsSkill = a instanceof BattleSkillOrb;
+              const bIsSkill = b instanceof BattleSkillOrb;
               for (let k = 0; k < 22; k += 1) {
                 const ang = Math.random() * Math.PI * 2; const spd = 3 + Math.random() * 5;
                 particles.push(new Particle(ex, ey, Math.cos(ang) * spd, Math.sin(ang) * spd - 1, '#FFFFFF', 22, 3, 'spark'));
                 particles.push(new Particle(ex, ey, Math.cos(ang) * spd * 0.5, Math.sin(ang) * spd * 0.5, '#FFD700', 32, 2.5, 'spark'));
               }
-              triggerShake(6, 18); a.dead = true; b.dead = true;
-              for (const f of fighters) f.vx += (f.cx > ex ? 4.5 : -4.5);
+              triggerShake(6, 18);
+              if (aIsSkill && !bIsSkill) {
+                b.dead = true;
+              } else if (bIsSkill && !aIsSkill) {
+                a.dead = true;
+              } else {
+                a.dead = true;
+                b.dead = true;
+                for (const f of fighters) f.vx += (f.cx > ex ? 4.5 : -4.5);
+              }
             }
           }
         }

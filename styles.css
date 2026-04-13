@@ -1295,18 +1295,19 @@ html, body {
   display: none;
   z-index: 18;
   inset: 50% auto auto 50%;
-  transform: translate(-50%, -50%) scale(1.1);
+  transform: translate(-50%, -50%) scale(1);
   margin: 0 auto;
   width: fit-content;
-  padding: 11px 26px;
+  padding: 10px 23px;
   border: 1px solid rgba(253, 224, 71, 0.75);
   border-radius: 10px;
-  font-size: 15.4px;
-  letter-spacing: 3px;
+  font-size: 13.9px;
+  letter-spacing: 2.7px;
   font-weight: 800;
   color: #fde047;
   background: rgba(0, 0, 0, 0.72);
   text-transform: uppercase;
+  white-space: nowrap;
   animation: ms-battle-roundPulse .8s ease-in-out infinite alternate;
 }
 

@@ -61,6 +61,7 @@
     canvas: null,
     ctx: null,
     veil: null,
+    jutsuBanner: null,
     winScreen: null,
     winName: null,
     roundBanner: null,
@@ -88,6 +89,7 @@
       this.canvas = this.host.querySelector('#msBattleCanvas');
       this.ctx = this.canvas?.getContext('2d');
       this.veil = this.host.querySelector('#msBattleVeil');
+      this.jutsuBanner = this.host.querySelector('#msBattleJutsuBanner');
       this.winScreen = this.host.querySelector('#msBattleWinner');
       this.winName = this.host.querySelector('#msBattleWinName');
       this.roundBanner = this.host.querySelector('#msBattleRoundBanner');
@@ -127,6 +129,7 @@
       this.canvas = null;
       this.ctx = null;
       this.veil = null;
+      this.jutsuBanner = null;
       this.winScreen = null;
       this.winName = null;
       this.roundBanner = null;
@@ -236,6 +239,8 @@
 
       const ctx = this.ctx;
       const veil = this.veil;
+      const jutsuBanner = this.jutsuBanner;
+      const equippedJutsus = window.JutsuSystem?.getEquippedBattleLoadout?.() || [];
       let particles = [];
       let damageNums = [];
       let jutsus = [];
@@ -246,6 +251,8 @@
       let gameOver = false;
       let shakeX = 0; let shakeY = 0; let shakeDur = 0; let shakeAmp = 0;
       let jutsuVeil = 0;
+      let jutsuBannerTimer = 0;
+      let battleSlowTimer = 0;
       const spriteSheets = {};
       let spritesLoaded = false;
       let roundResolved = false;
@@ -303,6 +310,36 @@
         const raw = baseAttack * (varianceMin + Math.random() * (varianceMax - varianceMin));
         const reduced = raw - (targetDefense * 0.35);
         return Math.max(1, Math.round(reduced));
+      }
+
+      function getCurrentMp() {
+        const currentMp = window.GameState?.getMp?.();
+        return Number.isFinite(currentMp) ? currentMp : 0;
+      }
+
+      function spendMp(amount) {
+        const mp = getCurrentMp();
+        if (mp < amount) return false;
+        if (typeof window.GameState?.setMp === 'function') {
+          window.GameState.setMp(mp - amount);
+          return true;
+        }
+        return false;
+      }
+
+      function restoreMp(amount) {
+        const mp = getCurrentMp();
+        const maxMp = Number(window.GameState?.getHeroSnapshot?.()?.stats?.MP || mp);
+        if (typeof window.GameState?.setMp === 'function') {
+          window.GameState.setMp(Math.min(maxMp, mp + amount));
+        }
+      }
+
+      function showJutsuBanner(label) {
+        if (!jutsuBanner) return;
+        jutsuBanner.textContent = label;
+        jutsuBanner.classList.add('active');
+        jutsuBannerTimer = 900;
       }
 
       class Particle {
@@ -431,26 +468,127 @@
           this.invincible = false; this.invTimer = 0;
           this.animF = 0; this.animT = 0; this.animState = 'idle'; this.trail = [];
           this.isDead = false; this.deathT = 0; this.deathSmoke = 0;
+          this.equippedJutsus = this.isPlayer ? equippedJutsus.slice(0, 3) : [];
+          this.skillCooldowns = {};
+          this.skillDecisionTimer = 0;
+          this.status = {
+            blindMs: 0,
+            paralysisMs: 0,
+            bleedMs: 0,
+            asphyxiaMs: 0,
+            heavinessMs: 0,
+            silenceMs: 0,
+            confusionMs: 0,
+            stunMs: 0,
+            drainedMs: 0,
+            deafnessMs: 0
+          };
+          this.buff = {
+            atkBoostMs: 0,
+            atkBoostPct: 0,
+            evasionMs: 0,
+            evasionPct: 0,
+            atkSpeedMs: 0,
+            atkSpeedPct: 0,
+            invulnerableMs: 0,
+            chakraRegenMs: 0,
+            defenseBoostMs: 0,
+            defenseBoostPct: 0,
+            hpRegenMs: 0,
+            hpRegenPct: 0,
+            nextCrit: false,
+            debuffImmuneMs: 0
+          };
+          this.dotTickTimer = 0;
         }
 
         get cx() { return this.x + NW / 2; }
         get cy() { return this.y + NH / 2; }
 
+        applyStatus(name, durationMs) {
+          if (this.buff.debuffImmuneMs > 0) return;
+          if (this.status[name] !== undefined) this.status[name] = Math.max(this.status[name], durationMs);
+        }
+
+        applyDirectDamage(amount, fromX, attacker, isCrit = false) {
+          const dmg = Math.max(0, Math.round(amount));
+          this.hp = Math.max(0, this.hp - dmg);
+          if (this.isPlayer) syncMainHp(this.hp);
+          damageNums.push(new DamageNum(this.cx + (Math.random() - 0.5) * 8, this.y - 5, dmg, isCrit));
+          if (this.hp <= 0 && !this.isDead) this.die();
+          emitBattleSync('damage', { targetId: this.id, targetName: this.name, hp: this.hp, maxHp: this.maxHp, damage: dmg, fromX });
+        }
+
+        castSpecialJutsu(enemy) {
+          const usable = this.equippedJutsus.filter((skill) => (this.skillCooldowns[skill.id] || 0) <= 0);
+          if (!usable.length) return false;
+          if (Math.random() > 0.3) return false;
+          const skill = usable[Math.floor(Math.random() * usable.length)];
+          if (!spendMp(skill.mpCost)) return false;
+
+          this.skillCooldowns[skill.id] = skill.cooldownMs;
+          showJutsuBanner(`${skill.icon} ${skill.name}`);
+          jutsuVeil = 42;
+          battleSlowTimer = 550;
+          if (veil) veil.style.background = 'rgba(0,0,0,0.35)';
+          spawnSparks(enemy.cx, enemy.cy, 22, this.glowColor);
+          triggerShake(7, 16);
+
+          const critical = this.buff.nextCrit;
+          this.buff.nextCrit = false;
+          const dmg = critical ? Math.round(skill.damage * 1.8) : skill.damage;
+          enemy.applyDirectDamage(dmg, this.cx, this, critical);
+
+          const applyToEnemy = (key, ms) => enemy.applyStatus(key, ms);
+          switch (skill.name) {
+            case 'Llama Voraz':
+              applyToEnemy('blindMs', 4000); this.buff.atkBoostMs = 5000; this.buff.atkBoostPct = 0.10; break;
+            case 'Rayo Destellante':
+              applyToEnemy('paralysisMs', 4000); this.buff.evasionMs = 5000; this.buff.evasionPct = 0.15; break;
+            case 'Ráfaga Cortante':
+              applyToEnemy('bleedMs', 4000); this.buff.atkSpeedMs = 5000; this.buff.atkSpeedPct = 0.5; break;
+            case 'Prisión Hidráulica':
+              applyToEnemy('asphyxiaMs', 4000);
+              Object.keys(this.skillCooldowns).forEach((id) => { this.skillCooldowns[id] *= 0.65; });
+              break;
+            case 'Escudo Telúrico':
+              applyToEnemy('heavinessMs', 4000); this.buff.invulnerableMs = 5000; break;
+            case 'Sello Prohibido':
+              applyToEnemy('silenceMs', 4000); this.buff.chakraRegenMs = 5000; break;
+            case 'Espejismo Mental':
+              applyToEnemy('confusionMs', 3000); this.buff.defenseBoostMs = 5000; this.buff.defenseBoostPct = 0.5; break;
+            case 'Bosque Viviente':
+              applyToEnemy('drainedMs', 4000); this.buff.hpRegenMs = 5000; this.buff.hpRegenPct = 0.07; break;
+            case 'Impacto Brutal':
+              applyToEnemy('stunMs', 4000); this.buff.nextCrit = true; break;
+            case 'Aliento Vital':
+              applyToEnemy('deafnessMs', 4000);
+              Object.keys(this.status).forEach((statusKey) => { this.status[statusKey] = 0; });
+              this.buff.debuffImmuneMs = 5000;
+              break;
+            default:
+              break;
+          }
+          return true;
+        }
+
         receiveHit(rawDmg, fromX, attacker) {
           if (this.isDead || this.invincible) return;
+          if (this.buff.evasionMs > 0 && Math.random() < this.buff.evasionPct) return;
           if (Math.random() < 0.15 && this.stunTimer <= 0) { this.doKawarimi(attacker); return; }
-          this.hp = Math.max(0, this.hp - rawDmg);
+          const effectiveDamage = this.buff.invulnerableMs > 0 ? 0 : rawDmg;
+          this.hp = Math.max(0, this.hp - effectiveDamage);
           if (this.isPlayer) syncMainHp(this.hp);
           emitBattleSync('damage', {
             targetId: this.id,
             targetName: this.name,
             hp: this.hp,
             maxHp: this.maxHp,
-            damage: rawDmg,
+            damage: effectiveDamage,
             fromX
           });
-          const isCrit = rawDmg >= Math.max(14, this.maxHp * 0.12);
-          damageNums.push(new DamageNum(this.cx + (Math.random() - 0.5) * 8, this.y - 5, rawDmg, isCrit));
+          const isCrit = effectiveDamage >= Math.max(14, this.maxHp * 0.12);
+          damageNums.push(new DamageNum(this.cx + (Math.random() - 0.5) * 8, this.y - 5, effectiveDamage, isCrit));
           const dir = (fromX < this.cx) ? 1 : -1;
           const clr = isCrit ? '#FFD700' : '#FF4422';
           for (let i = 0; i < (isCrit ? 16 : 9); i += 1) {
@@ -476,6 +614,8 @@
 
         launchJutsu(target) {
           if (this.jutsuCD > 0) return;
+          if (this.status.silenceMs > 0) return;
+          if (this.status.blindMs > 0 && Math.random() < 0.3) return;
           this.jutsuCD = 90;
           const dx = target.cx - this.cx; const dy = target.cy - this.cy;
           const d = Math.sqrt(dx * dx + dy * dy);
@@ -504,7 +644,27 @@
           if (this.stunTimer > 0) this.stunTimer -= dt;
           if (this.atkCD > 0) this.atkCD -= dt;
           if (this.jutsuCD > 0) this.jutsuCD -= dt;
+          Object.keys(this.skillCooldowns).forEach((key) => {
+            this.skillCooldowns[key] = Math.max(0, this.skillCooldowns[key] - dms);
+          });
+          Object.keys(this.status).forEach((key) => { this.status[key] = Math.max(0, this.status[key] - dms); });
+          Object.keys(this.buff).forEach((key) => {
+            if (typeof this.buff[key] === 'number' && key.endsWith('Ms')) this.buff[key] = Math.max(0, this.buff[key] - dms);
+          });
           if (this.invTimer > 0) { this.invTimer -= dt; if (this.invTimer <= 0) this.invincible = false; }
+          this.dotTickTimer += dms;
+          if (this.dotTickTimer >= 1000) {
+            this.dotTickTimer = 0;
+            if (this.status.bleedMs > 0) this.applyDirectDamage(this.maxHp * 0.05, this.cx, enemy);
+            if (this.status.asphyxiaMs > 0) this.applyDirectDamage(this.maxHp * 0.04, this.cx, enemy);
+            if (this.status.drainedMs > 0) this.applyDirectDamage(this.maxHp * 0.05, this.cx, enemy);
+            if (this.status.confusionMs > 0) this.applyDirectDamage(this.maxHp * 0.05, this.cx, this);
+            if (this.buff.hpRegenMs > 0) this.hp = Math.min(this.maxHp, this.hp + this.maxHp * this.buff.hpRegenPct);
+            if (this.buff.chakraRegenMs > 0 && this.isPlayer) {
+              const maxMp = Number(window.GameState?.getHeroSnapshot?.()?.stats?.MP || 0);
+              restoreMp(Math.max(1, Math.round(maxMp * 0.05)));
+            }
+          }
           if (!this.onGround) this.vy += G * dt;
           this.x += this.vx * dt; this.y += this.vy * dt;
           emitBattleSync('fighter-update', {
@@ -521,10 +681,10 @@
           this.vx *= 0.87;
           if (this.y >= GROUND - NH) { this.y = GROUND - NH; this.vy = 0; this.onGround = true; } else this.onGround = false;
           if (this.y < 4) { this.y = 4; this.vy = 0; }
-          if (this.x <= 3) { this.x = 3; this.vx = 4.5; if (this.onGround) { this.vy = -9; this.onGround = false; } }
-          if (this.x >= W - NW - 3) { this.x = W - NW - 3; this.vx = -4.5; if (this.onGround) { this.vy = -9; this.onGround = false; } }
+          if (this.x <= 3) { this.x = 3; this.vx = 4.5; if (this.onGround && this.status.heavinessMs <= 0) { this.vy = -9; this.onGround = false; } }
+          if (this.x >= W - NW - 3) { this.x = W - NW - 3; this.vx = -4.5; if (this.onGround && this.status.heavinessMs <= 0) { this.vy = -9; this.onGround = false; } }
           this.facingRight = enemy.cx > this.cx;
-          if (this.stunTimer > 0) return;
+          if (this.stunTimer > 0 || this.status.stunMs > 0) return;
 
           this.dashTimer += dms;
           if (this.dashTimer >= this.dashInterval) {
@@ -537,8 +697,9 @@
           const tdx = this.tX - this.x; const tdy = this.tY - this.y;
           const tLen = Math.sqrt(tdx * tdx + tdy * tdy);
           if (tLen > 8) {
-            this.vx += (tdx / tLen) * 5 * 0.26;
-            if (tdy < -22 && this.onGround) { this.vy = -11; this.onGround = false; }
+            const movementScale = this.status.paralysisMs > 0 ? 0.2 : 1;
+            this.vx += (tdx / tLen) * 5 * 0.26 * movementScale;
+            if (tdy < -22 && this.onGround && this.status.heavinessMs <= 0) { this.vy = -11; this.onGround = false; }
           }
 
           this.animT += dt;
@@ -557,14 +718,32 @@
 
           if (!enemy.isDead) {
             const dist = Math.hypot(this.cx - enemy.cx, this.cy - enemy.cy);
+            if (this.isPlayer) {
+              this.skillDecisionTimer += dms;
+              if (this.skillDecisionTimer >= 1000) {
+                this.skillDecisionTimer = 0;
+                this.castSpecialJutsu(enemy);
+              }
+            }
+
             if (dist < 55 && this.atkCD <= 0) {
               if (Math.random() < PHYSICAL_ATTACK_CHANCE) {
-                const dmg = calcDamage(this.baseAtk, enemy.baseDef, 0.75, 1.05);
+                if (this.status.blindMs > 0 && Math.random() < 0.3) return;
+                const atkBoost = this.buff.atkBoostMs > 0 ? this.buff.atkBoostPct : 0;
+                const enemyDefDebuff = enemy.status.deafnessMs > 0 ? 0.2 : 0;
+                const effectiveAtk = this.baseAtk * (1 + atkBoost);
+                const effectiveDef = enemy.baseDef * (1 - enemyDefDebuff) * (1 + (enemy.buff.defenseBoostMs > 0 ? enemy.buff.defenseBoostPct : 0));
+                let dmg = calcDamage(effectiveAtk, effectiveDef, 0.75, 1.05);
+                if (this.buff.nextCrit) {
+                  dmg = Math.round(dmg * 1.8);
+                  this.buff.nextCrit = false;
+                }
                 enemy.receiveHit(dmg, this.cx, this);
-                this.atkCD = 42;
+                const atkSpeedBonus = this.buff.atkSpeedMs > 0 ? this.buff.atkSpeedPct : 0;
+                this.atkCD = 42 * (1 - atkSpeedBonus);
                 this.animState = 'attack'; this.animF = 0; this.animT = 0;
-              } else if (this.jutsuCD <= 0) this.launchJutsu(enemy);
-            } else if (dist > 140 && this.jutsuCD <= 0 && Math.random() < 0.35) this.launchJutsu(enemy);
+              } else if (this.jutsuCD <= 0 && this.status.silenceMs <= 0) this.launchJutsu(enemy);
+            } else if (dist > 140 && this.jutsuCD <= 0 && Math.random() < 0.35 && this.status.silenceMs <= 0) this.launchJutsu(enemy);
           }
         }
 
@@ -732,7 +911,19 @@
       function update(dt, dms) {
         frameN += 1;
         if (frameN % 50 === 0) particles.push(new Particle(Math.random() * W, -5, 0, 0.4 + Math.random() * 0.6, Math.random() < 0.5 ? '#2A4A1A' : '#386020', 180 + Math.random() * 100, 2 + Math.random() * 1.5, 'leaf'));
+        if (!gameOver) {
+          if (battleSlowTimer > 0) {
+            battleSlowTimer -= dms;
+            slowMo = 0.2;
+          } else {
+            slowMo = 1;
+          }
+        }
         if (jutsuVeil > 0) { jutsuVeil -= dt; if (jutsuVeil <= 0) { jutsuVeil = 0; if (veil) veil.style.background = 'rgba(0,0,0,0)'; } }
+        if (jutsuBannerTimer > 0) {
+          jutsuBannerTimer -= dms;
+          if (jutsuBannerTimer <= 0 && jutsuBanner) jutsuBanner.classList.remove('active');
+        }
 
         if (hitStop > 0) {
           hitStop -= dt;
@@ -796,6 +987,9 @@
         roundResolved = false;
         shakeX = 0; shakeY = 0; shakeDur = 0; shakeAmp = 0;
         jutsuVeil = 0; if (veil) veil.style.background = 'rgba(0,0,0,0)';
+        jutsuBannerTimer = 0;
+        battleSlowTimer = 0;
+        if (jutsuBanner) jutsuBanner.classList.remove('active');
         fighters = [new Fighter(playerFighterCfg), new Fighter(enemyFighterCfg)];
 
         const currentMainHp = window.GameState?.getHp?.();

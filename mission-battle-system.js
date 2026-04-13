@@ -270,6 +270,8 @@
       const spriteSheets = {};
       let spritesLoaded = false;
       let roundResolved = false;
+      let carriedPlayerHp = null;
+      let carriedPlayerMp = null;
       let bgMountains; let bgTrees; let bgStars;
 
       function loadSpriteSheet(path, callback) {
@@ -307,6 +309,8 @@
         if (roundResolved) return;
         roundResolved = true;
         if (winner?.id === 0) {
+          carriedPlayerHp = fighters?.[0]?.hp;
+          carriedPlayerMp = window.GameState?.getMp?.();
           if (typeof self.onRoundComplete === 'function') self.onRoundComplete();
           if (typeof self.onVictory === 'function') self.onVictory({ name: winner.name, winnerId: winner.id });
           self.showRoundBanner();
@@ -1037,11 +1041,16 @@
         hideJutsuAnnouncement();
         fighters = [new Fighter(playerFighterCfg), new Fighter(enemyFighterCfg)];
 
-        const currentMainHp = window.GameState?.getHp?.();
-        if (Number.isFinite(currentMainHp)) {
-          fighters[0].hp = Math.max(1, Math.min(fighters[0].maxHp, Math.round(currentMainHp)));
+        const hpSource = Number.isFinite(carriedPlayerHp) ? carriedPlayerHp : window.GameState?.getHp?.();
+        if (Number.isFinite(hpSource)) {
+          fighters[0].hp = Math.max(1, Math.min(fighters[0].maxHp, Math.round(hpSource)));
         }
         syncMainHp(fighters[0].hp);
+        if (Number.isFinite(carriedPlayerMp) && window.GameState?.setMp) {
+          window.GameState.setMp(carriedPlayerMp);
+        }
+        carriedPlayerHp = fighters[0].hp;
+        carriedPlayerMp = window.GameState?.getMp?.();
 
         fighters[0].tX = 120 + Math.random() * 80;
         fighters[1].tX = 250 + Math.random() * 80;

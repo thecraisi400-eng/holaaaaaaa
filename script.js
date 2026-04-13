@@ -130,14 +130,13 @@ function syncCharacterSprite(saveData) {
 
 function syncStateFromHero(snapshot) {
   if (!snapshot) return;
-  const hadSnapshot = Boolean(state.heroSnapshot);
-  const prevHp = state.hp;
-  const prevMp = state.mp;
+  const prevHp = Number(state.hp);
+  const prevMp = Number(state.mp);
   state.heroSnapshot = snapshot;
   state.hpMax = snapshot.stats.HP;
   state.mpMax = snapshot.stats.MP;
-  state.hp = hadSnapshot ? Math.max(0, Math.min(state.hpMax, Math.round(Number(prevHp) || 0))) : state.hpMax;
-  state.mp = hadSnapshot ? Math.max(0, Math.min(state.mpMax, Math.round(Number(prevMp) || 0))) : state.mpMax;
+  state.hp = Math.max(0, Math.min(state.hpMax, Math.round(Number.isFinite(prevHp) ? prevHp : state.hpMax)));
+  state.mp = Math.max(0, Math.min(state.mpMax, Math.round(Number.isFinite(prevMp) ? prevMp : state.mpMax)));
   state.exp = snapshot.exp;
   state.expCurrentLevelStart = snapshot.expCurrentLevelStart || 0;
   state.expMax = snapshot.expNextLevelTarget;

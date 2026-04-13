@@ -61,6 +61,7 @@
     canvas: null,
     ctx: null,
     veil: null,
+    jutsuBanner: null,
     winScreen: null,
     winName: null,
     roundBanner: null,
@@ -88,6 +89,7 @@
       this.canvas = this.host.querySelector('#msBattleCanvas');
       this.ctx = this.canvas?.getContext('2d');
       this.veil = this.host.querySelector('#msBattleVeil');
+      this.jutsuBanner = this.host.querySelector('#msBattleJutsuBanner');
       this.winScreen = this.host.querySelector('#msBattleWinner');
       this.winName = this.host.querySelector('#msBattleWinName');
       this.roundBanner = this.host.querySelector('#msBattleRoundBanner');
@@ -127,6 +129,7 @@
       this.canvas = null;
       this.ctx = null;
       this.veil = null;
+      this.jutsuBanner = null;
       this.winScreen = null;
       this.winName = null;
       this.roundBanner = null;
@@ -188,6 +191,7 @@
       const NH = Math.round(FRAME_SIZE * SPRITE_SCALE);
       const DASH_EW = Math.round(DASH_EFFECT_W * SPRITE_SCALE);
       const DASH_EH = Math.round(DASH_EFFECT_H * SPRITE_SCALE);
+      const SEC = 60;
 
       const hero = options.heroSnapshot || window.CharacterStatsSystem?.getActiveHero?.() || null;
       const mission = options.mission || {};
@@ -197,6 +201,7 @@
 
       const playerStats = {
         hp: Math.max(1, Math.round(hero?.stats?.HP || 100)),
+        mp: Math.max(1, Math.round(hero?.stats?.MP || 100)),
         atk: Math.max(1, Number(hero?.stats?.ATK || 10)),
         def: Math.max(0, Number(hero?.stats?.DEF || 0))
       };
@@ -234,8 +239,21 @@
         isPlayer: false
       };
 
+      const equippedBattleJutsus = window.JutsuSystem?.getEquippedBattleJutsus?.(hero) || [];
+
+      function showJutsuBanner(name) {
+        if (!jutsuBanner) return;
+        jutsuBanner.textContent = name;
+        jutsuBanner.style.display = 'block';
+        clearTimeout(showJutsuBanner.timerId);
+        showJutsuBanner.timerId = setTimeout(() => {
+          if (jutsuBanner) jutsuBanner.style.display = 'none';
+        }, 700);
+      }
+
       const ctx = this.ctx;
       const veil = this.veil;
+      const jutsuBanner = this.jutsuBanner;
       let particles = [];
       let damageNums = [];
       let jutsus = [];
@@ -303,6 +321,47 @@
         const raw = baseAttack * (varianceMin + Math.random() * (varianceMax - varianceMin));
         const reduced = raw - (targetDefense * 0.35);
         return Math.max(1, Math.round(reduced));
+      }
+
+      function applyEnemyEffect(source, target, effect) {
+        if (!effect) return;
+        if (target.status.immunityTimer > 0) return;
+        const duration = Math.max(1, Math.round((effect.durationSec || 0) * SEC));
+        if (effect.type === 'blind') target.status.blindTimer = Math.max(target.status.blindTimer, duration);
+        if (effect.type === 'paralysis') {
+          target.status.paralysisTimer = Math.max(target.status.paralysisTimer, duration);
+          target.status.speedMultiplier = Math.min(target.status.speedMultiplier, effect.speedMultiplier || 0.2);
+        }
+        if (effect.type === 'bleed') target.status.dots.push({ dpsPercent: effect.hpPercentPerSec || 0.05, timer: duration });
+        if (effect.type === 'asphyxia') target.status.dots.push({ dpsPercent: effect.hpPercentPerSec || 0.04, timer: duration });
+        if (effect.type === 'heaviness') target.status.noJumpTimer = Math.max(target.status.noJumpTimer, duration);
+        if (effect.type === 'silence') target.status.silenceTimer = Math.max(target.status.silenceTimer, duration);
+        if (effect.type === 'confusion') target.status.confusion = { timer: duration, selfHitPercent: effect.selfHitPercent || 0.03, tick: SEC };
+        if (effect.type === 'energyDrain') target.status.dots.push({ dpsPercent: effect.hpPercentPerSec || 0.05, timer: duration });
+        if (effect.type === 'stun') target.stunTimer = Math.max(target.stunTimer, duration);
+        if (effect.type === 'deafness') {
+          target.status.defenseDownTimer = Math.max(target.status.defenseDownTimer, duration);
+          target.status.defenseReduction = Math.max(target.status.defenseReduction, effect.defenseReduction || 0.2);
+        }
+        source.animState = 'attack';
+      }
+
+      function applySelfEffect(source, effect) {
+        if (!effect) return;
+        const duration = Math.max(1, Math.round((effect.durationSec || 0) * SEC));
+        if (effect.type === 'atkBoost') source.buffs.atkBoostTimer = Math.max(source.buffs.atkBoostTimer, duration);
+        if (effect.type === 'evasionBoost') source.buffs.evasionBoostTimer = Math.max(source.buffs.evasionBoostTimer, duration);
+        if (effect.type === 'attackSpeedBoost') source.buffs.attackSpeedBoostTimer = Math.max(source.buffs.attackSpeedBoostTimer, duration);
+        if (effect.type === 'nextCooldownReduction') source.buffs.nextCooldownReduction = Math.max(source.buffs.nextCooldownReduction, effect.value || 0.35);
+        if (effect.type === 'absoluteDefense') source.buffs.absoluteDefenseTimer = Math.max(source.buffs.absoluteDefenseTimer, duration);
+        if (effect.type === 'chakraRegenBoost') source.buffs.chakraRegenBoostTimer = Math.max(source.buffs.chakraRegenBoostTimer, duration);
+        if (effect.type === 'defenseBoost') source.buffs.defenseBoostTimer = Math.max(source.buffs.defenseBoostTimer, duration);
+        if (effect.type === 'hpRegenBoost') source.buffs.hpRegenBoostTimer = Math.max(source.buffs.hpRegenBoostTimer, duration);
+        if (effect.type === 'nextHitCritical') source.buffs.nextHitCritical = true;
+        if (effect.type === 'debuffCleanseImmunity') {
+          source.clearDebuffs();
+          source.status.immunityTimer = Math.max(source.status.immunityTimer, duration);
+        }
       }
 
       class Particle {
@@ -428,16 +487,72 @@
           this.isPlayer = cfg.isPlayer;
           this.dashTimer = 0; this.dashInterval = 800; this.tX = cfg.x; this.tY = GROUND - NH;
           this.atkCD = 0; this.jutsuCD = 0; this.stunTimer = 0;
+          this.mp = Math.max(1, Math.round(cfg.stats.mp || 100));
+          this.maxMp = this.mp;
+          this.autoJutsuTimer = 0;
+          this.jutsuSlotCooldowns = [0, 0, 0];
           this.invincible = false; this.invTimer = 0;
           this.animF = 0; this.animT = 0; this.animState = 'idle'; this.trail = [];
           this.isDead = false; this.deathT = 0; this.deathSmoke = 0;
+          this.dotTickTimer = SEC;
+          this.regenTickTimer = SEC;
+          this.status = {
+            blindTimer: 0,
+            paralysisTimer: 0,
+            speedMultiplier: 1,
+            noJumpTimer: 0,
+            silenceTimer: 0,
+            confusion: null,
+            dots: [],
+            defenseDownTimer: 0,
+            defenseReduction: 0,
+            immunityTimer: 0
+          };
+          this.buffs = {
+            atkBoostTimer: 0,
+            evasionBoostTimer: 0,
+            attackSpeedBoostTimer: 0,
+            nextCooldownReduction: 0,
+            absoluteDefenseTimer: 0,
+            chakraRegenBoostTimer: 0,
+            defenseBoostTimer: 0,
+            hpRegenBoostTimer: 0,
+            nextHitCritical: false
+          };
         }
 
         get cx() { return this.x + NW / 2; }
         get cy() { return this.y + NH / 2; }
 
+        clearDebuffs() {
+          this.status.blindTimer = 0;
+          this.status.paralysisTimer = 0;
+          this.status.noJumpTimer = 0;
+          this.status.silenceTimer = 0;
+          this.status.confusion = null;
+          this.status.dots = [];
+          this.status.defenseDownTimer = 0;
+          this.status.defenseReduction = 0;
+        }
+
+        getAttackMultiplier() {
+          return this.buffs.atkBoostTimer > 0 ? 1.1 : 1;
+        }
+
+        getDefenseMultiplier() {
+          return this.buffs.defenseBoostTimer > 0 ? 1.5 : 1;
+        }
+
+        getEffectiveDefense() {
+          let defense = this.baseDef * this.getDefenseMultiplier();
+          if (this.status.defenseDownTimer > 0) defense *= (1 - this.status.defenseReduction);
+          return Math.max(0, defense);
+        }
+
         receiveHit(rawDmg, fromX, attacker) {
           if (this.isDead || this.invincible) return;
+          if (this.buffs.absoluteDefenseTimer > 0) return;
+          if (attacker && attacker !== this && this.buffs.evasionBoostTimer > 0 && Math.random() < 0.15) return;
           if (Math.random() < 0.15 && this.stunTimer <= 0) { this.doKawarimi(attacker); return; }
           this.hp = Math.max(0, this.hp - rawDmg);
           if (this.isPlayer) syncMainHp(this.hp);
@@ -476,6 +591,7 @@
 
         launchJutsu(target) {
           if (this.jutsuCD > 0) return;
+          if (this.status.silenceTimer > 0) return;
           this.jutsuCD = 90;
           const dx = target.cx - this.cx; const dy = target.cy - this.cy;
           const d = Math.sqrt(dx * dx + dy * dy);
@@ -485,6 +601,33 @@
           jutsuVeil = 30;
           if (veil) veil.style.background = 'rgba(0,0,0,0.22)';
           triggerShake(6, 14);
+        }
+
+        castEquippedJutsu(target, jutsuData) {
+          if (!jutsuData || !target || this.isDead || target.isDead) return false;
+          if (this.status.silenceTimer > 0) return false;
+          const slot = Number(jutsuData.slotIndex || 0);
+          if (this.jutsuSlotCooldowns[slot] > 0) return false;
+          if (this.mp < jutsuData.mpCost) return false;
+
+          this.mp = Math.max(0, this.mp - jutsuData.mpCost);
+          const damage = Math.max(1, Number(jutsuData.damage || 1));
+          target.receiveHit(damage, this.cx, this);
+          spawnSparks(target.cx, target.cy, 18, this.glowColor);
+          triggerShake(7, 16);
+          hitStop = 3;
+          slowMo = 0.35;
+          jutsuVeil = 22;
+          if (veil) veil.style.background = 'rgba(0,0,0,0.35)';
+          showJutsuBanner(jutsuData.name);
+          applyEnemyEffect(this, target, jutsuData.effects?.enemy);
+          applySelfEffect(this, jutsuData.effects?.self);
+
+          const reduction = this.buffs.nextCooldownReduction > 0 ? this.buffs.nextCooldownReduction : 0;
+          const baseCooldownFrames = Math.round((jutsuData.cooldownSec || 1) * SEC);
+          this.jutsuSlotCooldowns[slot] = Math.max(15, Math.round(baseCooldownFrames * (1 - reduction)));
+          this.buffs.nextCooldownReduction = 0;
+          return true;
         }
 
         die() {
@@ -504,7 +647,52 @@
           if (this.stunTimer > 0) this.stunTimer -= dt;
           if (this.atkCD > 0) this.atkCD -= dt;
           if (this.jutsuCD > 0) this.jutsuCD -= dt;
+          this.jutsuSlotCooldowns = this.jutsuSlotCooldowns.map((value) => Math.max(0, value - dt));
           if (this.invTimer > 0) { this.invTimer -= dt; if (this.invTimer <= 0) this.invincible = false; }
+          this.status.blindTimer = Math.max(0, this.status.blindTimer - dt);
+          this.status.paralysisTimer = Math.max(0, this.status.paralysisTimer - dt);
+          this.status.noJumpTimer = Math.max(0, this.status.noJumpTimer - dt);
+          this.status.silenceTimer = Math.max(0, this.status.silenceTimer - dt);
+          this.status.defenseDownTimer = Math.max(0, this.status.defenseDownTimer - dt);
+          this.status.immunityTimer = Math.max(0, this.status.immunityTimer - dt);
+          if (this.status.defenseDownTimer <= 0) this.status.defenseReduction = 0;
+          if (this.status.paralysisTimer <= 0) this.status.speedMultiplier = 1;
+          if (this.status.confusion) {
+            this.status.confusion.timer -= dt;
+            this.status.confusion.tick -= dt;
+            if (this.status.confusion.tick <= 0) {
+              this.status.confusion.tick = SEC;
+              const selfDamage = Math.max(1, Math.round(this.maxHp * this.status.confusion.selfHitPercent));
+              this.receiveHit(selfDamage, this.cx, this);
+            }
+            if (this.status.confusion.timer <= 0) this.status.confusion = null;
+          }
+          this.status.dots.forEach((dot) => { dot.timer -= dt; });
+          this.status.dots = this.status.dots.filter((dot) => dot.timer > 0);
+
+          this.buffs.atkBoostTimer = Math.max(0, this.buffs.atkBoostTimer - dt);
+          this.buffs.evasionBoostTimer = Math.max(0, this.buffs.evasionBoostTimer - dt);
+          this.buffs.attackSpeedBoostTimer = Math.max(0, this.buffs.attackSpeedBoostTimer - dt);
+          this.buffs.absoluteDefenseTimer = Math.max(0, this.buffs.absoluteDefenseTimer - dt);
+          this.buffs.chakraRegenBoostTimer = Math.max(0, this.buffs.chakraRegenBoostTimer - dt);
+          this.buffs.defenseBoostTimer = Math.max(0, this.buffs.defenseBoostTimer - dt);
+          this.buffs.hpRegenBoostTimer = Math.max(0, this.buffs.hpRegenBoostTimer - dt);
+
+          this.dotTickTimer -= dt;
+          this.regenTickTimer -= dt;
+          if (this.dotTickTimer <= 0) {
+            this.dotTickTimer = SEC;
+            const dotDamage = this.status.dots.reduce((sum, dot) => sum + (this.maxHp * dot.dpsPercent), 0);
+            if (dotDamage > 0) this.receiveHit(Math.max(1, Math.round(dotDamage)), this.cx, this);
+          }
+          if (this.regenTickTimer <= 0) {
+            this.regenTickTimer = SEC;
+            const mpRegen = this.buffs.chakraRegenBoostTimer > 0 ? Math.round(this.maxMp * 0.05) : 0;
+            const hpRegen = this.buffs.hpRegenBoostTimer > 0 ? Math.round(this.maxHp * 0.07) : 0;
+            this.mp = Math.min(this.maxMp, this.mp + mpRegen);
+            this.hp = Math.min(this.maxHp, this.hp + hpRegen);
+            if (this.isPlayer) syncMainHp(this.hp);
+          }
           if (!this.onGround) this.vy += G * dt;
           this.x += this.vx * dt; this.y += this.vy * dt;
           emitBattleSync('fighter-update', {
@@ -537,8 +725,9 @@
           const tdx = this.tX - this.x; const tdy = this.tY - this.y;
           const tLen = Math.sqrt(tdx * tdx + tdy * tdy);
           if (tLen > 8) {
-            this.vx += (tdx / tLen) * 5 * 0.26;
-            if (tdy < -22 && this.onGround) { this.vy = -11; this.onGround = false; }
+            const speedFactor = this.status.paralysisTimer > 0 ? this.status.speedMultiplier : 1;
+            this.vx += (tdx / tLen) * 5 * 0.26 * speedFactor;
+            if (tdy < -22 && this.onGround && this.status.noJumpTimer <= 0) { this.vy = -11; this.onGround = false; }
           }
 
           this.animT += dt;
@@ -559,12 +748,33 @@
             const dist = Math.hypot(this.cx - enemy.cx, this.cy - enemy.cy);
             if (dist < 55 && this.atkCD <= 0) {
               if (Math.random() < PHYSICAL_ATTACK_CHANCE) {
-                const dmg = calcDamage(this.baseAtk, enemy.baseDef, 0.75, 1.05);
+                if (this.status.blindTimer > 0 && Math.random() < 0.30) {
+                  this.atkCD = 20;
+                  return;
+                }
+                let dmg = calcDamage(this.baseAtk * this.getAttackMultiplier(), enemy.getEffectiveDefense(), 0.75, 1.05);
+                if (this.buffs.nextHitCritical) {
+                  dmg = Math.round(dmg * 1.85);
+                  this.buffs.nextHitCritical = false;
+                }
                 enemy.receiveHit(dmg, this.cx, this);
-                this.atkCD = 42;
+                this.atkCD = this.buffs.attackSpeedBoostTimer > 0 ? 24 : 42;
                 this.animState = 'attack'; this.animF = 0; this.animT = 0;
               } else if (this.jutsuCD <= 0) this.launchJutsu(enemy);
             } else if (dist > 140 && this.jutsuCD <= 0 && Math.random() < 0.35) this.launchJutsu(enemy);
+          }
+
+          if (this.isPlayer && equippedBattleJutsus.length > 0 && !enemy.isDead) {
+            this.autoJutsuTimer -= dms;
+            if (this.autoJutsuTimer <= 0) {
+              this.autoJutsuTimer = 1000;
+              if (Math.random() < 0.30) {
+                const shuffled = [...equippedBattleJutsus].sort(() => Math.random() - 0.5);
+                for (const battleJutsu of shuffled) {
+                  if (this.castEquippedJutsu(enemy, battleJutsu)) break;
+                }
+              }
+            }
           }
         }
 
@@ -731,6 +941,7 @@
 
       function update(dt, dms) {
         frameN += 1;
+        if (slowMo < 1 && !gameOver) slowMo = Math.min(1, slowMo + 0.05 * dt);
         if (frameN % 50 === 0) particles.push(new Particle(Math.random() * W, -5, 0, 0.4 + Math.random() * 0.6, Math.random() < 0.5 ? '#2A4A1A' : '#386020', 180 + Math.random() * 100, 2 + Math.random() * 1.5, 'leaf'));
         if (jutsuVeil > 0) { jutsuVeil -= dt; if (jutsuVeil <= 0) { jutsuVeil = 0; if (veil) veil.style.background = 'rgba(0,0,0,0)'; } }
 
@@ -758,7 +969,7 @@
           for (const f of fighters) {
             if (f === j.owner || f.isDead || f.invincible) continue;
             if (Math.hypot(j.x - f.cx, j.y - f.cy) < j.size + NW / 2) {
-              const dmg = calcDamage(j.owner.baseAtk, f.baseDef, 0.9, 1.3);
+              const dmg = calcDamage(j.owner.baseAtk, f.getEffectiveDefense(), 0.9, 1.3);
               f.receiveHit(dmg, j.x, j.owner);
               for (let i = 0; i < 16; i += 1) {
                 const ang = Math.random() * Math.PI * 2; const spd = 2 + Math.random() * 4;
@@ -796,6 +1007,7 @@
         roundResolved = false;
         shakeX = 0; shakeY = 0; shakeDur = 0; shakeAmp = 0;
         jutsuVeil = 0; if (veil) veil.style.background = 'rgba(0,0,0,0)';
+        if (jutsuBanner) jutsuBanner.style.display = 'none';
         fighters = [new Fighter(playerFighterCfg), new Fighter(enemyFighterCfg)];
 
         const currentMainHp = window.GameState?.getHp?.();

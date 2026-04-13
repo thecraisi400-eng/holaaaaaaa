@@ -1315,7 +1315,8 @@ html, body {
   inset: auto auto auto 50%;
   transform: translate(-50%, -70%);
   top: 30%;
-  width: min(85%, 360px);
+  width: fit-content;
+  max-width: min(92%, 430px);
   padding: 10px 12px;
   border: 2px solid #fde047;
   background: rgba(255, 255, 240, 0.92);
@@ -1324,8 +1325,8 @@ html, body {
   font-size: 16px;
   font-weight: 800;
   letter-spacing: 1px;
-  white-space: normal;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow-wrap: normal;
   opacity: 0;
   transition: opacity .15s ease, transform .15s ease;
   pointer-events: none;

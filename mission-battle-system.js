@@ -267,6 +267,7 @@
       let jutsuVeil = 0;
       let autoJutsuTimer = 0;
       let currentSlowOrb = null;
+      let activeAnnouncementOrb = null;
       const spriteSheets = {};
       let spritesLoaded = false;
       let roundResolved = false;
@@ -332,15 +333,22 @@
       function clampTimer(current, durationMs) {
         return Math.max(current || 0, durationMs);
       }
-      function showJutsuAnnouncement(name) {
+      function showJutsuAnnouncement(name, orb = null) {
         if (!jutsuAnnouncement) return;
+        activeAnnouncementOrb = orb;
         jutsuAnnouncement.textContent = name;
         jutsuAnnouncement.classList.remove('show');
-        window.requestAnimationFrame(() => jutsuAnnouncement.classList.add('show'));
+        window.requestAnimationFrame(() => {
+          jutsuAnnouncement.classList.remove('show');
+          jutsuAnnouncement.offsetWidth;
+          jutsuAnnouncement.classList.add('show');
+        });
       }
 
-      function hideJutsuAnnouncement() {
+      function hideJutsuAnnouncement(force = false, orb = null) {
         if (!jutsuAnnouncement) return;
+        if (!force && activeAnnouncementOrb && orb !== activeAnnouncementOrb) return;
+        activeAnnouncementOrb = null;
         jutsuAnnouncement.classList.remove('show');
         jutsuAnnouncement.textContent = '';
       }
@@ -959,8 +967,8 @@
             const skill = availableSkills[Math.floor(Math.random() * availableSkills.length)];
             const consumed = window.JutsuSystem?.consumeMpForJutsu?.(skill.id);
             if (consumed) {
-              showJutsuAnnouncement(skill.name);
               const orb = new BattleSkillOrb(f0, f1, skill);
+              showJutsuAnnouncement(skill.name, orb);
               jutsus.push(orb);
               currentSlowOrb = orb;
               slowMo = 0.05;
@@ -991,7 +999,7 @@
                   currentSlowOrb = null;
                   slowMo = 1;
                   if (veil) veil.style.background = 'rgba(0,0,0,0)';
-                  hideJutsuAnnouncement();
+                  hideJutsuAnnouncement(false, j);
                 }
               }
               for (let i = 0; i < 16; i += 1) {
@@ -1009,7 +1017,6 @@
           currentSlowOrb = null;
           slowMo = 1;
           if (veil) veil.style.background = 'rgba(0,0,0,0)';
-          hideJutsuAnnouncement();
         }
         particles.forEach((p) => p.update(dt)); particles = particles.filter((p) => !p.isDead());
         damageNums.forEach((d) => d.update(dt)); damageNums = damageNums.filter((d) => !d.isDead());
@@ -1038,7 +1045,7 @@
         jutsuVeil = 0; if (veil) veil.style.background = 'rgba(0,0,0,0)';
         autoJutsuTimer = 0;
         currentSlowOrb = null;
-        hideJutsuAnnouncement();
+        hideJutsuAnnouncement(true);
         fighters = [new Fighter(playerFighterCfg), new Fighter(enemyFighterCfg)];
 
         const hpSource = Number.isFinite(carriedPlayerHp) ? carriedPlayerHp : window.GameState?.getHp?.();

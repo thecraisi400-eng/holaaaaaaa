@@ -1,18 +1,22 @@
 (function () {
   const JUTSU_DB = [
-    { id: 0, name: 'Llama Voraz', icon: '🔥', element: 'fire', baseDamage: 27, baseEffect: 'Ceguera (-30% puntería)', baseBuff: '+10% Ataque físico', baseCD: 3, currentLevel: 1 },
-    { id: 1, name: 'Rayo Destellante', icon: '⚡', element: 'lightning', baseDamage: 29, baseEffect: 'Parálisis (-80% velocidad)', baseBuff: '+15% Evasión', baseCD: 2, currentLevel: 1 },
-    { id: 2, name: 'Ráfaga Cortante', icon: '🌪️', element: 'wind', baseDamage: 20, baseEffect: 'Hemorragia', baseBuff: '+Velocidad de ataque', baseCD: 2, currentLevel: 1 },
-    { id: 3, name: 'Prisión Hidráulica', icon: '🌊', element: 'water', baseDamage: 23, baseEffect: 'Asfixia (No habilidades)', baseBuff: '-CD (Tiempos de espera)', baseCD: 3, currentLevel: 1 },
-    { id: 4, name: 'Escudo Telúrico', icon: '🪨', element: 'earth', baseDamage: 26, baseEffect: 'Pesadez (No saltos)', baseBuff: 'Inmunidad a empujones', baseCD: 3, currentLevel: 1 },
-    { id: 5, name: 'Sello Prohibido', icon: '🔮', element: 'seal', baseDamage: 19, baseEffect: 'Silencio (Bloquea especiales)', baseBuff: '+5% Chakra', baseCD: 2, currentLevel: 1 },
-    { id: 6, name: 'Espejismo Mental', icon: '👁️', element: 'genjutsu', baseDamage: 24, baseEffect: 'Confusión (Controles invertidos)', baseBuff: 'Invisibilidad', baseCD: 2, currentLevel: 1 },
-    { id: 7, name: 'Bosque Viviente', icon: '🌿', element: 'wood', baseDamage: 29, baseEffect: 'Drenado energía', baseBuff: 'Curación constante', baseCD: 3, currentLevel: 1 },
-    { id: 8, name: 'Impacto Brutal', icon: '💥', element: 'taijutsu', baseDamage: 21, baseEffect: 'Aturdimiento', baseBuff: 'Próximo golpe crítico', baseCD: 2, currentLevel: 1 },
-    { id: 9, name: 'Aliento Vital', icon: '💚', element: 'medical', baseDamage: 22, baseEffect: 'Sordera (-20% defensa)', baseBuff: 'Limpieza de debuffs', baseCD: 3, currentLevel: 1 }
+    { id: 0, name: 'Llama Voraz', icon: '🔥', element: 'fire', baseDamage: 27, baseEffect: 'Ceguera (-30% puntería)', baseBuff: '+10% Ataque físico', baseCD: 3, currentLevel: 1, mpCost: 0 },
+    { id: 1, name: 'Rayo Destellante', icon: '⚡', element: 'lightning', baseDamage: 29, baseEffect: 'Parálisis (-80% velocidad)', baseBuff: '+15% Evasión', baseCD: 2, currentLevel: 1, mpCost: 0 },
+    { id: 2, name: 'Ráfaga Cortante', icon: '🌪️', element: 'wind', baseDamage: 20, baseEffect: 'Hemorragia', baseBuff: '+Velocidad de ataque', baseCD: 2, currentLevel: 1, mpCost: 0 },
+    { id: 3, name: 'Prisión Hidráulica', icon: '🌊', element: 'water', baseDamage: 23, baseEffect: 'Asfixia (No habilidades)', baseBuff: '-CD (Tiempos de espera)', baseCD: 3, currentLevel: 1, mpCost: 0 },
+    { id: 4, name: 'Escudo Telúrico', icon: '🪨', element: 'earth', baseDamage: 26, baseEffect: 'Pesadez (No saltos)', baseBuff: 'Inmunidad a empujones', baseCD: 3, currentLevel: 1, mpCost: 0 },
+    { id: 5, name: 'Sello Prohibido', icon: '🔮', element: 'seal', baseDamage: 19, baseEffect: 'Silencio (Bloquea especiales)', baseBuff: '+5% Chakra', baseCD: 2, currentLevel: 1, mpCost: 0 },
+    { id: 6, name: 'Espejismo Mental', icon: '👁️', element: 'genjutsu', baseDamage: 24, baseEffect: 'Confusión (Controles invertidos)', baseBuff: '+50% Defensa', baseCD: 2, currentLevel: 1, mpCost: 0 },
+    { id: 7, name: 'Bosque Viviente', icon: '🌿', element: 'wood', baseDamage: 29, baseEffect: 'Drenado energía', baseBuff: 'Curación constante', baseCD: 3, currentLevel: 1, mpCost: 0 },
+    { id: 8, name: 'Impacto Brutal', icon: '💥', element: 'taijutsu', baseDamage: 21, baseEffect: 'Aturdimiento', baseBuff: 'Próximo golpe crítico', baseCD: 2, currentLevel: 1, mpCost: 0 },
+    { id: 9, name: 'Aliento Vital', icon: '💚', element: 'medical', baseDamage: 22, baseEffect: 'Sordera (-20% defensa)', baseBuff: 'Inmune a debuffs', baseCD: 3, currentLevel: 1, mpCost: 0 }
   ];
 
   const MAX_LEVEL = 10;
+  const randomInt = (min, max) => Math.floor(Math.random() * ((max - min) + 1)) + min;
+  JUTSU_DB.forEach((jutsu) => {
+    jutsu.mpCost = randomInt(27, 37);
+  });
 
   const JutsuSystem = {
     host: null,
@@ -51,10 +55,11 @@
 
     getStats(jutsu) {
       const lvl = jutsu.currentLevel;
-      const damage = Math.round(jutsu.baseDamage * (1 + (lvl - 1) * 0.12));
+      const damage = Math.round(jutsu.baseDamage);
       const cdReduction = (lvl - 1) * 0.08;
       const cd = Math.max(0.5, parseFloat((jutsu.baseCD * (1 - cdReduction)).toFixed(1)));
-      return { damage, cd, level: lvl, isMax: lvl >= MAX_LEVEL };
+      const mpCost = Math.round(jutsu.mpCost);
+      return { damage, cd, mpCost, level: lvl, isMax: lvl >= MAX_LEVEL };
     },
 
     bindEvents() {
@@ -193,7 +198,7 @@
       this.root.querySelector('#jts-popup-damage').textContent = String(stats.damage);
       this.root.querySelector('#jts-popup-effect').textContent = jutsu.baseEffect;
       this.root.querySelector('#jts-popup-buff').textContent = jutsu.baseBuff;
-      this.root.querySelector('#jts-popup-cd').textContent = `${stats.cd}s`;
+      this.root.querySelector('#jts-popup-cd').textContent = `${stats.cd}s · MP ${stats.mpCost}`;
 
       const levelEl = this.root.querySelector('#jts-popup-level');
       const popupEl = this.root.querySelector('#jts-detail-popup');
@@ -247,6 +252,8 @@
       this.resources.scrolls -= costScrolls;
       this.resources.chakra -= costChakra;
       jutsu.currentLevel += 1;
+      jutsu.baseDamage += randomInt(17, 29);
+      jutsu.mpCost += randomInt(10, 19);
 
       this.renderLibrary();
       this.renderAllSlots();
@@ -280,6 +287,30 @@
 
     capitalize(text) {
       return text.charAt(0).toUpperCase() + text.slice(1);
+    },
+
+    getEquippedJutsusBattleData() {
+      return this.equipped
+        .map((jutsuId) => JUTSU_DB.find((entry) => entry.id === jutsuId))
+        .filter(Boolean)
+        .map((jutsu) => {
+          const stats = this.getStats(jutsu);
+          return {
+            id: jutsu.id,
+            name: jutsu.name,
+            icon: jutsu.icon,
+            damage: stats.damage,
+            mpCost: stats.mpCost,
+            cooldown: stats.cd
+          };
+        });
+    },
+
+    consumeMpForJutsu(jutsuId) {
+      const jutsu = JUTSU_DB.find((entry) => entry.id === jutsuId);
+      if (!jutsu || !window.GameState || typeof window.GameState.consumeMp !== 'function') return false;
+      const cost = this.getStats(jutsu).mpCost;
+      return window.GameState.consumeMp(cost);
     }
   };
 

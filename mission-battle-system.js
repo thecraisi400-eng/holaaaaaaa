@@ -195,7 +195,7 @@
       const SPRITE_SCALE = 0.70;
       const DASH_EFFECT_W = 74;
       const DASH_EFFECT_H = 64;
-      const PHYSICAL_ATTACK_CHANCE = 0.70;
+      const PHYSICAL_ATTACK_CHANCE = 0.60;
       const W = 460;
       const H = 360;
       const GROUND = H - 50;
@@ -266,6 +266,7 @@
       let shakeX = 0; let shakeY = 0; let shakeDur = 0; let shakeAmp = 0;
       let jutsuVeil = 0;
       let autoJutsuTimer = 0;
+      let auraProjectileTimer = 0;
       let currentSlowOrb = null;
       let activeAnnouncementOrb = null;
       const spriteSheets = {};
@@ -554,6 +555,10 @@
           this.dotTick = 0;
           this.buffTick = 0;
           this.externalFreeze = false;
+          this.meleePhase = 'idle';
+          this.meleeHitsRemaining = 0;
+          this.meleeReengageDelay = 0;
+          this.meleeBurstStep = 0;
         }
 
         get cx() { return this.x + NW / 2; }
@@ -563,7 +568,7 @@
           if (this.isDead || this.invincible) return;
           if (this.buffs.evadeBoost > 0 && Math.random() < 0.15) return;
           if (this.buffs.invulnerable > 0) rawDmg = 0;
-          if (Math.random() < 0.15 && this.stunTimer <= 0) { this.doKawarimi(attacker); return; }
+          if (Math.random() < 0.20 && this.stunTimer <= 0) { this.doKawarimi(attacker); return; }
           this.hp = Math.max(0, this.hp - rawDmg);
           if (this.isPlayer) syncMainHp(this.hp);
           emitBattleSync('damage', {
@@ -634,8 +639,9 @@
         }
 
         doKawarimi(attacker) {
-          const behind = attacker.facingRight ? attacker.x - NW - 28 : attacker.x + NW + 28;
-          const nx = Math.max(5, Math.min(W - NW - 5, behind));
+          const retreatOffset = Math.round(W * 0.5);
+          const moveLeft = this.cx < attacker.cx;
+          const nx = Math.max(5, Math.min(W - NW - 5, attacker.x + (moveLeft ? -retreatOffset : retreatOffset)));
           spawnSmoke(this.cx, this.cy, 18);
           this.x = nx; this.y = GROUND - NH; this.vx = 0; this.vy = 0; this.onGround = true;
           this.invincible = true; this.invTimer = 35;
@@ -708,6 +714,7 @@
             return;
           }
           if (this.stunTimer > 0) return;
+          if (this.meleeReengageDelay > 0) this.meleeReengageDelay -= dms;
           this.dotTick += dms;
           this.buffTick += dms;
           if (this.dotTick >= 1000) {
@@ -728,11 +735,34 @@
           }
 
           this.dashTimer += dms;
-          if (this.dashTimer >= this.dashInterval) {
+          const canStartMelee = this.meleePhase === 'idle' && this.atkCD <= 0 && this.meleeReengageDelay <= 0;
+          if (canStartMelee && Math.random() < PHYSICAL_ATTACK_CHANCE) {
+            this.meleePhase = 'approach';
+            this.meleeBurstStep = 0;
+            this.meleeHitsRemaining = 2 + Math.floor(Math.random() * 2);
+          } else if (this.dashTimer >= this.dashInterval && this.meleePhase === 'idle') {
             this.dashTimer = 0;
             const aerial = Math.random() < 0.38;
             this.tX = 22 + Math.random() * (W - 44 - NW);
             this.tY = aerial ? GROUND - NH - 55 - Math.random() * 130 : GROUND - NH;
+          }
+
+          if (this.meleePhase === 'approach' || this.meleePhase === 'combo') {
+            const closeRange = this.facingRight ? enemy.x - NW * 0.55 : enemy.x + NW * 0.55;
+            this.tX = Math.max(8, Math.min(W - NW - 8, closeRange));
+            this.tY = GROUND - NH;
+          } else if (this.meleePhase === 'retreat') {
+            const retreatX = this.facingRight ? enemy.x - NW - 40 : enemy.x + NW + 40;
+            this.tX = Math.max(8, Math.min(W - NW - 8, retreatX));
+            this.tY = GROUND - NH;
+            if (Math.hypot(this.cx - enemy.cx, this.cy - enemy.cy) > 95) {
+              if (this.meleeHitsRemaining > 0) {
+                this.meleePhase = 'approach';
+              } else {
+                this.meleePhase = 'idle';
+                this.meleeReengageDelay = 450;
+              }
+            }
           }
 
           const tdx = this.tX - this.x; const tdy = this.tY - this.y;
@@ -763,15 +793,32 @@
                 this.atkCD = 18;
                 return;
               }
-              if (Math.random() < PHYSICAL_ATTACK_CHANCE) {
-                const nextCritical = this.buffs.nextCrit;
-                this.buffs.nextCrit = false;
-                const dmg = calcDamage(this.getAttackValue() * (nextCritical ? 1.7 : 1), enemy.getDefenseValue(), 0.75, 1.05);
-                enemy.receiveHit(dmg, this.cx, this);
-                this.atkCD = this.buffs.atkSpeedBoost > 0 ? 21 : 42;
-                this.animState = 'attack'; this.animF = 0; this.animT = 0;
-              } else if (this.jutsuCD <= 0) this.launchJutsu(enemy);
-            } else if (dist > 140 && this.jutsuCD <= 0 && Math.random() < 0.35) this.launchJutsu(enemy);
+              const nextCritical = this.buffs.nextCrit;
+              this.buffs.nextCrit = false;
+              const dmg = calcDamage(this.getAttackValue() * (nextCritical ? 1.7 : 1), enemy.getDefenseValue(), 0.75, 1.05);
+              enemy.receiveHit(dmg, this.cx, this);
+              this.atkCD = this.buffs.atkSpeedBoost > 0 ? 21 : 42;
+              this.animState = 'attack'; this.animF = 0; this.animT = 0;
+              if (this.meleePhase === 'approach') {
+                this.meleePhase = 'combo';
+              }
+              if (this.meleePhase === 'combo') {
+                this.meleeHitsRemaining -= 1;
+                if (this.meleeHitsRemaining > 0) {
+                  this.meleePhase = 'retreat';
+                } else {
+                  if (this.meleeBurstStep === 0) {
+                    this.meleeBurstStep = 1;
+                    this.meleeHitsRemaining = 1 + Math.floor(Math.random() * 3);
+                    this.meleePhase = 'retreat';
+                  } else {
+                    this.meleePhase = 'idle';
+                    this.meleeReengageDelay = 450;
+                    this.meleeBurstStep = 0;
+                  }
+                }
+              }
+            } else if (this.meleePhase === 'approach' && this.jutsuCD <= 0) this.launchJutsu(enemy);
           }
         }
 
@@ -990,6 +1037,15 @@
             }
           }
         }
+        auraProjectileTimer += dms;
+        if (auraProjectileTimer >= 1000 && !gameOver) {
+          auraProjectileTimer = 0;
+          [f0, f1].forEach((fighter, idx) => {
+            const enemy = idx === 0 ? f1 : f0;
+            if (fighter.isDead || enemy.isDead || fighter.jutsuCD > 0 || fighter.statuses.silence > 0) return;
+            if (Math.random() <= 0.30) fighter.launchJutsu(enemy);
+          });
+        }
         f0.update(dt, dms, f1); f1.update(dt, dms, f0);
         for (const j of jutsus) j.update(dt);
 
@@ -1053,6 +1109,7 @@
         shakeX = 0; shakeY = 0; shakeDur = 0; shakeAmp = 0;
         jutsuVeil = 0; if (veil) veil.style.background = 'rgba(0,0,0,0)';
         autoJutsuTimer = 0;
+        auraProjectileTimer = 0;
         currentSlowOrb = null;
         hideJutsuAnnouncement(true);
         fighters = [new Fighter(playerFighterCfg), new Fighter(enemyFighterCfg)];

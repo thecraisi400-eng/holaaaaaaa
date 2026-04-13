@@ -319,7 +319,12 @@
         jutsuAnnouncement.textContent = name;
         jutsuAnnouncement.classList.remove('show');
         window.requestAnimationFrame(() => jutsuAnnouncement.classList.add('show'));
-        window.setTimeout(() => jutsuAnnouncement.classList.remove('show'), 520);
+      }
+
+      function hideJutsuAnnouncement() {
+        if (!jutsuAnnouncement) return;
+        jutsuAnnouncement.classList.remove('show');
+        jutsuAnnouncement.textContent = '';
       }
 
       class Particle {
@@ -441,20 +446,33 @@
           const dx = target.cx - owner.cx;
           const dy = target.cy - owner.cy;
           const distance = Math.max(1, Math.hypot(dx, dy));
-          const speed = 7;
-          this.vx = (dx / distance) * speed;
-          this.vy = (dy / distance) * speed;
+          this.maxSpeed = 7;
+          this.homingStrength = 0.22;
+          this.vx = (dx / distance) * this.maxSpeed;
+          this.vy = (dy / distance) * this.maxSpeed;
           this.trail = [];
-          this.life = 120;
         }
 
         update(dt) {
+          if (this.target.isDead) {
+            this.dead = true;
+            return;
+          }
           this.trail.unshift({ x: this.x, y: this.y });
-          if (this.trail.length > 8) this.trail.pop();
+          if (this.trail.length > 12) this.trail.pop();
+          const dx = this.target.cx - this.x;
+          const dy = this.target.cy - this.y;
+          const distance = Math.max(1, Math.hypot(dx, dy));
+          const desiredVx = (dx / distance) * this.maxSpeed;
+          const desiredVy = (dy / distance) * this.maxSpeed;
+          const steerFactor = Math.min(1, this.homingStrength * dt);
+          this.vx += (desiredVx - this.vx) * steerFactor;
+          this.vy += (desiredVy - this.vy) * steerFactor;
           this.x += this.vx * dt;
           this.y += this.vy * dt;
-          this.life -= dt;
-          if (this.life <= 0) this.dead = true;
+          if (Math.random() < 0.35) {
+            particles.push(new Particle(this.x, this.y, (Math.random() - 0.5) * 1.6, (Math.random() - 0.5) * 1.6, this.color, 11, 2.2, 'spark'));
+          }
         }
 
         draw() {
@@ -867,6 +885,7 @@
         for (let i = 0; i < jutsus.length; i += 1) {
           for (let j = i + 1; j < jutsus.length; j += 1) {
             const a = jutsus[i]; const b = jutsus[j];
+            if (a instanceof BattleSkillOrb || b instanceof BattleSkillOrb) continue;
             if (a.owner === b.owner || a.dead || b.dead) continue;
             if (Math.hypot(a.x - b.x, a.y - b.y) < a.size + b.size + 6) {
               const ex = (a.x + b.x) / 2; const ey = (a.y + b.y) / 2;
@@ -942,6 +961,7 @@
                   currentSlowOrb = null;
                   slowMo = 1;
                   if (veil) veil.style.background = 'rgba(0,0,0,0)';
+                  hideJutsuAnnouncement();
                 }
               }
               for (let i = 0; i < 16; i += 1) {
@@ -959,6 +979,7 @@
           currentSlowOrb = null;
           slowMo = 1;
           if (veil) veil.style.background = 'rgba(0,0,0,0)';
+          hideJutsuAnnouncement();
         }
         particles.forEach((p) => p.update(dt)); particles = particles.filter((p) => !p.isDead());
         damageNums.forEach((d) => d.update(dt)); damageNums = damageNums.filter((d) => !d.isDead());
@@ -987,7 +1008,7 @@
         jutsuVeil = 0; if (veil) veil.style.background = 'rgba(0,0,0,0)';
         autoJutsuTimer = 0;
         currentSlowOrb = null;
-        if (jutsuAnnouncement) jutsuAnnouncement.classList.remove('show');
+        hideJutsuAnnouncement();
         fighters = [new Fighter(playerFighterCfg), new Fighter(enemyFighterCfg)];
 
         const currentMainHp = window.GameState?.getHp?.();

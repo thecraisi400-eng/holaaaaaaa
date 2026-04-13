@@ -54,6 +54,22 @@ function setHp(nextHp) {
 
 window.GameState.getHp = () => state.hp;
 window.GameState.setHp = setHp;
+window.GameState.getMp = () => state.mp;
+window.GameState.setMp = (nextMp) => {
+  const normalized = Math.max(0, Math.min(state.mpMax, Math.round(Number(nextMp) || 0)));
+  state.mp = normalized;
+  updateBars();
+  window.dispatchEvent(new CustomEvent('ngs:mp-updated', { detail: { mp: state.mp, mpMax: state.mpMax } }));
+  return state.mp;
+};
+window.GameState.consumeMp = (cost) => {
+  const normalizedCost = Math.max(0, Math.round(Number(cost) || 0));
+  if (state.mp < normalizedCost) return false;
+  state.mp -= normalizedCost;
+  updateBars();
+  window.dispatchEvent(new CustomEvent('ngs:mp-updated', { detail: { mp: state.mp, mpMax: state.mpMax, cost: normalizedCost } }));
+  return true;
+};
 window.GameState.getHeroSnapshot = () => state.heroSnapshot;
 window.GameState.getLevel = () => state.level;
 window.GameState.getExp = () => state.exp;

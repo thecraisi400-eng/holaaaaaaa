@@ -1270,6 +1270,7 @@ html, body {
 
 .ms-battle-canvas,
 .ms-battle-veil,
+.ms-battle-jutsu-announcement,
 .ms-battle-round-banner,
 .ms-battle-winner {
   position: absolute;
@@ -1306,6 +1307,30 @@ html, body {
   background: rgba(0, 0, 0, 0.72);
   text-transform: uppercase;
   animation: ms-battle-roundPulse .8s ease-in-out infinite alternate;
+}
+
+.ms-battle-jutsu-announcement {
+  z-index: 14;
+  inset: auto auto auto 50%;
+  transform: translate(-50%, -70%);
+  top: 30%;
+  width: min(78%, 300px);
+  padding: 10px 12px;
+  border: 2px solid #fde047;
+  background: rgba(255, 255, 240, 0.92);
+  color: #111827;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  opacity: 0;
+  transition: opacity .15s ease, transform .15s ease;
+  pointer-events: none;
+}
+
+.ms-battle-jutsu-announcement.show {
+  opacity: 1;
+  transform: translate(-50%, -85%);
 }
 
 .ms-battle-winner {

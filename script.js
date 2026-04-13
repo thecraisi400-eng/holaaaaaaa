@@ -130,11 +130,14 @@ function syncCharacterSprite(saveData) {
 
 function syncStateFromHero(snapshot) {
   if (!snapshot) return;
+  const hadSnapshot = Boolean(state.heroSnapshot);
+  const prevHp = state.hp;
+  const prevMp = state.mp;
   state.heroSnapshot = snapshot;
-  state.hp = snapshot.stats.HP;
   state.hpMax = snapshot.stats.HP;
-  state.mp = snapshot.stats.MP;
   state.mpMax = snapshot.stats.MP;
+  state.hp = hadSnapshot ? Math.max(0, Math.min(state.hpMax, Math.round(Number(prevHp) || 0))) : state.hpMax;
+  state.mp = hadSnapshot ? Math.max(0, Math.min(state.mpMax, Math.round(Number(prevMp) || 0))) : state.mpMax;
   state.exp = snapshot.exp;
   state.expCurrentLevelStart = snapshot.expCurrentLevelStart || 0;
   state.expMax = snapshot.expNextLevelTarget;
@@ -347,6 +350,16 @@ overlayClose.addEventListener('click', () => {
 });
 
 renderCenterSection(state.activeSection);
+
+setInterval(() => {
+  if (state.activeSection !== 'heroe') return;
+  const hpRegen = Math.max(1, Math.round(state.hpMax * 0.07));
+  const mpRegen = Math.max(1, Math.round(state.mpMax * 0.07));
+  const nextHp = Math.min(state.hpMax, state.hp + hpRegen);
+  const nextMp = Math.min(state.mpMax, state.mp + mpRegen);
+  if (nextHp !== state.hp) setHp(nextHp);
+  if (nextMp !== state.mp) window.GameState.setMp(nextMp);
+}, 1000);
 
 window.addEventListener('ngs:game-entered', (event) => {
   const saveData = event?.detail?.saveData;

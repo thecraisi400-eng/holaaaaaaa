@@ -80,6 +80,7 @@
     winName: null,
     roundBanner: null,
     roundBannerTimer: 0,
+    jutsuAnnouncementTimer: 0,
     onVictory: null,
     onRoundComplete: null,
     onDefeat: null,
@@ -137,6 +138,8 @@
       this.engine = null;
       clearTimeout(this.roundBannerTimer);
       this.roundBannerTimer = 0;
+      clearTimeout(this.jutsuAnnouncementTimer);
+      this.jutsuAnnouncementTimer = 0;
       if (this.host) this.host.innerHTML = '';
       this.host = null;
       this.root = null;
@@ -168,6 +171,21 @@
       this.roundBannerTimer = setTimeout(() => {
         if (this.roundBanner) this.roundBanner.style.display = 'none';
       }, 1500);
+    },
+
+    showJutsuAnnouncement(name) {
+      if (!this.jutsuAnnouncement) return;
+      this.jutsuAnnouncement.textContent = name;
+      this.jutsuAnnouncement.classList.remove('show');
+      clearTimeout(this.jutsuAnnouncementTimer);
+      window.requestAnimationFrame(() => this.jutsuAnnouncement.classList.add('show'));
+      this.jutsuAnnouncementTimer = setTimeout(() => this.hideJutsuAnnouncement(), 1200);
+    },
+
+    hideJutsuAnnouncement() {
+      if (!this.jutsuAnnouncement) return;
+      this.jutsuAnnouncement.classList.remove('show');
+      this.jutsuAnnouncement.textContent = '';
     },
 
     showWinner(name, winnerId) {
@@ -254,7 +272,6 @@
 
       const ctx = this.ctx;
       const veil = this.veil;
-      const jutsuAnnouncement = this.jutsuAnnouncement;
       let particles = [];
       let damageNums = [];
       let jutsus = [];
@@ -328,19 +345,6 @@
       function clampTimer(current, durationMs) {
         return Math.max(current || 0, durationMs);
       }
-      function showJutsuAnnouncement(name) {
-        if (!jutsuAnnouncement) return;
-        jutsuAnnouncement.textContent = name;
-        jutsuAnnouncement.classList.remove('show');
-        window.requestAnimationFrame(() => jutsuAnnouncement.classList.add('show'));
-      }
-
-      function hideJutsuAnnouncement() {
-        if (!jutsuAnnouncement) return;
-        jutsuAnnouncement.classList.remove('show');
-        jutsuAnnouncement.textContent = '';
-      }
-
       class Particle {
         constructor(x, y, vx, vy, color, life, size, type) {
           this.x = x; this.y = y; this.vx = vx; this.vy = vy;
@@ -955,7 +959,7 @@
             const skill = availableSkills[Math.floor(Math.random() * availableSkills.length)];
             const consumed = window.JutsuSystem?.consumeMpForJutsu?.(skill.id);
             if (consumed) {
-              showJutsuAnnouncement(skill.name);
+              self.showJutsuAnnouncement(skill.name);
               const orb = new BattleSkillOrb(f0, f1, skill);
               jutsus.push(orb);
               currentSlowOrb = orb;
@@ -987,7 +991,7 @@
                   currentSlowOrb = null;
                   slowMo = 1;
                   if (veil) veil.style.background = 'rgba(0,0,0,0)';
-                  hideJutsuAnnouncement();
+                  self.hideJutsuAnnouncement();
                 }
               }
               for (let i = 0; i < 16; i += 1) {
@@ -1005,7 +1009,7 @@
           currentSlowOrb = null;
           slowMo = 1;
           if (veil) veil.style.background = 'rgba(0,0,0,0)';
-          hideJutsuAnnouncement();
+          self.hideJutsuAnnouncement();
         }
         particles.forEach((p) => p.update(dt)); particles = particles.filter((p) => !p.isDead());
         damageNums.forEach((d) => d.update(dt)); damageNums = damageNums.filter((d) => !d.isDead());
@@ -1034,7 +1038,7 @@
         jutsuVeil = 0; if (veil) veil.style.background = 'rgba(0,0,0,0)';
         autoJutsuTimer = 0;
         currentSlowOrb = null;
-        hideJutsuAnnouncement();
+        self.hideJutsuAnnouncement();
         fighters = [new Fighter(playerFighterCfg), new Fighter(enemyFighterCfg)];
 
         const currentMainHp = window.GameState?.getHp?.();

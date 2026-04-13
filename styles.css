@@ -1294,13 +1294,14 @@ html, body {
 .ms-battle-round-banner {
   display: none;
   z-index: 18;
-  inset: auto 0 24px 0;
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
   margin: 0 auto;
   width: fit-content;
-  padding: 10px 24px;
+  padding: 11px 26px;
   border: 1px solid rgba(253, 224, 71, 0.75);
   border-radius: 10px;
-  font-size: 14px;
+  font-size: 15.4px;
   letter-spacing: 3px;
   font-weight: 800;
   color: #fde047;
@@ -1314,7 +1315,7 @@ html, body {
   inset: auto auto auto 50%;
   transform: translate(-50%, -70%);
   top: 30%;
-  width: min(78%, 300px);
+  width: min(85%, 360px);
   padding: 10px 12px;
   border: 2px solid #fde047;
   background: rgba(255, 255, 240, 0.92);
@@ -1323,6 +1324,8 @@ html, body {
   font-size: 16px;
   font-weight: 800;
   letter-spacing: 1px;
+  white-space: normal;
+  overflow-wrap: anywhere;
   opacity: 0;
   transition: opacity .15s ease, transform .15s ease;
   pointer-events: none;

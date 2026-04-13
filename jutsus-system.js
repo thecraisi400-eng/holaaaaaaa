@@ -13,6 +13,61 @@
   ];
 
   const MAX_LEVEL = 10;
+  const MP_COST_WEIGHTS = {
+    'Llama Voraz': 0.11,
+    'Rayo Destellante': 0.125,
+    'Ráfaga Cortante': 0.095,
+    'Prisión Hidráulica': 0.12,
+    'Escudo Telúrico': 0.14,
+    'Sello Prohibido': 0.085,
+    'Espejismo Mental': 0.105,
+    'Bosque Viviente': 0.13,
+    'Impacto Brutal': 0.09,
+    'Aliento Vital': 0.1
+  };
+
+  const BATTLE_EFFECTS = {
+    'Llama Voraz': {
+      enemy: { type: 'blind', missChance: 0.30, durationSec: 4 },
+      self: { type: 'atkBoost', value: 0.10, durationSec: 5 }
+    },
+    'Rayo Destellante': {
+      enemy: { type: 'paralysis', speedMultiplier: 0.20, durationSec: 4 },
+      self: { type: 'evasionBoost', value: 0.15, durationSec: 5 }
+    },
+    'Ráfaga Cortante': {
+      enemy: { type: 'bleed', hpPercentPerSec: 0.05, durationSec: 4 },
+      self: { type: 'attackSpeedBoost', value: 0.50, durationSec: 5 }
+    },
+    'Prisión Hidráulica': {
+      enemy: { type: 'asphyxia', hpPercentPerSec: 0.04, durationSec: 4 },
+      self: { type: 'nextCooldownReduction', value: 0.35, durationSec: 0 }
+    },
+    'Escudo Telúrico': {
+      enemy: { type: 'heaviness', durationSec: 4 },
+      self: { type: 'absoluteDefense', durationSec: 5 }
+    },
+    'Sello Prohibido': {
+      enemy: { type: 'silence', durationSec: 4 },
+      self: { type: 'chakraRegenBoost', value: 0.05, durationSec: 5 }
+    },
+    'Espejismo Mental': {
+      enemy: { type: 'confusion', selfHitPercent: 0.03, durationSec: 3 },
+      self: { type: 'defenseBoost', value: 0.50, durationSec: 5 }
+    },
+    'Bosque Viviente': {
+      enemy: { type: 'energyDrain', hpPercentPerSec: 0.05, durationSec: 4 },
+      self: { type: 'hpRegenBoost', value: 0.07, durationSec: 5 }
+    },
+    'Impacto Brutal': {
+      enemy: { type: 'stun', durationSec: 4 },
+      self: { type: 'nextHitCritical', durationSec: 0 }
+    },
+    'Aliento Vital': {
+      enemy: { type: 'deafness', defenseReduction: 0.20, durationSec: 4 },
+      self: { type: 'debuffCleanseImmunity', durationSec: 5 }
+    }
+  };
 
   const JutsuSystem = {
     host: null,
@@ -49,12 +104,50 @@
       return Boolean(this.host && this.root && this.host.contains(this.root));
     },
 
+    getRandomInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    },
+
+    ensureDamageProgression(jutsu) {
+      if (!Array.isArray(jutsu.damageIncrements)) jutsu.damageIncrements = [];
+      const extraDamage = jutsu.damageIncrements.reduce((sum, amount) => sum + amount, 0);
+      return jutsu.baseDamage + extraDamage;
+    },
+
+    calcRosterMpRange() {
+      const profiles = window.CharacterStatsSystem?.CHARACTER_PROFILES || {};
+      const allMps = Object.values(profiles).flatMap((profile) => {
+        const formula = profile?.formulas?.MP || ['flat', 100, 0];
+        return [1, 100].map((level) => {
+          const [kind, base, perLevel] = formula;
+          const val = base + perLevel * (level - 1);
+          return kind === 'percent' ? Number(val) : Math.round(val);
+        });
+      });
+      const min = Math.min(...allMps, 1);
+      const max = Math.max(...allMps, min + 1);
+      return { min, max };
+    },
+
+    getMpCost(jutsu, heroLevel = 1) {
+      const mpRange = this.calcRosterMpRange();
+      const clampedLevel = Math.max(1, Math.min(100, Math.floor(Number(heroLevel) || 1)));
+      const weight = MP_COST_WEIGHTS[jutsu.name] || 0.1;
+      const mpSpan = mpRange.max - mpRange.min;
+      const levelScaling = 1 + ((clampedLevel - 1) / 99) * 0.45;
+      const upgradeScaling = 1 + (jutsu.currentLevel - 1) * 0.09;
+      const rawCost = (mpRange.min + mpSpan * weight) * levelScaling * upgradeScaling;
+      return Math.max(8, Math.round(rawCost));
+    },
+
     getStats(jutsu) {
       const lvl = jutsu.currentLevel;
-      const damage = Math.round(jutsu.baseDamage * (1 + (lvl - 1) * 0.12));
+      const damage = this.ensureDamageProgression(jutsu);
       const cdReduction = (lvl - 1) * 0.08;
       const cd = Math.max(0.5, parseFloat((jutsu.baseCD * (1 - cdReduction)).toFixed(1)));
-      return { damage, cd, level: lvl, isMax: lvl >= MAX_LEVEL };
+      const heroLevel = window.CharacterStatsSystem?.getActiveHero?.()?.level || 1;
+      const mpCost = this.getMpCost(jutsu, heroLevel);
+      return { damage, cd, level: lvl, isMax: lvl >= MAX_LEVEL, mpCost };
     },
 
     bindEvents() {
@@ -193,7 +286,7 @@
       this.root.querySelector('#jts-popup-damage').textContent = String(stats.damage);
       this.root.querySelector('#jts-popup-effect').textContent = jutsu.baseEffect;
       this.root.querySelector('#jts-popup-buff').textContent = jutsu.baseBuff;
-      this.root.querySelector('#jts-popup-cd').textContent = `${stats.cd}s`;
+      this.root.querySelector('#jts-popup-cd').textContent = `${stats.cd}s · MP ${stats.mpCost}`;
 
       const levelEl = this.root.querySelector('#jts-popup-level');
       const popupEl = this.root.querySelector('#jts-detail-popup');
@@ -247,6 +340,8 @@
       this.resources.scrolls -= costScrolls;
       this.resources.chakra -= costChakra;
       jutsu.currentLevel += 1;
+      if (!Array.isArray(jutsu.damageIncrements)) jutsu.damageIncrements = [];
+      jutsu.damageIncrements.push(this.getRandomInt(17, 29));
 
       this.renderLibrary();
       this.renderAllSlots();
@@ -280,6 +375,29 @@
 
     capitalize(text) {
       return text.charAt(0).toUpperCase() + text.slice(1);
+    },
+
+    getEquippedBattleJutsus(heroSnapshot = null) {
+      const heroLevel = heroSnapshot?.level || window.CharacterStatsSystem?.getActiveHero?.()?.level || 1;
+      return this.equipped
+        .map((jutsuId, slotIndex) => {
+          if (jutsuId === null) return null;
+          const jutsu = JUTSU_DB.find((entry) => entry.id === jutsuId);
+          if (!jutsu) return null;
+          const stats = this.getStats(jutsu);
+          return {
+            slotIndex,
+            id: jutsu.id,
+            name: jutsu.name,
+            icon: jutsu.icon,
+            damage: stats.damage,
+            mpCost: this.getMpCost(jutsu, heroLevel),
+            cooldownSec: stats.cd,
+            level: jutsu.currentLevel,
+            effects: BATTLE_EFFECTS[jutsu.name] || null
+          };
+        })
+        .filter(Boolean);
     }
   };
 

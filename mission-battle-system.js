@@ -55,6 +55,20 @@
     5: '#111111'
   };
 
+
+  const SKILL_ORB_COLORS = {
+    'Llama Voraz': '#FF0000',
+    'Rayo Destellante': '#FFFF00',
+    'Ráfaga Cortante': '#FFFFFF',
+    'Prisión Hidráulica': '#0000FF',
+    'Escudo Telúrico': '#FF8C00',
+    'Sello Prohibido': '#8000FF',
+    'Espejismo Mental': '#8B4513',
+    'Bosque Viviente': '#00AA00',
+    'Impacto Brutal': '#000000',
+    'Aliento Vital': '#00AA00'
+  };
+
   const BattleSystem = {
     host: null,
     root: null,
@@ -438,7 +452,7 @@
           this.owner = owner;
           this.target = target;
           this.skillData = skillData;
-          this.color = owner.glowColor;
+          this.color = SKILL_ORB_COLORS[skillData?.name] || owner.glowColor;
           this.x = owner.cx;
           this.y = owner.cy;
           this.size = 40;
@@ -481,7 +495,7 @@
             const alpha = (1 - i / this.trail.length) * 0.30;
             ctx.save();
             ctx.globalAlpha = alpha;
-            ctx.fillStyle = this.owner.glowColor;
+            ctx.fillStyle = this.color;
             ctx.beginPath();
             ctx.arc(t.x, t.y, this.size * (1 - i / (this.trail.length * 1.5)), 0, Math.PI * 2);
             ctx.fill();
@@ -489,7 +503,7 @@
           }
           const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size);
           grad.addColorStop(0, '#FFFFFF');
-          grad.addColorStop(0.3, this.owner.glowColor);
+          grad.addColorStop(0.3, this.color);
           grad.addColorStop(1, 'rgba(0,0,0,0)');
           ctx.save();
           ctx.globalAlpha = 0.9;
@@ -527,6 +541,7 @@
           };
           this.dotTick = 0;
           this.buffTick = 0;
+          this.externalFreeze = false;
         }
 
         get cx() { return this.x + NW / 2; }
@@ -671,6 +686,15 @@
           if (this.x <= 3) { this.x = 3; this.vx = 4.5; if (this.onGround) { this.vy = -9; this.onGround = false; } }
           if (this.x >= W - NW - 3) { this.x = W - NW - 3; this.vx = -4.5; if (this.onGround) { this.vy = -9; this.onGround = false; } }
           this.facingRight = enemy.cx > this.cx;
+          if (this.externalFreeze) {
+            this.vx = 0;
+            this.vy = 0;
+            this.tX = this.x;
+            this.tY = this.y;
+            this.animState = 'idle';
+            this.animF = 0;
+            return;
+          }
           if (this.stunTimer > 0) return;
           this.dotTick += dms;
           this.buffTick += dms;
@@ -922,11 +946,13 @@
         }
 
         const [f0, f1] = fighters;
+        f1.externalFreeze = Boolean(currentSlowOrb && !currentSlowOrb.dead && currentSlowOrb.owner === f0);
         autoJutsuTimer += dms;
         if (autoJutsuTimer >= 1000 && equippedJutsus.length > 0 && !gameOver) {
           autoJutsuTimer = 0;
           if (Math.random() <= 0.30 && f0.statuses.silence <= 0 && !currentSlowOrb) {
-            const skill = equippedJutsus[Math.floor(Math.random() * equippedJutsus.length)];
+            const availableSkills = equippedJutsus.slice(0, 3);
+            const skill = availableSkills[Math.floor(Math.random() * availableSkills.length)];
             const consumed = window.JutsuSystem?.consumeMpForJutsu?.(skill.id);
             if (consumed) {
               showJutsuAnnouncement(skill.name);

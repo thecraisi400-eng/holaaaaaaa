@@ -354,10 +354,17 @@
 
 <template id="jutsuSystemTemplate">
   <div id="jts-core" class="jts-core">
-    <div class="jts-library-panel">
-      <div class="jts-library-header">
-        <span class="jts-header-icon">📜</span>
-        <h2>Biblioteca de Jutsus</h2>
+    <div class="jts-categories-panel">
+      <div class="jts-categories-header">
+        <span class="jts-header-icon">📗</span>
+        <span class="jts-scrolls-count" id="jts-header-scrolls">100</span>
+      </div>
+      <div class="jts-category-tabs" id="jts-category-tabs">
+        <button class="jts-category-tab active" data-element="fire">🔥</button>
+        <button class="jts-category-tab" data-element="wind">🌪️</button>
+        <button class="jts-category-tab" data-element="lightning">⚡</button>
+        <button class="jts-category-tab" data-element="earth">🪨</button>
+        <button class="jts-category-tab" data-element="water">🌊</button>
       </div>
       <div class="jts-library-grid-wrapper">
         <div id="jts-library-grid" class="jts-library-grid"></div>
@@ -415,11 +422,11 @@
           <div id="jts-popup-passive" class="jts-popup-passive">✦ Efecto Pasivo Desbloqueado ✦</div>
         </div>
         <div class="jts-popup-footer">
+          <button id="jts-btn-unlock" class="jts-btn-unlock">🔓 Desbloquear Jutsu (25 📗)</button>
           <button id="jts-btn-upgrade" class="jts-btn-upgrade">⬆ Mejorar</button>
           <button id="jts-btn-equip-slot" class="jts-btn-equip-slot">Equipar</button>
           <div class="jts-resources-display">
-            <div class="jts-resource-item"><span class="jts-res-icon">📜</span><span id="jts-res-scrolls" class="jts-res-count">50</span></div>
-            <div class="jts-resource-item"><span class="jts-res-icon">🔵</span><span id="jts-res-chakra" class="jts-res-count">200</span></div>
+            <div class="jts-resource-item"><span class="jts-res-icon">📗</span><span id="jts-res-scrolls" class="jts-res-count">100</span></div>
           </div>
         </div>
       </div>

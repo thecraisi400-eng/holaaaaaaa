@@ -134,6 +134,12 @@
       if (this.rafId) cancelAnimationFrame(this.rafId);
       this.rafId = 0;
       this.lastTs = 0;
+      
+      // Limpiar BattleJutsusSystem si está activo
+      if (this.engine && this.engine.battleJutsusId && window.BattleJutsusSystem) {
+        window.BattleJutsusSystem.cleanupBattle(this.engine.battleJutsusId);
+      }
+      
       this.engine = null;
       clearTimeout(this.roundBannerTimer);
       this.roundBannerTimer = 0;
@@ -213,6 +219,9 @@
       const playerCharacterId = hero?.characterId || 'naruto';
       const playerName = hero?.name || playerCharacterId.toUpperCase();
 
+      // Generar habilidades para el enemigo (3 slots aleatorios)
+      const enemySkills = BattleJutsusSystem?.generateEnemySkills?.() || [];
+
       const playerStats = {
         hp: Math.max(1, Math.round(hero?.stats?.HP || 100)),
         atk: Math.max(1, Number(hero?.stats?.ATK || 10)),
@@ -274,6 +283,32 @@
       let carriedPlayerHp = null;
       let carriedPlayerMp = null;
       let bgMountains; let bgTrees; let bgStars;
+
+      // Inicializar BattleJutsusSystem para esta batalla
+      let battleJutsusId = null;
+      if (window.BattleJutsusSystem) {
+        const battleContext = {
+          id: `battle_${Date.now()}`,
+          isActive: true,
+          player: null, // Se asignará después de crear fighters
+          enemy: null, // Se asignará después de crear fighters
+          timeScale: 1.0,
+          veil,
+          battleSystem: {
+            slowMo: 1,
+            spawnParticle: function(x, y, vx, vy, color, life, size, type) {
+              particles.push(new Particle(x, y, vx, vy, color, life, size, type));
+            },
+            triggerShake: function(dur, amp) {
+              shakeDur = dur;
+              shakeAmp = amp;
+            }
+          },
+          container: self.host,
+          enemySkills
+        };
+        battleJutsusId = window.BattleJutsusSystem.initializeBattle(battleContext);
+      }
 
       function loadSpriteSheet(path, callback) {
         const img = new Image();
@@ -951,6 +986,11 @@
         if (frameN % 50 === 0) particles.push(new Particle(Math.random() * W, -5, 0, 0.4 + Math.random() * 0.6, Math.random() < 0.5 ? '#2A4A1A' : '#386020', 180 + Math.random() * 100, 2 + Math.random() * 1.5, 'leaf'));
         if (jutsuVeil > 0) { jutsuVeil -= dt; if (jutsuVeil <= 0) { jutsuVeil = 0; if (veil) veil.style.background = 'rgba(0,0,0,0)'; } }
 
+        // Actualizar BattleJutsusSystem si está activo
+        if (battleJutsusId && window.BattleJutsusSystem) {
+          window.BattleJutsusSystem.updateOrbs(dt * slowMo);
+        }
+
         if (hitStop > 0) {
           hitStop -= dt;
           particles.forEach((p) => p.update(dt)); particles = particles.filter((p) => !p.isDead());
@@ -1037,6 +1077,10 @@
         const parallaxX = (avgX - W / 2) * 0.10;
         drawBG(parallaxX);
         for (const j of jutsus) j.draw();
+        // Renderizar esferas de BattleJutsusSystem
+        if (window.BattleJutsusSystem) {
+          window.BattleJutsusSystem.renderOrbs(ctx);
+        }
         for (const f of fighters) f.draw();
         for (const p of particles) p.draw();
         for (const d of damageNums) d.draw();
@@ -1057,6 +1101,15 @@
         hideJutsuAnnouncement(true);
         fighters = [new Fighter(playerFighterCfg), new Fighter(enemyFighterCfg)];
 
+        // Actualizar referencias de personajes en BattleJutsusSystem
+        if (battleJutsusId && window.BattleJutsusSystem) {
+          const battle = window.BattleJutsusSystem.activeBattles.find(b => b.id === battleJutsusId);
+          if (battle) {
+            battle.context.player = fighters[0];
+            battle.context.enemy = fighters[1];
+          }
+        }
+
         const hpSource = Number.isFinite(carriedPlayerHp) ? carriedPlayerHp : window.GameState?.getHp?.();
         if (Number.isFinite(hpSource)) {
           fighters[0].hp = Math.max(1, Math.min(fighters[0].maxHp, Math.round(hpSource)));
@@ -1075,6 +1128,7 @@
       return {
         TIME_SCALE,
         get slowMo() { return slowMo; },
+        battleJutsusId,
         initSprites,
         genBG,
         update,

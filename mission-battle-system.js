@@ -225,6 +225,7 @@
 
       const hero = options.heroSnapshot || window.CharacterStatsSystem?.getActiveHero?.() || null;
       const equippedJutsus = window.JutsuSystem?.getEquippedJutsusBattleData?.().slice(0, 3) || [];
+      const playerHasEquippedSkills = equippedJutsus.length > 0;
       const mission = options.mission || {};
       const missionIndex = Number(options.missionIndex || 0);
       const enemyProfile = ENEMY_PROFILE_BY_MISSION[missionIndex] || null;
@@ -260,7 +261,8 @@
         glowColor: playerGlowColor,
         stats: playerStats,
         spritePath: playerSprite,
-        isPlayer: true
+        isPlayer: true,
+        canCastJutsu: playerHasEquippedSkills
       };
 
       const enemyFighterCfg = {
@@ -289,6 +291,8 @@
       let jutsuVeil = 0;
       let currentSlowOrb = null;
       let activeAnnouncementOrb = null;
+      let announcementFrame = null;
+      let announcementNonce = 0;
       let jutsuSyncManager = null;
       const spriteSheets = {};
       let spritesLoaded = false;
@@ -355,31 +359,55 @@
       function clampTimer(current, durationMs) {
         return Math.max(current || 0, durationMs);
       }
+      function updateAnnouncementPosition(orb, name) {
+        if (!jutsuAnnouncement || !orb?.owner || orb.owner.isDead) return;
+        const safeName = String(name || '').trim();
+        if (!safeName) return;
+        const width = Math.max(180, Math.min(360, (safeName.length * 11) + 64));
+        const x = Math.max(width / 2, Math.min(W - (width / 2), orb.owner.cx));
+        const y = Math.max(18, orb.owner.y - 30);
+        jutsuAnnouncement.style.width = `${width}px`;
+        jutsuAnnouncement.style.left = `${x}px`;
+        jutsuAnnouncement.style.top = `${y}px`;
+        jutsuAnnouncement.style.transform = 'translate(-50%, -100%)';
+      }
+
       function showJutsuAnnouncement(name, orb = null) {
         if (!jutsuAnnouncement) return;
-        activeAnnouncementOrb = orb;
-        jutsuAnnouncement.textContent = name;
-        const owner = orb?.owner;
-        if (owner) {
-          const width = Math.max(180, Math.min(360, (name.length * 11) + 64));
-          const x = Math.max(width / 2, Math.min(W - (width / 2), owner.cx));
-          const y = Math.max(18, owner.y - 30);
-          jutsuAnnouncement.style.width = `${width}px`;
-          jutsuAnnouncement.style.left = `${x}px`;
-          jutsuAnnouncement.style.top = `${y}px`;
-          jutsuAnnouncement.style.transform = 'translate(-50%, -100%)';
+        const safeName = String(name || '').trim();
+        if (!safeName) {
+          hideJutsuAnnouncement(true);
+          return;
         }
+        if (announcementFrame) {
+          window.cancelAnimationFrame(announcementFrame);
+          announcementFrame = null;
+        }
+        const nonce = announcementNonce + 1;
+        announcementNonce = nonce;
+        activeAnnouncementOrb = orb;
+        jutsuAnnouncement.textContent = safeName;
+        updateAnnouncementPosition(orb, safeName);
         jutsuAnnouncement.classList.remove('show');
-        window.requestAnimationFrame(() => {
+        announcementFrame = window.requestAnimationFrame(() => {
+          if (announcementNonce !== nonce) return;
+          if (!jutsuAnnouncement.isConnected) return;
+          if (activeAnnouncementOrb && (activeAnnouncementOrb.dead || activeAnnouncementOrb.owner?.isDead)) return;
           jutsuAnnouncement.classList.remove('show');
           jutsuAnnouncement.offsetWidth;
           jutsuAnnouncement.classList.add('show');
+          announcementFrame = null;
         });
       }
 
       function hideJutsuAnnouncement(force = false, orb = null) {
         if (!jutsuAnnouncement) return;
         if (!force && activeAnnouncementOrb && orb !== activeAnnouncementOrb) return;
+        announcementNonce += 1;
+        if (announcementFrame) {
+          window.cancelAnimationFrame(announcementFrame);
+          announcementFrame = null;
+        }
         activeAnnouncementOrb = null;
         jutsuAnnouncement.classList.remove('show');
         jutsuAnnouncement.textContent = '';
@@ -576,6 +604,7 @@
           this.maxMp = Math.max(0, Number(cfg.stats.mp || 0));
           this.mp = this.maxMp;
           this.isPlayer = cfg.isPlayer;
+          this.canCastJutsu = cfg.canCastJutsu !== false;
           this.dashTimer = 0; this.dashInterval = 800; this.tX = cfg.x; this.tY = GROUND - NH;
           this.atkCD = 0; this.jutsuCD = 0; this.stunTimer = 0;
           this.invincible = false; this.invTimer = 0;
@@ -688,6 +717,7 @@
         }
 
         launchJutsu(target) {
+          if (!this.canCastJutsu) return;
           if (this.jutsuCD > 0 || this.statuses.silence > 0) return;
           if (this.statuses.blind > 0 && Math.random() < 0.30) {
             this.jutsuCD = 20;
@@ -1052,16 +1082,10 @@
 
         checkJutsuClash();
         jutsus = jutsus.filter((j) => !j.dead);
-        if (activeAnnouncementOrb && !activeAnnouncementOrb.dead && activeAnnouncementOrb.owner && jutsuAnnouncement) {
-          const owner = activeAnnouncementOrb.owner;
-          const name = jutsuAnnouncement.textContent || '';
-          const width = Math.max(180, Math.min(360, (name.length * 11) + 64));
-          const x = Math.max(width / 2, Math.min(W - (width / 2), owner.cx));
-          const y = Math.max(18, owner.y - 30);
-          jutsuAnnouncement.style.width = `${width}px`;
-          jutsuAnnouncement.style.left = `${x}px`;
-          jutsuAnnouncement.style.top = `${y}px`;
-          jutsuAnnouncement.style.transform = 'translate(-50%, -100%)';
+        if (activeAnnouncementOrb && !activeAnnouncementOrb.dead && activeAnnouncementOrb.owner && !activeAnnouncementOrb.owner.isDead && jutsuAnnouncement) {
+          updateAnnouncementPosition(activeAnnouncementOrb, jutsuAnnouncement.textContent || '');
+        } else if (activeAnnouncementOrb && (activeAnnouncementOrb.dead || !activeAnnouncementOrb.owner || activeAnnouncementOrb.owner.isDead)) {
+          hideJutsuAnnouncement(false, activeAnnouncementOrb);
         }
         if (currentSlowOrb && currentSlowOrb.dead) {
           hideJutsuAnnouncement(false, currentSlowOrb);
@@ -1114,6 +1138,7 @@
           const caster = fighterById.get(casterId);
           const target = fighterById.get(targetId);
           if (!caster || !target || caster.isDead || target.isDead || caster.statuses.silence > 0) return false;
+          if (!caster.canCastJutsu) return false;
           const orb = new BattleSkillOrb(caster, target, skillData);
           showJutsuAnnouncement(skillData.name, orb);
           jutsus.push(orb);
@@ -1133,6 +1158,7 @@
           canUseSkill: (fighterId, skill) => {
             const fighter = fighterById.get(fighterId);
             if (!fighter || !skill || fighter.isDead || fighter.statuses.silence > 0) return false;
+            if (!fighter.canCastJutsu) return false;
             if (fighterId === 0) return Number(window.GameState?.getMp?.() || 0) >= Number(skill.mpCost || 0);
             if (!enemyHasSkillAvailable(skill)) return false;
             return fighter.mp >= Number(skill.mpCost || 0);

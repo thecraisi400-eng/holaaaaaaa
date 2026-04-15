@@ -1,22 +1,75 @@
 (function () {
-    const DEFAULT_SKILLS = [
-        { id: 0, nombre: 'Filo Ígneo', desc: 'Ignora defensa física, otorga evasión y quema.', lv: 1, stats: { perf: 5.0, evas: 2.0, comb: 1.0, prob: 3, mp: 20 }, incr: { perf: 1.0, evas: 0.5, comb: 0.1, prob: 2, mp: 3 } },
-        { id: 1, nombre: 'Baluarte Tóxico', desc: 'Potencia críticos, bloquea daño y envenena.', lv: 1, stats: { perf: 10.0, evas: 3.0, comb: 5.0, prob: 3, mp: 20 }, incr: { perf: 2.0, evas: 1.0, comb: 1.0, prob: 2, mp: 3 } },
-        { id: 2, nombre: 'Ojo del Segador', desc: 'Precisión, regeneración y desangramiento.', lv: 1, stats: { perf: 4.0, evas: 0.5, comb: 1.0, prob: 3, mp: 20 }, incr: { perf: 1.0, evas: 0.1, comb: 0.2, prob: 2, mp: 3 } },
-        { id: 3, nombre: 'Espejo Glacial', desc: 'Roba vida, devuelve daño y congela.', lv: 1, stats: { perf: 2.0, evas: 3.0, comb: 1.0, prob: 3, mp: 20 }, incr: { perf: 0.5, evas: 1.0, comb: 0.1, prob: 2, mp: 3 } },
-        { id: 4, nombre: 'Martillo Sísmico', desc: 'Hemorragia crítica, escudos y aturdimiento.', lv: 1, stats: { perf: 3.0, evas: 10.0, comb: 1.5, prob: 3, mp: 20 }, incr: { perf: 0.5, evas: 2.0, comb: 0.2, prob: 2, mp: 3 } },
-        { id: 5, nombre: 'Viento de Inercia', desc: 'Ataque doble, resiste aturdimiento y ralentiza.', lv: 1, stats: { perf: 5.0, evas: 6.0, comb: 10.0, prob: 3, mp: 20 }, incr: { perf: 1.0, evas: 1.5, comb: 1.0, prob: 2, mp: 3 } },
-        { id: 6, nombre: 'Marca del Verdugo', desc: 'Ejecuta heridos, inmunidad y bloquea curas.', lv: 1, stats: { perf: 8.0, evas: 0.5, comb: 15.0, prob: 3, mp: 20 }, incr: { perf: 1.0, evas: 0.1, comb: 3.0, prob: 2, mp: 3 } },
-        { id: 7, nombre: 'Sentencia Elemental', desc: 'Anula resistencias y asegura críticos.', lv: 1, stats: { perf: 4.0, evas: 3.0, comb: 15.0, prob: 3, mp: 20 }, incr: { perf: 1.0, evas: 1.0, comb: 3.0, prob: 2, mp: 3 } }
-    ];
+    // Configuración de Jutsus por Categoría
+    const JUTSUS_CONFIG = {
+        fuego: {
+            id: 'fuego',
+            emoji: '🔥',
+            nombre: 'Fuego',
+            habilidades: [
+                { id: 'fuego_1', nombre: 'Bola Fuego', daño: 70, efecto: 'Quemadura (Baja -10% HP al enemigo durante 3 segundos)', costo: 5 },
+                { id: 'fuego_2', nombre: 'Llama Fénix', daño: 80, efecto: 'Baja Evasión del enemigo en -30% durante 4 segundos', costo: 5 },
+                { id: 'fuego_3', nombre: 'Lanza Ígnea', daño: 60, efecto: 'Baja Defensa del enemigo -25% durante 4 segundos', costo: 5 },
+                { id: 'fuego_4', nombre: 'Explosión Calor', daño: 73, efecto: 'Aturdir al enemigo (Stun) 4 segundos', costo: 5 }
+            ]
+        },
+        viento: {
+            id: 'viento',
+            emoji: '🌪️',
+            nombre: 'Viento',
+            habilidades: [
+                { id: 'viento_1', nombre: 'Ráfaga Veloz', daño: 60, efecto: 'Aumenta Evasión en +15% durante 4 segundos', costo: 5 },
+                { id: 'viento_2', nombre: 'Shuriken Viento', daño: 70, efecto: 'Hemorragia Grave al enemigo -25% HP', costo: 5 },
+                { id: 'viento_3', nombre: 'Cuchilla Vacío', daño: 73, efecto: 'Ignorar la Defensa del enemigo -20%', costo: 5 },
+                { id: 'viento_4', nombre: 'Gran Torbellino', daño: 80, efecto: 'Desorientar Enemigo no ataca durante 4 segundos', costo: 5 }
+            ]
+        },
+        trueno: {
+            id: 'trueno',
+            emoji: '⚡',
+            nombre: 'Trueno',
+            habilidades: [
+                { id: 'trueno_1', nombre: 'Cuchilla Rayo', daño: 70, efecto: 'Perforar Defensa del enemigo -35% durante 4 segundos', costo: 5 },
+                { id: 'trueno_2', nombre: 'Armadura Rayo', daño: 60, efecto: 'Aumenta Agilidad en +40% durante 4 segundos', costo: 5 },
+                { id: 'trueno_3', nombre: 'Rayo Veloz', daño: 80, efecto: 'Aumenta El Crítico en +40%', costo: 5 },
+                { id: 'trueno_4', nombre: 'Trueno Astral', daño: 73, efecto: 'Aturdir al enemigo durante 4 segundos', costo: 5 }
+            ]
+        },
+        roca: {
+            id: 'roca',
+            emoji: '🪨',
+            nombre: 'Roca',
+            habilidades: [
+                { id: 'roca_1', nombre: 'Roca Sólida', daño: 80, efecto: 'Aumenta Defensa en 45% durante 4 segundos', costo: 5 },
+                { id: 'roca_2', nombre: 'Armadura Arena', daño: 60, efecto: 'Absorción Daño en 40%', costo: 5 },
+                { id: 'roca_3', nombre: 'Domo Tierra', daño: 70, efecto: 'Baja Defensa del enemigo 25% durante 4 segundos', costo: 5 },
+                { id: 'roca_4', nombre: 'Muro Piedra', daño: 67, efecto: 'Regenera 17% HP durante 4 segundos', costo: 5 }
+            ]
+        },
+        agua: {
+            id: 'agua',
+            emoji: '🌊',
+            nombre: 'Agua',
+            habilidades: [
+                { id: 'agua_1', nombre: 'Gran Catarata', daño: 60, efecto: 'Recuperación de MP 20% durante 3 segundos', costo: 5 },
+                { id: 'agua_2', nombre: 'Prisión Agua', daño: 67, efecto: 'Restricción al enemigo (No mover) durante 4 segundos', costo: 5 },
+                { id: 'agua_3', nombre: 'Ola Gigante', daño: 80, efecto: 'Reducción MP al enemigo 15% durante 3 segundos', costo: 5 },
+                { id: 'agua_4', nombre: 'Tiburón Hambriento', daño: 70, efecto: 'Robo de Chakra al enemigo 10% durante 3 segundos', costo: 5 }
+            ]
+        }
+    };
+
+    const MAX_JUTSUS_SELECTABLE = 3;
+    const UNLOCK_COST = 5; // Costo en pergaminos 📗 para desbloquear cada categoría
 
     const state = {
-        playerGold: 1200,
+        pergaminos: 100, // Moneda inicial
+        selectedCategory: null,
         selectedSkillId: null,
+        jutsusDesbloqueados: [], // IDs de categorías desbloqueadas
         equippedSkills: [null, null, null],
-        skills: cloneSkills(DEFAULT_SKILLS),
+        habilidadesMejoradas: {}, // { habilidadId: nivel }
         initialized: false,
-        combatSession: null
+        combateSession: null
     };
 
     function cloneSkills(baseSkills) {

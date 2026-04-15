@@ -1,0 +1,1221 @@
+<!-- shinobi-evolution.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHINOBI EVOLUTION - Sistema de Combate Elite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #0a0f1e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+        
+        #game-wrapper {
+            position: relative;
+            border: 3px solid #4a6fa5;
+            border-radius: 8px;
+            box-shadow: 0 0 30px rgba(74, 111, 165, 0.5);
+        }
+        
+        #game-canvas {
+            display: block;
+            background: #1a1a3e;
+        }
+        
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 460px;
+            height: 360px;
+            pointer-events: none;
+        }
+        
+        .skill-icon {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            width: 50px;
+            height: 50px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #fff;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 10px;
+            font-weight: bold;
+        }
+        
+        .skill-key {
+            font-size: 14px;
+            color: #ffd700;
+        }
+        
+        .skill-cooldown {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(255, 0, 0, 0.7);
+            transition: height 0.1s;
+        }
+        
+        #wave-timer {
+            position: absolute;
+            top: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #fff;
+            font-size: 14px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px #000;
+        }
+        
+        #message-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-size: 28px;
+            font-weight: bold;
+            text-shadow: 3px 3px 6px #000;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        
+        #controls-hint {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 11px;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-wrapper">
+        <canvas id="game-canvas" width="460" height="360"></canvas>
+        <div id="ui-overlay">
+            <div class="skill-icon" id="skill-q">
+                <span class="skill-key">Q</span>
+                <span>Slash</span>
+                <div class="skill-cooldown" id="cd-q"></div>
+            </div>
+            <div class="skill-icon" style="left: 65px;" id="skill-w">
+                <span class="skill-key">W</span>
+                <span>Fire</span>
+                <div class="skill-cooldown" id="cd-w"></div>
+            </div>
+            <div class="skill-icon" style="left: 120px;" id="skill-e">
+                <span class="skill-key">E</span>
+                <span>Shield</span>
+                <div class="skill-cooldown" id="cd-e"></div>
+            </div>
+            <div id="wave-timer">OLEADA 1/6 - 10s</div>
+            <div id="message-display"></div>
+            <div id="controls-hint">Habilidades: Q W E</div>
+        </div>
+    </div>
+
+    <script>
+    // ============================================
+    // SHINOBI EVOLUTION - SISTEMA DE COMBATE ELITE
+    // ============================================
+
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+    const WIDTH = 460;
+    const HEIGHT = 360;
+
+    // ============================================
+    // CONFIGURACIÓN GLOBAL
+    // ============================================
+    const GAME_CONFIG = {
+        FPS: 60,
+        TOTAL_WAVES: 6,
+        WAVE_INTERVAL: 10000,
+        COMBAT_DISTANCE: 60,
+        ACTION_INTERVAL: 800,
+        PLAYER_SIZE: { w: 32, h: 48 },
+        ENEMY_SIZE: { w: 28, h: 40 },
+        GROUND_Y: 280
+    };
+
+    // ============================================
+    // ESTADOS DEL JUEGO
+    // ============================================
+    const STATES = {
+        INTRO: 'STATE_INTRO',
+        IDLE_CENTER: 'STATE_IDLE_CENTER',
+        WAVE_ALERT: 'STATE_WAVE_ALERT',
+        COMBAT: 'STATE_COMBAT',
+        VICTORY: 'STATE_VICTORY',
+        WALKING: 'STATE_WALKING',
+        GAME_OVER: 'STATE_GAME_OVER',
+        WIN: 'STATE_WIN'
+    };
+
+    let currentState = STATES.INTRO;
+    let gameTime = 0;
+    let waveNumber = 1;
+    let waveTimer = 10000;
+    let lastTime = performance.now();
+    let deltaTime = 0;
+
+    // ============================================
+    // SISTEMA DE CÁMARA Y SHAKE
+    // ============================================
+    let screenShake = { x: 0, y: 0, duration: 0, intensity: 0 };
+
+    function applyScreenShake() {
+        if (screenShake.duration > 0) {
+            screenShake.x = (Math.random() - 0.5) * screenShake.intensity;
+            screenShake.y = (Math.random() - 0.5) * screenShake.intensity;
+            screenShake.duration -= deltaTime;
+        } else {
+            screenShake.x = 0;
+            screenShake.y = 0;
+        }
+        ctx.translate(screenShake.x, screenShake.y);
+    }
+
+    function triggerScreenShake(intensity, duration) {
+        screenShake.intensity = intensity;
+        screenShake.duration = duration;
+    }
+
+    // ============================================
+    // SISTEMA DE PARTÍCULAS
+    // ============================================
+    let particles = [];
+
+    class Particle {
+        constructor(x, y, vx, vy, life, size, color, gravity = 0) {
+            this.x = x;
+            this.y = y;
+            this.vx = vx;
+            this.vy = vy;
+            this.life = life;
+            this.maxLife = life;
+            this.size = size;
+            this.color = color;
+            this.gravity = gravity;
+        }
+
+        update(dt) {
+            this.x += this.vx * dt;
+            this.y += this.vy * dt;
+            this.vy += this.gravity * dt;
+            this.life -= dt;
+        }
+
+        draw(ctx) {
+            const alpha = this.life / this.maxLife;
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
+    }
+
+    function createParticles(x, y, count, color, spread = 360, speedMin = 50, speedMax = 150, gravity = 0) {
+        for (let i = 0; i < count; i++) {
+            const angle = (Math.random() * spread - spread/2) * Math.PI / 180;
+            const speed = speedMin + Math.random() * (speedMax - speedMin);
+            const vx = Math.cos(angle) * speed;
+            const vy = Math.sin(angle) * speed;
+            const size = 2 + Math.random() * 4;
+            const life = 0.5 + Math.random() * 0.5;
+            particles.push(new Particle(x, y, vx, vy, life, size, color, gravity));
+        }
+    }
+
+    function updateAndDrawParticles(ctx, dt) {
+        for (let i = particles.length - 1; i >= 0; i--) {
+            particles[i].update(dt);
+            particles[i].draw(ctx);
+            if (particles[i].life <= 0) {
+                particles.splice(i, 1);
+            }
+        }
+    }
+
+    // ============================================
+    // FONDO PARALLAX
+    // ============================================
+    let parallaxOffset = 0;
+
+    function drawBackground(ctx, offset) {
+        // CIELO - Degradado atardecer bosque
+        const skyGradient = ctx.createLinearGradient(0, 0, 0, HEIGHT);
+        skyGradient.addColorStop(0, '#1a1a3e');
+        skyGradient.addColorStop(1, '#2d4a3e');
+        ctx.fillStyle = skyGradient;
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+        // SOL/LUNA
+        ctx.fillStyle = 'rgba(255, 255, 200, 0.8)';
+        ctx.beginPath();
+        ctx.arc(WIDTH - 50, 40, 20, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Glow del sol
+        ctx.shadowColor = '#ffffaa';
+        ctx.shadowBlur = 30;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // NUBES (capa trasera - 0.3x)
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        for (let i = 0; i < 5; i++) {
+            const cloudX = ((i * 120 - offset * 0.3) % (WIDTH + 100)) - 50;
+            const cloudY = 30 + i * 15;
+            const cloudW = 60 + i * 10;
+            ctx.beginPath();
+            ctx.ellipse(cloudX, cloudY, cloudW, 20, 0, 0, Math.PI * 2);
+            ctx.ellipse(cloudX + 30, cloudY - 10, 40, 15, 0, 0, Math.PI * 2);
+            ctx.ellipse(cloudX - 25, cloudY + 5, 35, 12, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // MONTAÑAS (capa media - 0.6x)
+        const mountainColors = ['#3a3a5c', '#4a4a6c', '#2a2a4c'];
+        mountainColors.forEach((color, idx) => {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(0, HEIGHT - 80);
+            for (let x = 0; x <= WIDTH + 100; x += 50) {
+                const peakHeight = 40 + Math.sin(x * 0.02 + idx) * 30 + Math.cos(x * 0.05 + idx * 2) * 20;
+                ctx.lineTo(x - offset * 0.6, HEIGHT - 80 - peakHeight);
+            }
+            ctx.lineTo(WIDTH, HEIGHT - 80);
+            ctx.lineTo(0, HEIGHT - 80);
+            ctx.fill();
+        });
+
+        // ÁRBOLES LEJANOS (parallax medio)
+        ctx.fillStyle = '#1a3a1a';
+        for (let i = 0; i < 15; i++) {
+            const treeX = ((i * 35 - offset * 0.6) % (WIDTH + 50)) - 25;
+            const treeY = HEIGHT - 95;
+            // Tronco
+            ctx.fillRect(treeX + 8, treeY, 6, 20);
+            // Copa
+            ctx.beginPath();
+            ctx.moveTo(treeX, treeY);
+            ctx.lineTo(treeX + 11, treeY - 25);
+            ctx.lineTo(treeX + 22, treeY);
+            ctx.fill();
+        }
+
+        // SUELO (capa frontal - 1.0x)
+        const groundGradient = ctx.createLinearGradient(0, HEIGHT - 80, 0, HEIGHT);
+        groundGradient.addColorStop(0, '#5a4a32');
+        groundGradient.addColorStop(1, '#3a2a1a');
+        ctx.fillStyle = groundGradient;
+        ctx.fillRect(0, HEIGHT - 80, WIDTH, 80);
+
+        // Textura de tierra procedural
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        for (let i = 0; i < 50; i++) {
+            const dirtX = ((i * 12 - offset) % (WIDTH + 20)) - 10;
+            const dirtY = HEIGHT - 75 + (i % 5) * 10;
+            ctx.fillRect(dirtX, dirtY, 3, 2);
+        }
+
+        // PIEDRAS
+        ctx.fillStyle = '#6a6a7a';
+        const stonePositions = [5, 25, 45, 65, 85, 105, 125, 145];
+        stonePositions.forEach((pos, i) => {
+            const stoneX = ((pos * 4 - offset) % (WIDTH + 20)) - 10;
+            const stoneY = HEIGHT - 70 + (i % 3) * 8;
+            ctx.beginPath();
+            ctx.ellipse(stoneX, stoneY, 4 + i % 3, 3 + i % 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        // FLORES
+        const flowerColors = ['#ff6b9d', '#ffd700', '#ffffff'];
+        for (let i = 0; i < 12; i++) {
+            const flowerX = ((i * 40 + 15 - offset) % (WIDTH + 30)) - 15;
+            const flowerY = HEIGHT - 72;
+            const flowerColor = flowerColors[i % 3];
+            
+            // Tallo
+            ctx.fillStyle = '#2a5a2a';
+            ctx.fillRect(flowerX, flowerY, 2, 8);
+            
+            // Pétalos
+            ctx.fillStyle = flowerColor;
+            ctx.beginPath();
+            ctx.arc(flowerX + 1, flowerY - 2, 3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // HIERBA
+        ctx.strokeStyle = '#3a6a3a';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < 60; i++) {
+            const grassX = ((i * 8 - offset) % (WIDTH + 10)) - 5;
+            const grassY = HEIGHT - 80;
+            ctx.beginPath();
+            ctx.moveTo(grassX, grassY);
+            ctx.quadraticCurveTo(grassX + 2, grassY - 8, grassX + 4, grassY - 12);
+            ctx.stroke();
+        }
+
+        // ARBUSTOS
+        ctx.fillStyle = '#1a4a1a';
+        for (let i = 0; i < 4; i++) {
+            const bushX = ((i * 120 + 30 - offset) % (WIDTH + 80)) - 40;
+            const bushY = HEIGHT - 85;
+            ctx.beginPath();
+            ctx.ellipse(bushX, bushY, 20, 12, 0, 0, Math.PI * 2);
+            ctx.ellipse(bushX + 15, bushY + 3, 15, 10, 0, 0, Math.PI * 2);
+            ctx.ellipse(bushX - 12, bushY + 5, 12, 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // VIÑETA cinematográfica
+        const vignetteGradient = ctx.createRadialGradient(WIDTH/2, HEIGHT/2, HEIGHT/3, WIDTH/2, HEIGHT/2, HEIGHT);
+        vignetteGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        vignetteGradient.addColorStop(1, 'rgba(0, 0, 0, 0.4)');
+        ctx.fillStyle = vignetteGradient;
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    }
+
+    // ============================================
+    // SPRITES PROCEDURALES
+    // ============================================
+    function drawCharacter(ctx, x, y, frame, direction, state, isPlayer = true) {
+        const size = isPlayer ? GAME_CONFIG.PLAYER_SIZE : GAME_CONFIG.ENEMY_SIZE;
+        const w = size.w;
+        const h = size.h;
+        
+        ctx.save();
+        ctx.translate(x, y);
+        
+        // Flip horizontal si mira a la izquierda
+        if (direction < 0) {
+            ctx.scale(-1, 1);
+        }
+
+        // Animación basada en frame y estado
+        const animOffset = Math.sin(frame * 0.5) * 2;
+        const breathOffset = Math.sin(frame * 0.2) * 1;
+
+        // Colores según tipo
+        const colors = isPlayer ? {
+            body: '#4a6fa5',
+            accent: '#ffd700',
+            skin: '#f5d5b8',
+            hair: '#1a1a3e'
+        } : {
+            body: '#8b4a4a',
+            accent: '#6a3a3a',
+            skin: '#d5b8a8',
+            hair: '#2a1a1a'
+        };
+
+        // DASH TRAIL
+        if (state === 'dash') {
+            ctx.globalAlpha = 0.4;
+            ctx.fillStyle = colors.body;
+            ctx.fillRect(-w - 10, 5, w, h - 5);
+            ctx.globalAlpha = 1;
+        }
+
+        // CUERPO
+        ctx.fillStyle = colors.body;
+        ctx.fillRect(-w/2, 20, w, h - 20);
+
+        // PECHO/ARMADURA
+        ctx.fillStyle = colors.accent;
+        ctx.fillRect(-w/2 + 2, 22, w - 4, 15);
+
+        // CABEZA
+        ctx.fillStyle = colors.skin;
+        ctx.beginPath();
+        ctx.arc(0, 12, 10, 0, Math.PI * 2);
+        ctx.fill();
+
+        // PELO
+        ctx.fillStyle = colors.hair;
+        ctx.beginPath();
+        ctx.arc(0, 10, 11, Math.PI, Math.PI * 2.3);
+        ctx.fill();
+
+        // OJOS
+        ctx.fillStyle = '#1a1a3e';
+        ctx.fillRect(2, 10, 3, 3);
+
+        // BRAZOS (animados según estado)
+        ctx.fillStyle = colors.skin;
+        if (state === 'attack') {
+            // Brazo extendido para atacar
+            ctx.fillRect(5, 25, 15, 5);
+        } else if (state === 'defend') {
+            // Brazos en guardia
+            ctx.fillRect(5, 20, 5, 15);
+            ctx.fillRect(-10, 20, 5, 15);
+        } else if (state === 'walk' || state === 'idle') {
+            // Balanceo de brazos
+            const armSwing = Math.sin(frame * 0.5) * 8;
+            ctx.fillRect(5 + armSwing * 0.3, 25, 5, 12);
+            ctx.fillRect(-10 - armSwing * 0.3, 25, 5, 12);
+        } else {
+            ctx.fillRect(5, 25, 5, 12);
+            ctx.fillRect(-10, 25, 5, 12);
+        }
+
+        // PIERNAS (animadas)
+        ctx.fillStyle = '#2a3a5a';
+        if (state === 'walk' || state === 'dash') {
+            const legSwing = Math.sin(frame * 0.8) * 10;
+            ctx.fillRect(-6 + legSwing, 55, 6, 10);
+            ctx.fillRect(0 - legSwing, 55, 6, 10);
+        } else if (state === 'jump') {
+            ctx.fillRect(-6, 50, 6, 10);
+            ctx.fillRect(0, 50, 6, 10);
+        } else {
+            ctx.fillRect(-6, 55, 6, 10);
+            ctx.fillRect(0, 55, 6, 10);
+        }
+
+        // EFECTO DE ESCUDO (skill E)
+        if (state === 'shielded') {
+            ctx.strokeStyle = 'rgba(100, 200, 255, 0.8)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(0, 30, 35, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Partículas de escudo
+            if (Math.random() < 0.3) {
+                createParticles(x + (Math.random() - 0.5) * 40, y + Math.random() * 50, 1, '#64c8ff', 360, 20, 50);
+            }
+        }
+
+        ctx.restore();
+    }
+
+    // ============================================
+    // BARRAS DE HP
+    // ============================================
+    function drawHPBar(ctx, x, y, currentHP, maxHP, width = 36) {
+        const height = 6;
+        const hpPercent = currentHP / maxHP;
+        
+        // Color según porcentaje
+        let barColor;
+        if (hpPercent > 0.6) {
+            barColor = '#4caf50';
+        } else if (hpPercent > 0.3) {
+            barColor = '#ffd700';
+        } else {
+            barColor = '#f44336';
+        }
+
+        // Borde
+        ctx.fillStyle = '#333';
+        ctx.fillRect(x - width/2 - 1, y - height - 1, width + 2, height + 2);
+
+        // Fondo
+        ctx.fillStyle = '#222';
+        ctx.fillRect(x - width/2, y - height, width, height);
+
+        // Vida actual
+        ctx.fillStyle = barColor;
+        ctx.fillRect(x - width/2, y - height, width * hpPercent, height);
+
+        // Borde interior
+        ctx.strokeStyle = '#555';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x - width/2, y - height, width, height);
+    }
+
+    // ============================================
+    // NÚMEROS FLOTANTES DE DAÑO/CURACIÓN
+    // ============================================
+    let floatingNumbers = [];
+
+    class FloatingNumber {
+        constructor(x, y, value, isHeal = false) {
+            this.x = x;
+            this.y = y;
+            this.value = value;
+            this.isHeal = isHeal;
+            this.life = 1.0;
+            this.vy = -50;
+        }
+
+        update(dt) {
+            this.y += this.vy * dt;
+            this.vy *= 0.95;
+            this.life -= dt;
+        }
+
+        draw(ctx) {
+            ctx.globalAlpha = Math.min(1, this.life * 2);
+            ctx.fillStyle = this.isHeal ? '#4caf50' : '#f44336';
+            ctx.font = 'bold 14px Arial';
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            const text = (this.isHeal ? '+' : '-') + Math.abs(this.value);
+            ctx.strokeText(text, this.x, this.y);
+            ctx.fillText(text, this.x, this.y);
+            ctx.globalAlpha = 1;
+        }
+    }
+
+    function addFloatingNumber(x, y, value, isHeal = false) {
+        floatingNumbers.push(new FloatingNumber(x, y, value, isHeal));
+    }
+
+    function updateAndDrawFloatingNumbers(ctx, dt) {
+        for (let i = floatingNumbers.length - 1; i >= 0; i--) {
+            floatingNumbers[i].update(dt);
+            floatingNumbers[i].draw(ctx);
+            if (floatingNumbers[i].life <= 0) {
+                floatingNumbers.splice(i, 1);
+            }
+        }
+    }
+
+    // ============================================
+    // ENTIDADES
+    // ============================================
+    class Entity {
+        constructor(x, y, isPlayer = false, maxHP = 100) {
+            this.x = x;
+            this.y = y;
+            this.isPlayer = isPlayer;
+            this.maxHP = maxHP;
+            this.currentHP = maxHP;
+            this.direction = 1;
+            this.state = 'idle';
+            this.frame = 0;
+            this.actionTimer = 0;
+            this.speed = 80;
+            this.damage = 15;
+            this.shieldActive = false;
+            this.shieldTimer = 0;
+            this.trail = [];
+        }
+
+        update(dt) {
+            this.frame += dt * 60;
+            this.actionTimer -= dt * 1000;
+
+            // Actualizar escudo
+            if (this.shieldActive) {
+                this.shieldTimer -= dt;
+                if (this.shieldTimer <= 0) {
+                    this.shieldActive = false;
+                }
+            }
+
+            // Guardar trail para dash
+            if (this.state === 'dash') {
+                this.trail.push({ x: this.x, y: this.y, frame: this.frame });
+                if (this.trail.length > 5) {
+                    this.trail.shift();
+                }
+            }
+        }
+
+        takeDamage(amount) {
+            if (this.shieldActive) {
+                amount *= 0.2; // 80% reducción
+            }
+            this.currentHP -= amount;
+            addFloatingNumber(this.x, this.y - 20, Math.floor(amount), false);
+            triggerScreenShake(5, 200);
+            createParticles(this.x, this.y, 8, '#ff4444', 180, 80, 150);
+            return this.currentHP <= 0;
+        }
+
+        heal(amount) {
+            this.currentHP = Math.min(this.maxHP, this.currentHP + amount);
+            addFloatingNumber(this.x, this.y - 20, amount, true);
+            createParticles(this.x, this.y, 5, '#4caf50', 360, 50, 100);
+        }
+
+        draw(ctx) {
+            drawCharacter(ctx, this.x, this.y, this.frame, this.direction, 
+                         this.shieldActive ? 'shielded' : this.state, this.isPlayer);
+            drawHPBar(ctx, this.x, this.y - 8, this.currentHP, this.maxHP);
+        }
+    }
+
+    // ============================================
+    // JUGADOR
+    // ============================================
+    class Player extends Entity {
+        constructor(x, y) {
+            super(x, y, true, 150);
+            this.skills = {
+                q: { cooldown: 0, maxCooldown: 4000, damage: 35 },
+                w: { cooldown: 0, maxCooldown: 6000, damage: 50 },
+                e: { cooldown: 0, maxCooldown: 8000 }
+            };
+        }
+
+        update(dt) {
+            super.update(dt);
+            
+            // Reducir cooldowns
+            for (let skill in this.skills) {
+                if (this.skills[skill].cooldown > 0) {
+                    this.skills[skill].cooldown -= dt * 1000;
+                }
+            }
+
+            // Actualizar UI de cooldowns
+            updateSkillUI();
+        }
+
+        useSkill(skillKey, enemies) {
+            const skill = this.skills[skillKey.toLowerCase()];
+            if (!skill || skill.cooldown > 0) return false;
+
+            skill.cooldown = skill.maxCooldown;
+
+            switch(skillKey.toLowerCase()) {
+                case 'q': // Slash Arc
+                    this.state = 'attack';
+                    // Daño a enemigos cercanos
+                    enemies.forEach(enemy => {
+                        const dist = Math.abs(enemy.x - this.x);
+                        if (dist < 100) {
+                            enemy.takeDamage(skill.damage);
+                        }
+                    });
+                    // Efecto visual
+                    createParticles(this.x + this.direction * 40, this.y, 20, '#ffd700', 90, 100, 200);
+                    triggerScreenShake(5, 200);
+                    break;
+
+                case 'w': // Fire Burst
+                    // Daño a todos los enemigos
+                    enemies.forEach(enemy => {
+                        const dist = Math.abs(enemy.x - this.x);
+                        if (dist < 200) {
+                            enemy.takeDamage(skill.damage);
+                        }
+                    });
+                    // Efecto visual
+                    createParticles(this.x, this.y, 40, '#ff6600', 360, 50, 150, 50);
+                    createParticles(this.x, this.y, 20, '#ffff00', 360, 80, 200);
+                    triggerScreenShake(8, 250);
+                    break;
+
+                case 'e': // Shield Barrier
+                    this.shieldActive = true;
+                    this.shieldTimer = 3;
+                    createParticles(this.x, this.y, 15, '#64c8ff', 360, 30, 80);
+                    break;
+            }
+
+            return true;
+        }
+
+        draw(ctx) {
+            super.draw(ctx);
+        }
+    }
+
+    // ============================================
+    // ENEMIGO
+    // ============================================
+    class Enemy extends Entity {
+        constructor(x, y, type = 'basic') {
+            const hp = type === 'tank' ? 200 : (type === 'fast' ? 80 : 100);
+            super(x, y, false, hp);
+            this.type = type;
+            this.speed = type === 'fast' ? 100 : (type === 'tank' ? 50 : 70);
+            this.damage = type === 'tank' ? 20 : 15;
+        }
+
+        aiUpdate(dt, player) {
+            if (this.actionTimer <= 0) {
+                this.actionTimer = GAME_CONFIG.ACTION_INTERVAL;
+                
+                // Decidir acción
+                const rand = Math.random();
+                const dist = Math.abs(player.x - this.x);
+                
+                // IA reactiva
+                if (player.state === 'attack' && rand < 0.3) {
+                    this.state = 'defend';
+                } else if (player.shieldActive && rand < 0.4) {
+                    // Probabilidad de huir o atacar
+                    this.state = Math.random() < 0.5 ? 'defend' : 'attack';
+                } else if (rand < 0.4) {
+                    this.state = 'attack';
+                } else if (rand < 0.6) {
+                    this.state = 'defend';
+                } else if (rand < 0.75) {
+                    this.state = 'jump';
+                } else if (rand < 0.9) {
+                    this.state = 'dash';
+                } else {
+                    this.state = 'idle';
+                }
+
+                // Ejecutar acción
+                if (this.state === 'attack' && dist < GAME_CONFIG.COMBAT_DISTANCE) {
+                    const damageMult = this.type === 'tank' ? 1.5 : 1;
+                    player.takeDamage(this.damage * damageMult);
+                }
+            }
+
+            // Movimiento hacia jugador
+            if (this.x < player.x - 30) {
+                this.x += this.speed * dt;
+                this.direction = 1;
+                if (this.state !== 'attack') this.state = 'walk';
+            } else if (this.x > player.x + 30) {
+                this.x -= this.speed * dt;
+                this.direction = -1;
+                if (this.state !== 'attack') this.state = 'walk';
+            }
+        }
+    }
+
+    // ============================================
+    // MENSAJERO (NPC)
+    // ============================================
+    class Messenger extends Entity {
+        constructor(x, y) {
+            super(x, y, false, 100);
+            this.isMessenger = true;
+        }
+
+        update(dt) {
+            super.update(dt);
+            // El mensajero no se mueve durante combate
+            if (currentState === STATES.COMBAT) {
+                this.state = 'idle';
+            }
+        }
+    }
+
+    // ============================================
+    // INSTANCIAS DEL JUEGO
+    // ============================================
+    let player = new Player(200, GAME_CONFIG.GROUND_Y);
+    let messenger = new Messenger(230, GAME_CONFIG.GROUND_Y);
+    let enemies = [];
+    let activeEnemies = [];
+
+    // ============================================
+    // SISTEMA DE OLEADAS
+    // ============================================
+    function spawnWave(waveNum) {
+        enemies = [];
+        const startX = WIDTH + 50;
+
+        if (waveNum <= 3) {
+            // Oleadas 1-3: 2 enemigos básicos
+            enemies.push(new Enemy(startX, GAME_CONFIG.GROUND_Y, 'basic'));
+            enemies.push(new Enemy(startX + 40, GAME_CONFIG.GROUND_Y, 'basic'));
+        } else if (waveNum <= 5) {
+            // Oleadas 4-5: 2 básicos + 1 tanque
+            enemies.push(new Enemy(startX, GAME_CONFIG.GROUND_Y, 'basic'));
+            enemies.push(new Enemy(startX + 40, GAME_CONFIG.GROUND_Y, 'basic'));
+            enemies.push(new Enemy(startX + 80, GAME_CONFIG.GROUND_Y, 'tank'));
+        } else {
+            // Oleada 6: 3 rápidos
+            enemies.push(new Enemy(startX, GAME_CONFIG.GROUND_Y, 'fast'));
+            enemies.push(new Enemy(startX + 40, GAME_CONFIG.GROUND_Y, 'fast'));
+            enemies.push(new Enemy(startX + 80, GAME_CONFIG.GROUND_Y, 'fast'));
+        }
+
+        activeEnemies = [...enemies];
+        showMessage(`¡OLEADA ${waveNum}!`);
+    }
+
+    // ============================================
+    // BARRA DE PROGRESO TEMPORAL
+    // ============================================
+    function drawProgressBar(ctx, elapsed, total) {
+        const barX = 8;
+        const barY = 8;
+        const barWidth = 444;
+        const barHeight = 12;
+
+        // Fondo
+        ctx.fillStyle = 'rgba(34, 34, 34, 0.8)';
+        ctx.fillRect(barX, barY, barWidth, barHeight);
+
+        // Borde
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(barX, barY, barWidth, barHeight);
+
+        // Relleno (gradiente azul a verde)
+        const progress = Math.min(1, elapsed / total);
+        const gradient = ctx.createLinearGradient(barX, 0, barX + barWidth, 0);
+        gradient.addColorStop(0, '#4a6fa5');
+        gradient.addColorStop(progress, '#4caf50');
+        gradient.addColorStop(progress, '#222');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(barX + 2, barY + 2, (barWidth - 4) * progress, barHeight - 4);
+
+        // Marcas cada 10 segundos
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.lineWidth = 1;
+        for (let i = 1; i < 6; i++) {
+            const markX = barX + (barWidth * i / 6);
+            ctx.beginPath();
+            ctx.moveTo(markX, barY);
+            ctx.lineTo(markX, barY + barHeight);
+            ctx.stroke();
+        }
+
+        // Triángulo indicador
+        const indicatorX = barX + barWidth * progress;
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.moveTo(indicatorX, barY - 3);
+        ctx.lineTo(indicatorX - 5, barY + 3);
+        ctx.lineTo(indicatorX + 5, barY + 3);
+        ctx.fill();
+
+        // Texto
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(`OLEADA ${Math.min(waveNumber, 6)}/6`, barX + barWidth/2 - 30, barY - 5);
+        
+        const remaining = Math.max(0, Math.ceil((total - elapsed) / 1000));
+        ctx.fillText(`${remaining}s`, barX + barWidth/2 + 30, barY - 5);
+    }
+
+    // ============================================
+    // UI DE HABILIDADES
+    // ============================================
+    function updateSkillUI() {
+        ['q', 'w', 'e'].forEach(key => {
+            const skill = player.skills[key];
+            const cdElement = document.getElementById(`cd-${key}`);
+            if (cdElement && skill) {
+                const percent = (skill.cooldown / skill.maxCooldown) * 100;
+                cdElement.style.height = `${percent}%`;
+            }
+        });
+    }
+
+    // ============================================
+    // MENSAJES EN PANTALLA
+    // ============================================
+    let messageTimeout;
+    function showMessage(text, duration = 1500) {
+        const msgElement = document.getElementById('message-display');
+        msgElement.textContent = text;
+        msgElement.style.opacity = 1;
+
+        clearTimeout(messageTimeout);
+        messageTimeout = setTimeout(() => {
+            msgElement.style.opacity = 0;
+        }, duration);
+    }
+
+    // ============================================
+    // CONTROLES
+    // ============================================
+    document.addEventListener('keydown', (e) => {
+        if (currentState === STATES.COMBAT) {
+            player.useSkill(e.key, activeEnemies);
+        }
+    });
+
+    // Uso automático de habilidades por IA
+    let autoSkillTimer = 0;
+    function tryAutoUseSkill(dt) {
+        autoSkillTimer -= dt * 1000;
+        if (autoSkillTimer <= 0) {
+            autoSkillTimer = 2000 + Math.random() * 3000;
+            
+            // Decidir habilidad aleatoria
+            const rand = Math.random();
+            const availableSkills = [];
+            
+            if (player.skills.q.cooldown <= 0) availableSkills.push('q');
+            if (player.skills.w.cooldown <= 0) availableSkills.push('w');
+            if (player.skills.e.cooldown <= 0) availableSkills.push('e');
+
+            if (availableSkills.length > 0) {
+                const skill = availableSkills[Math.floor(Math.random() * availableSkills.length)];
+                player.useSkill(skill, activeEnemies);
+            }
+        }
+    }
+
+    // ============================================
+    // TRANSICIONES DE ESTADO
+    // ============================================
+    function changeState(newState) {
+        const oldState = currentState;
+        currentState = newState;
+
+        console.log(`Estado: ${oldState} -> ${newState}`);
+
+        switch(newState) {
+            case STATES.WAVE_ALERT:
+                setTimeout(() => {
+                    spawnWave(waveNumber);
+                    changeState(STATES.COMBAT);
+                }, 1000);
+                break;
+
+            case STATES.COMBAT:
+                // Enemigos entran desde la derecha
+                break;
+
+            case STATES.VICTORY:
+                showMessage('¡VICTORIA!', 1500);
+                setTimeout(() => {
+                    if (waveNumber < GAME_CONFIG.TOTAL_WAVES) {
+                        waveNumber++;
+                        waveTimer = GAME_CONFIG.WAVE_INTERVAL;
+                        changeState(STATES.WALKING);
+                    } else {
+                        changeState(STATES.WIN);
+                    }
+                }, 1500);
+                break;
+
+            case STATES.WALKING:
+                setTimeout(() => {
+                    changeState(STATES.WAVE_ALERT);
+                }, GAME_CONFIG.WAVE_INTERVAL - 1000);
+                break;
+
+            case STATES.GAME_OVER:
+                showMessage('MISIÓN FALLIDA', 3000);
+                break;
+
+            case STATES.WIN:
+                showMessage('¡MISIÓN COMPLETADA!', 5000);
+                break;
+        }
+    }
+
+    // ============================================
+    // CONFETI PARA VICTORIA
+    // ============================================
+    function createConfetti() {
+        const colors = ['#ff6b9d', '#ffd700', '#64c8ff', '#4caf50', '#ffffff'];
+        for (let i = 0; i < 100; i++) {
+            const x = Math.random() * WIDTH;
+            const y = -Math.random() * HEIGHT;
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            const particle = new Particle(x, y, (Math.random() - 0.5) * 100, 
+                                          Math.random() * 100 + 50, 3, 
+                                          4 + Math.random() * 3, color, 200);
+            particles.push(particle);
+        }
+    }
+
+    // ============================================
+    // LOOP PRINCIPAL
+    // ============================================
+    function gameLoop(currentTime) {
+        deltaTime = (currentTime - lastTime) / 1000;
+        lastTime = currentTime;
+
+        // Limitar delta time para evitar saltos grandes
+        if (deltaTime > 0.1) deltaTime = 0.1;
+
+        // Limpiar canvas
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, WIDTH, HEIGHT);
+
+        // Aplicar screen shake
+        applyScreenShake();
+
+        // Dibujar fondo
+        drawBackground(ctx, parallaxOffset);
+
+        // Actualizar lógica según estado
+        switch(currentState) {
+            case STATES.INTRO:
+                // Caminar hacia el centro
+                if (player.x < 200) {
+                    player.x += player.speed * deltaTime;
+                    player.state = 'walk';
+                    parallaxOffset += player.speed * deltaTime;
+                } else {
+                    changeState(STATES.IDLE_CENTER);
+                }
+                break;
+
+            case STATES.IDLE_CENTER:
+                player.state = 'idle';
+                messenger.state = 'idle';
+                waveTimer -= deltaTime * 1000;
+                
+                if (waveTimer <= 0) {
+                    changeState(STATES.WAVE_ALERT);
+                }
+                break;
+
+            case STATES.COMBAT:
+                // Jugador se mueve hacia enemigos
+                if (activeEnemies.length > 0) {
+                    const nearestEnemy = activeEnemies.reduce((nearest, enemy) => {
+                        const dist = Math.abs(enemy.x - player.x);
+                        return dist < nearest.dist ? { enemy, dist } : nearest;
+                    }, { enemy: null, dist: Infinity }).enemy;
+
+                    if (nearestEnemy) {
+                        const dist = Math.abs(nearestEnemy.x - player.x);
+                        
+                        if (dist > GAME_CONFIG.COMBAT_DISTANCE) {
+                            player.x += (nearestEnemy.x > player.x ? 1 : -1) * player.speed * deltaTime;
+                            player.direction = nearestEnemy.x > player.x ? 1 : -1;
+                            player.state = 'walk';
+                            parallaxOffset += player.speed * deltaTime * 0.5;
+                        } else {
+                            // Combate automático
+                            player.state = 'idle';
+                            
+                            // IA del jugador
+                            if (player.actionTimer <= 0) {
+                                player.actionTimer = GAME_CONFIG.ACTION_INTERVAL;
+                                const rand = Math.random();
+                                
+                                if (rand < 0.4) {
+                                    player.state = 'attack';
+                                    // Atacar enemigo cercano
+                                    nearestEnemy.takeDamage(player.damage);
+                                } else if (rand < 0.6) {
+                                    player.state = 'defend';
+                                } else if (rand < 0.75) {
+                                    player.state = 'jump';
+                                } else if (rand < 0.9) {
+                                    player.state = 'dash';
+                                }
+                            }
+                        }
+
+                        // Actualizar IA de enemigos
+                        activeEnemies.forEach(enemy => {
+                            if (enemy.currentHP > 0) {
+                                enemy.aiUpdate(deltaTime, player);
+                            }
+                        });
+                    }
+                }
+
+                // Intentar usar habilidad automática
+                tryAutoUseSkill(deltaTime);
+
+                // Verificar victoria
+                activeEnemies = activeEnemies.filter(e => e.currentHP > 0);
+                if (activeEnemies.length === 0) {
+                    changeState(STATES.VICTORY);
+                }
+
+                // Verificar derrota (mensajero muere)
+                if (messenger.currentHP <= 0) {
+                    changeState(STATES.GAME_OVER);
+                }
+
+                // Verificar derrota (jugador muere)
+                if (player.currentHP <= 0) {
+                    changeState(STATES.GAME_OVER);
+                }
+                break;
+
+            case STATES.WALKING:
+                player.state = 'walk';
+                messenger.state = 'walk';
+                parallaxOffset += player.speed * deltaTime;
+                waveTimer -= deltaTime * 1000;
+                break;
+
+            case STATES.WIN:
+                createConfetti();
+                player.state = 'walk';
+                messenger.state = 'walk';
+                player.x += player.speed * deltaTime;
+                messenger.x += player.speed * deltaTime;
+                parallaxOffset += player.speed * deltaTime;
+                break;
+        }
+
+        // Actualizar entidades
+        player.update(deltaTime);
+        messenger.update(deltaTime);
+        activeEnemies.forEach(enemy => enemy.update(deltaTime));
+
+        // Dibujar entidades
+        messenger.draw(ctx);
+        player.draw(ctx);
+        activeEnemies.forEach(enemy => enemy.draw(ctx));
+
+        // Partículas y números flotantes
+        updateAndDrawParticles(ctx, deltaTime);
+        updateAndDrawFloatingNumbers(ctx, deltaTime);
+
+        // Barra de progreso
+        const totalTime = GAME_CONFIG.TOTAL_WAVES * GAME_CONFIG.WAVE_INTERVAL;
+        const elapsedTime = totalTime - waveTimer - (waveNumber - 1) * GAME_CONFIG.WAVE_INTERVAL;
+        drawProgressBar(ctx, elapsedTime + (waveNumber - 1) * GAME_CONFIG.WAVE_INTERVAL, totalTime);
+
+        // Actualizar timer de oleada en UI
+        const waveTimerElement = document.getElementById('wave-timer');
+        if (waveTimerElement) {
+            const seconds = Math.ceil(waveTimer / 1000);
+            waveTimerElement.textContent = `OLEADA ${waveNumber}/6 - ${seconds}s`;
+        }
+
+        requestAnimationFrame(gameLoop);
+    }
+
+    // ============================================
+    // INICIAR JUEGO
+    // ============================================
+    function init() {
+        player = new Player(100, GAME_CONFIG.GROUND_Y);
+        messenger = new Messenger(230, GAME_CONFIG.GROUND_Y);
+        enemies = [];
+        activeEnemies = [];
+        waveNumber = 1;
+        waveTimer = GAME_CONFIG.WAVE_INTERVAL;
+        particles = [];
+        floatingNumbers = [];
+        parallaxOffset = 0;
+        
+        changeState(STATES.INTRO);
+        requestAnimationFrame(gameLoop);
+    }
+
+    // Iniciar cuando cargue la página
+    window.onload = init;
+    </script>
+</body>
+</html>

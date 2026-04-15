@@ -190,6 +190,7 @@
       const DASH_EH = Math.round(DASH_EFFECT_H * SPRITE_SCALE);
 
       const hero = options.heroSnapshot || window.CharacterStatsSystem?.getActiveHero?.() || null;
+      const mission = options.mission || {};
       const equippedJutsus = (window.JutsuSystem?.getEquippedJutsusBattleData?.() || []).slice(0, 3);
       const enemyEquippedJutsus = ((options.enemyEquippedJutsus || mission.enemyEquippedJutsus || []).slice(0, 3))
         .map((skill, idx) => ({
@@ -199,7 +200,6 @@
           mpCost: Math.max(0, Number(skill.mpCost) || 0),
           sphereColor: skill.sphereColor || '#ffffff'
         }));
-      const mission = options.mission || {};
       const missionIndex = Number(options.missionIndex || 0);
       const playerCharacterId = hero?.characterId || 'naruto';
       const playerName = hero?.name || playerCharacterId.toUpperCase();

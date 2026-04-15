@@ -55,27 +55,12 @@
     5: '#111111'
   };
 
-
-  const SKILL_ORB_COLORS = {
-    'Llama Voraz': '#FF0000',
-    'Rayo Destellante': '#FFFF00',
-    'Ráfaga Cortante': '#FFFFFF',
-    'Prisión Hidráulica': '#0000FF',
-    'Escudo Telúrico': '#FF8C00',
-    'Sello Prohibido': '#8000FF',
-    'Espejismo Mental': '#8B4513',
-    'Bosque Viviente': '#00AA00',
-    'Impacto Brutal': '#000000',
-    'Aliento Vital': '#00AA00'
-  };
-
   const BattleSystem = {
     host: null,
     root: null,
     canvas: null,
     ctx: null,
     veil: null,
-    jutsuAnnouncement: null,
     winScreen: null,
     winName: null,
     roundBanner: null,
@@ -103,7 +88,6 @@
       this.canvas = this.host.querySelector('#msBattleCanvas');
       this.ctx = this.canvas?.getContext('2d');
       this.veil = this.host.querySelector('#msBattleVeil');
-      this.jutsuAnnouncement = this.host.querySelector('#msBattleJutsuAnnouncement');
       this.winScreen = this.host.querySelector('#msBattleWinner');
       this.winName = this.host.querySelector('#msBattleWinName');
       this.roundBanner = this.host.querySelector('#msBattleRoundBanner');
@@ -143,7 +127,6 @@
       this.canvas = null;
       this.ctx = null;
       this.veil = null;
-      this.jutsuAnnouncement = null;
       this.winScreen = null;
       this.winName = null;
       this.roundBanner = null;
@@ -207,7 +190,15 @@
       const DASH_EH = Math.round(DASH_EFFECT_H * SPRITE_SCALE);
 
       const hero = options.heroSnapshot || window.CharacterStatsSystem?.getActiveHero?.() || null;
-      const equippedJutsus = window.JutsuSystem?.getEquippedJutsusBattleData?.() || [];
+      const equippedJutsus = (window.JutsuSystem?.getEquippedJutsusBattleData?.() || []).slice(0, 3);
+      const enemyEquippedJutsus = ((options.enemyEquippedJutsus || mission.enemyEquippedJutsus || []).slice(0, 3))
+        .map((skill, idx) => ({
+          id: skill.id ?? `enemy-skill-${idx}`,
+          name: skill.name || `Jutsu ${idx + 1}`,
+          damage: Math.max(1, Number(skill.damage) || 1),
+          mpCost: Math.max(0, Number(skill.mpCost) || 0),
+          sphereColor: skill.sphereColor || '#ffffff'
+        }));
       const mission = options.mission || {};
       const missionIndex = Number(options.missionIndex || 0);
       const playerCharacterId = hero?.characterId || 'naruto';
@@ -215,12 +206,14 @@
 
       const playerStats = {
         hp: Math.max(1, Math.round(hero?.stats?.HP || 100)),
+        mp: Math.max(0, Math.round(window.GameState?.getMp?.() ?? hero?.stats?.MP ?? 100)),
         atk: Math.max(1, Number(hero?.stats?.ATK || 10)),
         def: Math.max(0, Number(hero?.stats?.DEF || 0))
       };
 
       const enemyStats = {
         hp: Math.max(1, Math.round(options.enemyStats?.hp || mission.hp || 120)),
+        mp: Math.max(0, Math.round(options.enemyStats?.mp || mission.mp || 100)),
         atk: Math.max(1, Number(options.enemyStats?.atk || mission.atk || 20)),
         def: Math.max(0, Number(options.enemyStats?.def || mission.def || 10))
       };
@@ -237,6 +230,7 @@
         color: '#E8A030',
         glowColor: playerGlowColor,
         stats: playerStats,
+        skillPool: equippedJutsus,
         spritePath: playerSprite,
         isPlayer: true
       };
@@ -248,13 +242,13 @@
         color: '#6855CC',
         glowColor: enemyGlowColor,
         stats: enemyStats,
+        skillPool: enemyEquippedJutsus,
         spritePath: enemySprite,
         isPlayer: false
       };
 
       const ctx = this.ctx;
       const veil = this.veil;
-      const jutsuAnnouncement = this.jutsuAnnouncement;
       let particles = [];
       let damageNums = [];
       let jutsus = [];
@@ -265,9 +259,8 @@
       let gameOver = false;
       let shakeX = 0; let shakeY = 0; let shakeDur = 0; let shakeAmp = 0;
       let jutsuVeil = 0;
-      let autoJutsuTimer = 0;
-      let currentSlowOrb = null;
-      let activeAnnouncementOrb = null;
+      let cinematicActive = false;
+      let battleJutsuController = null;
       const spriteSheets = {};
       let spritesLoaded = false;
       let roundResolved = false;
@@ -333,26 +326,6 @@
       function clampTimer(current, durationMs) {
         return Math.max(current || 0, durationMs);
       }
-      function showJutsuAnnouncement(name, orb = null) {
-        if (!jutsuAnnouncement) return;
-        activeAnnouncementOrb = orb;
-        jutsuAnnouncement.textContent = name;
-        jutsuAnnouncement.classList.remove('show');
-        window.requestAnimationFrame(() => {
-          jutsuAnnouncement.classList.remove('show');
-          jutsuAnnouncement.offsetWidth;
-          jutsuAnnouncement.classList.add('show');
-        });
-      }
-
-      function hideJutsuAnnouncement(force = false, orb = null) {
-        if (!jutsuAnnouncement) return;
-        if (!force && activeAnnouncementOrb && orb !== activeAnnouncementOrb) return;
-        activeAnnouncementOrb = null;
-        jutsuAnnouncement.classList.remove('show');
-        jutsuAnnouncement.textContent = '';
-      }
-
       class Particle {
         constructor(x, y, vx, vy, color, life, size, type) {
           this.x = x; this.y = y; this.vx = vx; this.vy = vy;
@@ -424,51 +397,18 @@
         }
       }
 
-      class Jutsu {
-        constructor(x, y, vx, vy, owner) {
-          this.x = x; this.y = y; this.vx = vx; this.vy = vy;
-          this.owner = owner; this.color = owner.glowColor;
-          this.size = 9; this.life = 200; this.dead = false;
-          this.trail = [];
-        }
-
-        update(dt) {
-          this.trail.unshift({ x: this.x, y: this.y });
-          if (this.trail.length > 12) this.trail.pop();
-          this.x += this.vx * dt; this.y += this.vy * dt;
-          this.life -= dt;
-          if (this.x < -12 || this.x > W + 12 || this.y < -12 || this.y > H + 12 || this.life <= 0) this.dead = true;
-          if (Math.random() < 0.35) particles.push(new Particle(this.x, this.y, (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 1.5, this.color, 10, 2, 'spark'));
-        }
-
-        draw() {
-          for (let i = 0; i < this.trail.length; i += 1) {
-            const t = this.trail[i];
-            const r = this.size * (1 - i / this.trail.length) * 0.9;
-            if (r <= 0) continue;
-            ctx.save(); ctx.globalAlpha = (1 - i / this.trail.length) * 0.55;
-            ctx.fillStyle = this.color;
-            ctx.beginPath(); ctx.arc(t.x, t.y, r, 0, Math.PI * 2); ctx.fill();
-            ctx.restore();
-          }
-          const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size * 2.2);
-          g.addColorStop(0, '#FFFFFF'); g.addColorStop(0.35, this.color); g.addColorStop(1, 'rgba(0,0,0,0)');
-          ctx.save(); ctx.globalAlpha = 0.92; ctx.fillStyle = g;
-          ctx.beginPath(); ctx.arc(this.x, this.y, this.size * 2.2, 0, Math.PI * 2); ctx.fill();
-          ctx.restore();
-        }
-      }
-
       class BattleSkillOrb {
         constructor(owner, target, skillData) {
+          this.id = `${owner.id}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
           this.owner = owner;
           this.target = target;
-          this.skillData = skillData;
-          this.color = SKILL_ORB_COLORS[skillData?.name] || owner.glowColor;
+          this.skill = skillData;
+          this.color = skillData?.sphereColor || owner.glowColor;
           this.x = owner.cx;
           this.y = owner.cy;
           this.size = 40;
           this.dead = false;
+          this.counterTargetOrbId = null;
           const dx = target.cx - owner.cx;
           const dy = target.cy - owner.cy;
           const distance = Math.max(1, Math.hypot(dx, dy));
@@ -543,7 +483,7 @@
           this.maxHp = cfg.stats.hp;
           this.isPlayer = cfg.isPlayer;
           this.dashTimer = 0; this.dashInterval = 800; this.tX = cfg.x; this.tY = GROUND - NH;
-          this.atkCD = 0; this.jutsuCD = 0; this.stunTimer = 0;
+          this.atkCD = 0; this.stunTimer = 0;
           this.invincible = false; this.invTimer = 0;
           this.animF = 0; this.animT = 0; this.animState = 'idle'; this.trail = [];
           this.isDead = false; this.deathT = 0; this.deathSmoke = 0;
@@ -554,6 +494,8 @@
           this.dotTick = 0;
           this.buffTick = 0;
           this.externalFreeze = false;
+          this.skillPool = cfg.skillPool || [];
+          this.mp = Math.max(0, Number(cfg.stats.mp || 0));
         }
 
         get cx() { return this.x + NW / 2; }
@@ -642,22 +584,19 @@
           spawnSmoke(this.cx, this.cy, 12); triggerShake(2, 6);
         }
 
-        launchJutsu(target) {
-          if (this.jutsuCD > 0 || this.statuses.silence > 0) return;
-          if (this.statuses.blind > 0 && Math.random() < 0.30) {
-            this.jutsuCD = 20;
-            return;
+        getEquippedSkills() { return this.skillPool.slice(0, 3); }
+        canUseSkill(mpCost) { return this.statuses.silence <= 0 && this.mp >= mpCost; }
+        consumeSkillMp(skill) {
+          const cost = Math.max(0, Number(skill?.mpCost) || 0);
+          if (!this.canUseSkill(cost)) return false;
+          if (this.isPlayer) {
+            const consumed = window.JutsuSystem?.consumeMpForJutsu?.(skill.id);
+            if (!consumed) return false;
+            this.mp = window.GameState?.getMp?.() ?? Math.max(0, this.mp - cost);
+            return true;
           }
-          this.jutsuCD = this.buffs.cdReductionTurns > 0 ? 58 : 90;
-          if (this.buffs.cdReductionTurns > 0) this.buffs.cdReductionTurns -= 1;
-          const dx = target.cx - this.cx; const dy = target.cy - this.cy;
-          const d = Math.sqrt(dx * dx + dy * dy);
-          const spd = 5;
-          jutsus.push(new Jutsu(this.cx, this.cy, (dx / d) * spd, (dy / d) * spd, this));
-          spawnSparks(this.cx, this.cy, 14, this.glowColor);
-          jutsuVeil = 30;
-          if (veil) veil.style.background = 'rgba(0,0,0,0.22)';
-          triggerShake(6, 14);
+          this.mp = Math.max(0, this.mp - cost);
+          return true;
         }
 
         die() {
@@ -676,7 +615,6 @@
           if (hitStop > 0) return;
           if (this.stunTimer > 0) this.stunTimer -= dt;
           if (this.atkCD > 0) this.atkCD -= dt;
-          if (this.jutsuCD > 0) this.jutsuCD -= dt;
           if (this.invTimer > 0) { this.invTimer -= dt; if (this.invTimer <= 0) this.invincible = false; }
           const speedScale = this.statuses.paralysis > 0 ? 0.2 : 1;
           if (!this.onGround) this.vy += G * dt;
@@ -689,7 +627,6 @@
             vy: this.vy,
             stunTimer: this.stunTimer,
             atkCD: this.atkCD,
-            jutsuCD: this.jutsuCD,
             invTimer: this.invTimer
           });
           this.vx *= 0.87;
@@ -770,8 +707,8 @@
                 enemy.receiveHit(dmg, this.cx, this);
                 this.atkCD = this.buffs.atkSpeedBoost > 0 ? 21 : 42;
                 this.animState = 'attack'; this.animF = 0; this.animT = 0;
-              } else if (this.jutsuCD <= 0) this.launchJutsu(enemy);
-            } else if (dist > 140 && this.jutsuCD <= 0 && Math.random() < 0.35) this.launchJutsu(enemy);
+              }
+            }
           }
         }
 
@@ -866,6 +803,25 @@
         }
       }
 
+      function createSkillOrb(owner, target, skillData) {
+        return new BattleSkillOrb(owner, target, skillData);
+      }
+
+      battleJutsuController = window.JutsuBattleSyncSystem?.createController?.({
+        getBattleRoot: () => self.root,
+        getFighters: () => fighters,
+        isGameOver: () => gameOver,
+        createOrb: (owner, target, skill) => createSkillOrb(owner, target, skill),
+        spawnOrb: (orb) => jutsus.push(orb),
+        setSkillCinematicActive: (active) => {
+          cinematicActive = Boolean(active);
+          slowMo = cinematicActive ? 0.1 : 1;
+          jutsuVeil = cinematicActive ? 80 : 0;
+          if (veil) veil.style.background = cinematicActive ? 'rgba(0,0,0,0.42)' : 'rgba(0,0,0,0)';
+        },
+        isOrbAlive: (orbId) => jutsus.some((orb) => orb.id === orbId && !orb.dead)
+      });
+
       function genBG() {
         bgMountains = [];
         for (let x = 0; x <= W; x += 18) bgMountains.push({ x, y: 95 + Math.sin(x * 0.018) * 65 + Math.sin(x * 0.055) * 28 + Math.cos(x * 0.03 + 1.2) * 20 });
@@ -924,23 +880,17 @@
             if (a.owner === b.owner || a.dead || b.dead) continue;
             if (Math.hypot(a.x - b.x, a.y - b.y) < a.size + b.size + 6) {
               const ex = (a.x + b.x) / 2; const ey = (a.y + b.y) / 2;
-              const aIsSkill = a instanceof BattleSkillOrb;
-              const bIsSkill = b instanceof BattleSkillOrb;
               for (let k = 0; k < 22; k += 1) {
                 const ang = Math.random() * Math.PI * 2; const spd = 3 + Math.random() * 5;
                 particles.push(new Particle(ex, ey, Math.cos(ang) * spd, Math.sin(ang) * spd - 1, '#FFFFFF', 22, 3, 'spark'));
                 particles.push(new Particle(ex, ey, Math.cos(ang) * spd * 0.5, Math.sin(ang) * spd * 0.5, '#FFD700', 32, 2.5, 'spark'));
               }
               triggerShake(6, 18);
-              if (aIsSkill && !bIsSkill) {
-                b.dead = true;
-              } else if (bIsSkill && !aIsSkill) {
-                a.dead = true;
-              } else {
-                a.dead = true;
-                b.dead = true;
-                for (const f of fighters) f.vx += (f.cx > ex ? 4.5 : -4.5);
-              }
+              a.dead = true;
+              b.dead = true;
+              for (const f of fighters) f.vx += (f.cx > ex ? 4.5 : -4.5);
+              battleJutsuController?.onOrbResolved?.(a);
+              battleJutsuController?.onOrbResolved?.(b);
             }
           }
         }
@@ -967,29 +917,9 @@
         }
 
         const [f0, f1] = fighters;
-        f1.externalFreeze = Boolean(currentSlowOrb && !currentSlowOrb.dead && currentSlowOrb.owner === f0);
-        autoJutsuTimer += dms;
-        if (autoJutsuTimer >= 1000 && equippedJutsus.length > 0 && !gameOver) {
-          autoJutsuTimer = 0;
-          if (Math.random() <= 0.30 && f0.statuses.silence <= 0 && !currentSlowOrb) {
-            const availableSkills = equippedJutsus.slice(0, 3);
-            const skill = availableSkills[Math.floor(Math.random() * availableSkills.length)];
-            const consumed = window.JutsuSystem?.consumeMpForJutsu?.(skill.id);
-            if (consumed) {
-              const orb = new BattleSkillOrb(f0, f1, skill);
-              showJutsuAnnouncement(skill.name, orb);
-              jutsus.push(orb);
-              currentSlowOrb = orb;
-              slowMo = 0.05;
-              jutsuVeil = 80;
-              if (veil) veil.style.background = 'rgba(0,0,0,0.48)';
-              if (f0.buffs.cdReductionTurns > 0) {
-                f0.jutsuCD *= 0.65;
-                f0.buffs.cdReductionTurns -= 1;
-              }
-            }
-          }
-        }
+        f0.externalFreeze = false;
+        f1.externalFreeze = false;
+        battleJutsuController?.update?.(dms);
         f0.update(dt, dms, f1); f1.update(dt, dms, f0);
         for (const j of jutsus) j.update(dt);
 
@@ -999,17 +929,12 @@
             if (f === j.owner || f.isDead || f.invincible) continue;
             if (Math.hypot(j.x - f.cx, j.y - f.cy) < j.size + NW / 2) {
               const isSkillOrb = j instanceof BattleSkillOrb;
-              const baseDamage = isSkillOrb ? j.skillData.damage : j.owner.getAttackValue();
+              const baseDamage = isSkillOrb ? j.skill.damage : j.owner.getAttackValue();
               const dmg = isSkillOrb ? Math.max(1, Math.round(baseDamage)) : calcDamage(baseDamage, f.getDefenseValue(), 0.9, 1.3);
               f.receiveHit(dmg, j.x, j.owner);
               if (isSkillOrb) {
-                j.owner.applySkillEffects(j.skillData, f);
-                if (currentSlowOrb === j) {
-                  currentSlowOrb = null;
-                  slowMo = 1;
-                  if (veil) veil.style.background = 'rgba(0,0,0,0)';
-                  hideJutsuAnnouncement(false, j);
-                }
+                j.owner.applySkillEffects(j.skill, f);
+                battleJutsuController?.onOrbResolved?.(j);
               }
               for (let i = 0; i < 16; i += 1) {
                 const ang = Math.random() * Math.PI * 2; const spd = 2 + Math.random() * 4;
@@ -1021,12 +946,11 @@
         }
 
         checkJutsuClash();
-        jutsus = jutsus.filter((j) => !j.dead);
-        if (currentSlowOrb && currentSlowOrb.dead) {
-          currentSlowOrb = null;
-          slowMo = 1;
-          if (veil) veil.style.background = 'rgba(0,0,0,0)';
+        for (const orb of jutsus) {
+          if (orb.dead) battleJutsuController?.onOrbResolved?.(orb);
         }
+        jutsus = jutsus.filter((j) => !j.dead);
+        battleJutsuController?.syncOverlays?.((x, y) => ({ x: x + shakeX, y: y + shakeY }));
         particles.forEach((p) => p.update(dt)); particles = particles.filter((p) => !p.isDead());
         damageNums.forEach((d) => d.update(dt)); damageNums = damageNums.filter((d) => !d.isDead());
       }
@@ -1052,9 +976,8 @@
         roundResolved = false;
         shakeX = 0; shakeY = 0; shakeDur = 0; shakeAmp = 0;
         jutsuVeil = 0; if (veil) veil.style.background = 'rgba(0,0,0,0)';
-        autoJutsuTimer = 0;
-        currentSlowOrb = null;
-        hideJutsuAnnouncement(true);
+        cinematicActive = false;
+        battleJutsuController?.reset?.();
         fighters = [new Fighter(playerFighterCfg), new Fighter(enemyFighterCfg)];
 
         const hpSource = Number.isFinite(carriedPlayerHp) ? carriedPlayerHp : window.GameState?.getHp?.();

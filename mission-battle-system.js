@@ -47,12 +47,34 @@
   };
 
   const ENEMY_GLOW_COLORS = {
-    0: '#22C55E',
-    1: '#3B82F6',
-    2: '#92400E',
-    3: '#92400E',
-    4: '#22C55E',
-    5: '#111111'
+    0: '#000000',
+    1: '#000000',
+    2: '#000000',
+    3: '#000000',
+    4: '#000000',
+    5: '#000000'
+  };
+
+  const ENEMY_PROFILE_BY_MISSION = {
+    0: {
+      id: 'mission-1',
+      name: 'ENEMIGO M-1',
+      description: 'Sombras encadenantes que usan Grillete Sombrío para inmovilizar y drenar CP.',
+      mp: 50,
+      skills: [
+        {
+          id: 'mission-1-shadow-shackle',
+          name: 'Grillete Sombrío',
+          element: 'shadow',
+          damage: 20,
+          mpCost: 15,
+          cooldown: 3,
+          sphereColor: '#000000',
+          effect: 'Daño 20HP. Inmoviliza 3s y drena 5% de CP por 3s.',
+          enabled: true
+        }
+      ]
+    }
   };
 
 
@@ -203,9 +225,11 @@
 
       const hero = options.heroSnapshot || window.CharacterStatsSystem?.getActiveHero?.() || null;
       const equippedJutsus = window.JutsuSystem?.getEquippedJutsusBattleData?.().slice(0, 3) || [];
-      const enemyEquippedJutsus = window.JutsuSystem?.getEnemyEquippedJutsusBattleData?.(3) || [];
       const mission = options.mission || {};
       const missionIndex = Number(options.missionIndex || 0);
+      const enemyProfile = ENEMY_PROFILE_BY_MISSION[missionIndex] || null;
+      const enemyDescription = String(enemyProfile?.description || '').toLowerCase();
+      const enemyEquippedJutsus = Array.isArray(enemyProfile?.skills) ? enemyProfile.skills : [];
       const playerCharacterId = hero?.characterId || 'naruto';
       const playerName = hero?.name || playerCharacterId.toUpperCase();
 
@@ -220,7 +244,7 @@
         hp: Math.max(1, Math.round(options.enemyStats?.hp || mission.hp || 120)),
         atk: Math.max(1, Number(options.enemyStats?.atk || mission.atk || 20)),
         def: Math.max(0, Number(options.enemyStats?.def || mission.def || 10)),
-        mp: Math.max(60, Math.round((Number(options.enemyStats?.atk || mission.atk || 20) * 1.6) + 30))
+        mp: Math.max(0, Number(enemyProfile?.mp ?? options.enemyStats?.mp ?? Math.round((Number(options.enemyStats?.atk || mission.atk || 20) * 1.6) + 30)))
       };
 
       const playerSprite = PLAYER_BATTLE_SPRITES[playerCharacterId] || PLAYER_BATTLE_SPRITES.naruto;
@@ -242,7 +266,7 @@
       const enemyFighterCfg = {
         id: 1,
         x: 360,
-        name: `ENEMIGO M-${missionIndex + 1}`,
+        name: enemyProfile?.name || `ENEMIGO M-${missionIndex + 1}`,
         color: '#6855CC',
         glowColor: enemyGlowColor,
         stats: enemyStats,
@@ -557,7 +581,7 @@
           this.invincible = false; this.invTimer = 0;
           this.animF = 0; this.animT = 0; this.animState = 'idle'; this.trail = [];
           this.isDead = false; this.deathT = 0; this.deathSmoke = 0;
-          this.statuses = { blind: 0, paralysis: 0, bleeding: 0, asphyxia: 0, heavy: 0, silence: 0, confusion: 0, drainedEnergy: 0, deafness: 0 };
+          this.statuses = { blind: 0, paralysis: 0, bleeding: 0, asphyxia: 0, heavy: 0, silence: 0, confusion: 0, drainedEnergy: 0, deafness: 0, root: 0, cpDrain: 0 };
           this.buffs = {
             atkBoost: 0, evadeBoost: 0, atkSpeedBoost: 0, cdReductionTurns: 0, invulnerable: 0, chakraRegen: 0, defBoost: 0, hpRegen: 0, nextCrit: false, debuffImmunity: 0
           };
@@ -645,6 +669,10 @@
               target.stunTimer = Math.max(target.stunTimer, 4 * 60); this.buffs.nextCrit = true; break;
             case 'Aliento Vital':
               target.applyStatus('deafness', 4 * sec); this.buffs.debuffImmunity = clampTimer(this.buffs.debuffImmunity, 5 * sec); break;
+            case 'Grillete Sombrío':
+              target.applyStatus('root', 3 * sec);
+              target.applyStatus('cpDrain', 3 * sec);
+              break;
             default:
               break;
           }
@@ -695,7 +723,7 @@
           if (this.atkCD > 0) this.atkCD -= dt;
           if (this.jutsuCD > 0) this.jutsuCD -= dt;
           if (this.invTimer > 0) { this.invTimer -= dt; if (this.invTimer <= 0) this.invincible = false; }
-          const speedScale = this.statuses.paralysis > 0 ? 0.2 : 1;
+          const speedScale = this.statuses.root > 0 ? 0 : (this.statuses.paralysis > 0 ? 0.2 : 1);
           if (!this.onGround) this.vy += G * dt;
           this.x += this.vx * dt * speedScale; this.y += this.vy * dt * speedScale;
           emitBattleSync('fighter-update', {
@@ -735,6 +763,12 @@
             if (this.statuses.confusion > 0) this.receiveHit(Math.max(1, Math.round(this.maxHp * 0.03)), this.cx, this);
             if (this.buffs.hpRegen > 0) this.hp = Math.min(this.maxHp, this.hp + Math.round(this.maxHp * 0.07));
             if (this.buffs.chakraRegen > 0 && this.isPlayer) window.GameState?.setMp?.((window.GameState.getMp?.() || 0) + Math.round((window.GameState.getHeroSnapshot?.()?.stats?.MP || 100) * 0.05));
+            if (this.statuses.cpDrain > 0 && this.isPlayer && typeof window.GameState?.setMp === 'function') {
+              const maxCp = Math.max(1, Number(window.GameState?.getHeroSnapshot?.()?.stats?.MP || this.maxMp || 100));
+              const currentCp = Number(window.GameState?.getMp?.() || 0);
+              const drainAmount = Math.max(1, Math.round(maxCp * 0.05));
+              window.GameState.setMp(Math.max(0, currentCp - drainAmount));
+            }
           }
           if (this.buffTick >= 100) {
             this.buffTick = 0;
@@ -1069,6 +1103,11 @@
           0: equippedJutsus,
           1: enemyEquippedJutsus
         };
+        const enemyHasSkillAvailable = (skill) => {
+          if (!skill || skill.enabled === false) return false;
+          if (!enemyDescription) return false;
+          return enemyDescription.includes(String(skill.name || '').toLowerCase());
+        };
 
         const castSkillOrb = (casterId, targetId, skillData, meta = {}) => {
           if (gameOver || currentSlowOrb || !skillData) return false;
@@ -1095,6 +1134,7 @@
             const fighter = fighterById.get(fighterId);
             if (!fighter || !skill || fighter.isDead || fighter.statuses.silence > 0) return false;
             if (fighterId === 0) return Number(window.GameState?.getMp?.() || 0) >= Number(skill.mpCost || 0);
+            if (!enemyHasSkillAvailable(skill)) return false;
             return fighter.mp >= Number(skill.mpCost || 0);
           },
           consumeMp: (fighterId, skill) => {

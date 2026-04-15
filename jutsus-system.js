@@ -1,29 +1,50 @@
 (function () {
+  // New Jutsu Database organized by element categories
   const JUTSU_DB = [
-    { id: 0, name: 'Llama Voraz', icon: '🔥', element: 'fire', baseDamage: 27, baseEffect: 'Ceguera (-30% puntería)', baseBuff: '+10% Ataque físico', baseCD: 3, currentLevel: 1, mpCost: 0 },
-    { id: 1, name: 'Rayo Destellante', icon: '⚡', element: 'lightning', baseDamage: 29, baseEffect: 'Parálisis (-80% velocidad)', baseBuff: '+15% Evasión', baseCD: 2, currentLevel: 1, mpCost: 0 },
-    { id: 2, name: 'Ráfaga Cortante', icon: '🌪️', element: 'wind', baseDamage: 20, baseEffect: 'Hemorragia', baseBuff: '+Velocidad de ataque', baseCD: 2, currentLevel: 1, mpCost: 0 },
-    { id: 3, name: 'Prisión Hidráulica', icon: '🌊', element: 'water', baseDamage: 23, baseEffect: 'Asfixia (No habilidades)', baseBuff: '-CD (Tiempos de espera)', baseCD: 3, currentLevel: 1, mpCost: 0 },
-    { id: 4, name: 'Escudo Telúrico', icon: '🪨', element: 'earth', baseDamage: 26, baseEffect: 'Pesadez (No saltos)', baseBuff: 'Inmunidad a empujones', baseCD: 3, currentLevel: 1, mpCost: 0 },
-    { id: 5, name: 'Sello Prohibido', icon: '🔮', element: 'seal', baseDamage: 19, baseEffect: 'Silencio (Bloquea especiales)', baseBuff: '+5% Chakra', baseCD: 2, currentLevel: 1, mpCost: 0 },
-    { id: 6, name: 'Espejismo Mental', icon: '👁️', element: 'genjutsu', baseDamage: 24, baseEffect: 'Confusión (Controles invertidos)', baseBuff: '+50% Defensa', baseCD: 2, currentLevel: 1, mpCost: 0 },
-    { id: 7, name: 'Bosque Viviente', icon: '🌿', element: 'wood', baseDamage: 29, baseEffect: 'Drenado energía', baseBuff: 'Curación constante', baseCD: 3, currentLevel: 1, mpCost: 0 },
-    { id: 8, name: 'Impacto Brutal', icon: '💥', element: 'taijutsu', baseDamage: 21, baseEffect: 'Aturdimiento', baseBuff: 'Próximo golpe crítico', baseCD: 2, currentLevel: 1, mpCost: 0 },
-    { id: 9, name: 'Aliento Vital', icon: '💚', element: 'medical', baseDamage: 22, baseEffect: 'Sordera (-20% defensa)', baseBuff: 'Inmune a debuffs', baseCD: 3, currentLevel: 1, mpCost: 0 }
+    // 🔥 Fuego (Fire)
+    { id: 0, name: 'Bola Fuego', icon: '🔥', element: 'fire', baseDamage: 70, baseEffect: 'Quemadura (Baja -10% HP al enemigo durante 3 segundos)', baseBuff: '', baseCD: 3, currentLevel: 1, mpCost: 25, unlocked: false },
+    { id: 1, name: 'Llama Fénix', icon: '🔥', element: 'fire', baseDamage: 80, baseEffect: 'Baja Evasión del enemigo en -30% durante 4 segundos', baseBuff: '', baseCD: 3, currentLevel: 1, mpCost: 28, unlocked: false },
+    { id: 2, name: 'Lanza Ígnea', icon: '🔥', element: 'fire', baseDamage: 60, baseEffect: 'Baja Defensa del enemigo -25% durante 4 segundos', baseBuff: '', baseCD: 3, currentLevel: 1, mpCost: 22, unlocked: false },
+    { id: 3, name: 'Explosión Calor', icon: '🔥', element: 'fire', baseDamage: 73, baseEffect: 'Aturdir al enemigo (Stun) por 4 segundos', baseBuff: '', baseCD: 4, currentLevel: 1, mpCost: 30, unlocked: false },
+    
+    // 🌪️ Viento (Wind)
+    { id: 4, name: 'Ráfaga Veloz', icon: '🌪️', element: 'wind', baseDamage: 60, baseEffect: 'Aumenta Evasión en +15% durante 4 segundos', baseBuff: '+15% Evasión', baseCD: 3, currentLevel: 1, mpCost: 22, unlocked: false },
+    { id: 5, name: 'Shuriken Viento', icon: '🌪️', element: 'wind', baseDamage: 70, baseEffect: 'Hemorragia Grave al enemigo -25% HP', baseBuff: '', baseCD: 3, currentLevel: 1, mpCost: 25, unlocked: false },
+    { id: 6, name: 'Cuchilla Vacío', icon: '🌪️', element: 'wind', baseDamage: 73, baseEffect: 'Ignorar la Defensa del enemigo -20%', baseBuff: '', baseCD: 3, currentLevel: 1, mpCost: 27, unlocked: false },
+    { id: 7, name: 'Gran Torbellino', icon: '🌪️', element: 'wind', baseDamage: 80, baseEffect: 'Desorientar Enemigo no ataca durante 4 segundos', baseBuff: '', baseCD: 4, currentLevel: 1, mpCost: 30, unlocked: false },
+    
+    // ⚡ Trueno (Lightning)
+    { id: 8, name: 'Cuchilla Rayo', icon: '⚡', element: 'lightning', baseDamage: 70, baseEffect: 'Perforar Defensa del enemigo -35% durante 4 segundos', baseBuff: '', baseCD: 3, currentLevel: 1, mpCost: 25, unlocked: false },
+    { id: 9, name: 'Armadura Rayo', icon: '⚡', element: 'lightning', baseDamage: 60, baseEffect: 'Aumenta Agilidad en +40% durante 4 segundos', baseBuff: '+40% Agilidad', baseCD: 3, currentLevel: 1, mpCost: 22, unlocked: false },
+    { id: 10, name: 'Rayo Veloz', icon: '⚡', element: 'lightning', baseDamage: 80, baseEffect: 'Aumenta El Crítico en +40%', baseBuff: '+40% Crítico', baseCD: 3, currentLevel: 1, mpCost: 28, unlocked: false },
+    { id: 11, name: 'Trueno Astral', icon: '⚡', element: 'lightning', baseDamage: 73, baseEffect: 'Aturdir al enemigo durante 4 segundos', baseBuff: '', baseCD: 4, currentLevel: 1, mpCost: 30, unlocked: false },
+    
+    // 🪨 Roca (Earth)
+    { id: 12, name: 'Roca Sólida', icon: '🪨', element: 'earth', baseDamage: 80, baseEffect: 'Aumenta Defensa en 45% durante 4 segundos', baseBuff: '+45% Defensa', baseCD: 3, currentLevel: 1, mpCost: 28, unlocked: false },
+    { id: 13, name: 'Armadura Arena', icon: '🪨', element: 'earth', baseDamage: 60, baseEffect: 'Absorción Daño en 40%', baseBuff: '40% Absorción', baseCD: 3, currentLevel: 1, mpCost: 22, unlocked: false },
+    { id: 14, name: 'Domo Tierra', icon: '🪨', element: 'earth', baseDamage: 70, baseEffect: 'Baja Defensa del enemigo 25% durante 4 segundos', baseBuff: '', baseCD: 3, currentLevel: 1, mpCost: 25, unlocked: false },
+    { id: 15, name: 'Muro Piedra', icon: '🪨', element: 'earth', baseDamage: 67, baseEffect: 'Regenera 17% HP durante 4 segundos', baseBuff: 'Regeneración HP', baseCD: 4, currentLevel: 1, mpCost: 27, unlocked: false },
+    
+    // 🌊 Agua (Water)
+    { id: 16, name: 'Gran Catarata', icon: '🌊', element: 'water', baseDamage: 60, baseEffect: 'Recuperación de MP 20% durante 3 segundos', baseBuff: '+20% MP', baseCD: 3, currentLevel: 1, mpCost: 22, unlocked: false },
+    { id: 17, name: 'Prisión Agua', icon: '🌊', element: 'water', baseDamage: 67, baseEffect: 'Restricción al enemigo (No mover) durante 4 segundos', baseBuff: '', baseCD: 3, currentLevel: 1, mpCost: 25, unlocked: false },
+    { id: 18, name: 'Tsunami Devastador', icon: '🌊', element: 'water', baseDamage: 80, baseEffect: 'Reducción MP al enemigo 15% durante 3 segundos', baseBuff: '', baseCD: 4, currentLevel: 1, mpCost: 30, unlocked: false },
+    { id: 19, name: 'Tiburón Hambriento', icon: '🌊', element: 'water', baseDamage: 70, baseEffect: 'Robo de Chakra al enemigo 10% durante 3 segundos', baseBuff: 'Robo Chakra', baseCD: 3, currentLevel: 1, mpCost: 27, unlocked: false }
   ];
 
-  const MAX_LEVEL = 10;
-  const randomInt = (min, max) => Math.floor(Math.random() * ((max - min) + 1)) + min;
-  JUTSU_DB.forEach((jutsu) => {
-    jutsu.mpCost = randomInt(27, 37);
-  });
+  const ELEMENT_CATEGORIES = ['fire', 'wind', 'lightning', 'earth', 'water'];
+  const ELEMENT_EMOJIS = { fire: '🔥', wind: '🌪️', lightning: '⚡', earth: '🪨', water: '🌊' };
+  const UNLOCK_COST = 25;
+  const MAX_UNLOCKED_CATEGORIES = 2;
 
   const JutsuSystem = {
     host: null,
     root: null,
-    resources: { scrolls: 50, chakra: 200 },
+    resources: { scrolls: 100 },
     equipped: [null, null, null],
     selectedJutsuId: null,
+    selectedCategory: 'fire',
+    unlockedCategories: [],
 
     mount() {
       if (this.isMounted()) return;
@@ -56,10 +77,9 @@
     getStats(jutsu) {
       const lvl = jutsu.currentLevel;
       const damage = Math.round(jutsu.baseDamage);
-      const cdReduction = (lvl - 1) * 0.08;
-      const cd = Math.max(0.5, parseFloat((jutsu.baseCD * (1 - cdReduction)).toFixed(1)));
+      const cd = jutsu.baseCD;
       const mpCost = Math.round(jutsu.mpCost);
-      return { damage, cd, mpCost, level: lvl, isMax: lvl >= MAX_LEVEL };
+      return { damage, cd, mpCost, level: lvl, unlocked: jutsu.unlocked };
     },
 
     bindEvents() {
@@ -67,11 +87,35 @@
       this.root.querySelector('#jts-detail-overlay')?.addEventListener('click', (event) => {
         if (event.target === this.root.querySelector('#jts-detail-overlay')) this.closeDetail();
       });
-      this.root.querySelector('#jts-btn-upgrade')?.addEventListener('click', () => this.upgradeJutsu());
+      this.root.querySelector('#jts-btn-unlock')?.addEventListener('click', () => this.unlockCategory());
       this.root.querySelector('#jts-btn-equip-slot')?.addEventListener('click', () => {
         if (this.equipped.includes(this.selectedJutsuId)) this.unequipFromPopup();
         else this.equipFromPopup();
       });
+      
+      // Category tab buttons
+      this.root.querySelectorAll('.jts-cat-tab').forEach((tab) => {
+        tab.addEventListener('click', () => {
+          const element = tab.dataset.element;
+          this.selectCategory(element);
+        });
+      });
+    },
+
+    selectCategory(element) {
+      // Check if category is locked (player already has 2 unlocked categories and this one isn't one of them)
+      if (!this.unlockedCategories.includes(element) && this.unlockedCategories.length >= MAX_UNLOCKED_CATEGORIES) {
+        return; // Can't select locked categories
+      }
+      
+      this.selectedCategory = element;
+      
+      // Update active tab
+      this.root.querySelectorAll('.jts-cat-tab').forEach((tab) => {
+        tab.classList.toggle('active', tab.dataset.element === element);
+      });
+      
+      this.renderLibrary();
     },
 
     renderLibrary() {
@@ -79,26 +123,24 @@
       if (!grid) return;
       grid.innerHTML = '';
 
-      JUTSU_DB.forEach((jutsu) => {
-        const stats = this.getStats(jutsu);
+      // Filter jutsus by selected category
+      const filteredJutsus = JUTSU_DB.filter(jutsu => jutsu.element === this.selectedCategory);
+
+      filteredJutsus.forEach((jutsu) => {
         const cell = document.createElement('div');
         cell.className = 'jts-cell';
-        cell.draggable = true;
         cell.dataset.id = String(jutsu.id);
-        cell.dataset.level = stats.isMax ? 'max' : String(jutsu.currentLevel);
-
-        const levelDisplay = stats.isMax ? '仙' : `Lv.${jutsu.currentLevel}`;
+        cell.dataset.unlocked = jutsu.unlocked ? 'true' : 'false';
+        
+        // Show lock overlay if not unlocked
+        const lockOverlay = jutsu.unlocked ? '' : '<div class="jts-lock-overlay">🔒 Bloqueado</div>';
+        
         cell.innerHTML = `
-          <span class="jts-level-badge">${levelDisplay}</span>
           <span class="jts-icon">${jutsu.icon}</span>
           <span class="jts-name">${jutsu.name}</span>
-          <span class="jts-element-badge ${jutsu.element}">${jutsu.element}</span>
+          ${lockOverlay}
         `;
 
-        cell.addEventListener('dragstart', (event) => {
-          event.dataTransfer.effectAllowed = 'move';
-          event.dataTransfer.setData('text/plain', String(jutsu.id));
-        });
         cell.addEventListener('click', () => this.openDetail(jutsu.id));
         grid.appendChild(cell);
       });
@@ -124,7 +166,7 @@
     equipToSlot(jutsuId, slotIdx) {
       if (this.equipped[slotIdx] === jutsuId) return;
       const jutsu = JUTSU_DB.find((entry) => entry.id === jutsuId);
-      if (!jutsu) return;
+      if (!jutsu || !jutsu.unlocked) return;
 
       const existingSlot = this.equipped.indexOf(jutsuId);
       if (existingSlot !== -1 && existingSlot !== slotIdx) {
@@ -134,7 +176,6 @@
 
       this.equipped[slotIdx] = jutsuId;
       this.renderSlot(slotIdx);
-      this.spawnParticles(this.root.querySelector(`#jts-slot-${slotIdx}`), this.getStats(jutsu).isMax);
     },
 
     renderSlot(slotIdx) {
@@ -142,7 +183,7 @@
       if (!slotEl) return;
 
       const jutsuId = this.equipped[slotIdx];
-      slotEl.classList.remove('jts-is-empty', 'jts-is-filled', 'jts-is-sennin');
+      slotEl.classList.remove('jts-is-empty', 'jts-is-filled');
 
       if (jutsuId === null) {
         slotEl.classList.add('jts-is-empty');
@@ -152,38 +193,13 @@
 
       const jutsu = JUTSU_DB.find((entry) => entry.id === jutsuId);
       if (!jutsu) return;
-      const stats = this.getStats(jutsu);
 
-      slotEl.classList.add(stats.isMax ? 'jts-is-sennin' : 'jts-is-filled');
+      slotEl.classList.add('jts-is-filled');
       slotEl.querySelector('.jts-slot-inner').innerHTML = `<div class="jts-slot-icon">${jutsu.icon}</div><div class="jts-slot-name">${jutsu.name}</div>`;
     },
 
     renderAllSlots() {
       for (let index = 0; index < this.equipped.length; index += 1) this.renderSlot(index);
-    },
-
-    spawnParticles(slotEl, isGold = false) {
-      if (!slotEl) return;
-      const container = slotEl.querySelector('.jts-particle-container');
-      if (!container) return;
-      container.innerHTML = '';
-      const count = isGold ? 20 : 14;
-
-      for (let i = 0; i < count; i += 1) {
-        const p = document.createElement('div');
-        p.className = `jts-particle ${isGold ? 'jts-gold' : ''}`;
-        const angle = (Math.PI * 2 * i) / count;
-        const dist = 30 + Math.random() * 35;
-        p.style.left = '50%';
-        p.style.top = '50%';
-        p.style.marginLeft = '-2px';
-        p.style.marginTop = '-2px';
-        p.style.setProperty('--px', `${Math.cos(angle) * dist}px`);
-        p.style.setProperty('--py', `${Math.sin(angle) * dist}px`);
-        container.appendChild(p);
-      }
-
-      setTimeout(() => { container.innerHTML = ''; }, 900);
     },
 
     openDetail(jutsuId) {
@@ -196,38 +212,24 @@
       this.root.querySelector('#jts-popup-name').textContent = jutsu.name;
       this.root.querySelector('#jts-popup-element').textContent = `Elemento: ${this.capitalize(jutsu.element)}`;
       this.root.querySelector('#jts-popup-damage').textContent = String(stats.damage);
-      this.root.querySelector('#jts-popup-effect').textContent = jutsu.baseEffect;
-      this.root.querySelector('#jts-popup-buff').textContent = jutsu.baseBuff;
+      this.root.querySelector('#jts-popup-effect').textContent = jutsu.baseEffect || 'N/A';
+      this.root.querySelector('#jts-popup-buff').textContent = jutsu.baseBuff || 'N/A';
       this.root.querySelector('#jts-popup-cd').textContent = `${stats.cd}s · MP ${stats.mpCost}`;
 
-      const levelEl = this.root.querySelector('#jts-popup-level');
-      const popupEl = this.root.querySelector('#jts-detail-popup');
-      const passiveEl = this.root.querySelector('#jts-popup-passive');
-      if (stats.isMax) {
-        levelEl.textContent = '仙 SENNIN';
-        levelEl.classList.add('max');
-        popupEl.classList.add('jts-sennin-popup');
-        passiveEl.classList.add('visible');
+      const btnUnlock = this.root.querySelector('#jts-btn-unlock');
+      const btnEquip = this.root.querySelector('#jts-btn-equip-slot');
+      
+      if (jutsu.unlocked) {
+        btnUnlock.style.display = 'none';
+        btnEquip.disabled = false;
+        btnEquip.textContent = this.equipped.includes(jutsuId) ? 'Desequipar' : 'Equipar';
       } else {
-        levelEl.textContent = `Lv. ${jutsu.currentLevel} / ${MAX_LEVEL}`;
-        levelEl.classList.remove('max');
-        popupEl.classList.remove('jts-sennin-popup');
-        passiveEl.classList.remove('visible');
+        btnUnlock.style.display = 'block';
+        btnUnlock.disabled = this.resources.scrolls < UNLOCK_COST;
+        btnUnlock.textContent = `🔓 Desbloquear (${UNLOCK_COST} 📗)`;
+        btnEquip.disabled = true;
+        btnEquip.textContent = 'Bloqueado';
       }
-
-      const btnUpgrade = this.root.querySelector('#jts-btn-upgrade');
-      if (stats.isMax) {
-        btnUpgrade.disabled = true;
-        btnUpgrade.textContent = '✦ NIVEL MÁXIMO ✦';
-      } else {
-        const costScrolls = 10 * jutsu.currentLevel;
-        const costChakra = 25 * jutsu.currentLevel;
-        btnUpgrade.disabled = this.resources.scrolls < costScrolls || this.resources.chakra < costChakra;
-        btnUpgrade.textContent = `⬆ Mejorar · 📜 ${costScrolls} · 🔵 ${costChakra}`;
-      }
-
-      const equipBtn = this.root.querySelector('#jts-btn-equip-slot');
-      equipBtn.textContent = this.equipped.includes(jutsuId) ? 'Desequipar' : 'Equipar';
 
       this.updateResourceDisplay();
       this.root.querySelector('#jts-detail-overlay').classList.add('active');
@@ -238,30 +240,44 @@
       this.selectedJutsuId = null;
     },
 
-    upgradeJutsu() {
+    unlockCategory() {
       if (this.selectedJutsuId === null) return;
       const jutsu = JUTSU_DB.find((entry) => entry.id === this.selectedJutsuId);
-      if (!jutsu) return;
-      const stats = this.getStats(jutsu);
-      if (stats.isMax) return;
+      if (!jutsu || jutsu.unlocked) return;
+      
+      // Check if player can unlock more categories
+      const categoryElement = jutsu.element;
+      if (!this.unlockedCategories.includes(categoryElement) && this.unlockedCategories.length >= MAX_UNLOCKED_CATEGORIES) {
+        alert('Ya has alcanzado el máximo de 2 categorías de Jutsus desbloqueadas.');
+        return;
+      }
+      
+      if (this.resources.scrolls < UNLOCK_COST) return;
 
-      const costScrolls = 10 * jutsu.currentLevel;
-      const costChakra = 25 * jutsu.currentLevel;
-      if (this.resources.scrolls < costScrolls || this.resources.chakra < costChakra) return;
-
-      this.resources.scrolls -= costScrolls;
-      this.resources.chakra -= costChakra;
-      jutsu.currentLevel += 1;
-      jutsu.baseDamage += randomInt(17, 29);
-      jutsu.mpCost += randomInt(10, 19);
+      this.resources.scrolls -= UNLOCK_COST;
+      
+      // Unlock all jutsus in this category
+      JUTSU_DB.forEach((j) => {
+        if (j.element === categoryElement) {
+          j.unlocked = true;
+        }
+      });
+      
+      // Add category to unlocked list
+      if (!this.unlockedCategories.includes(categoryElement)) {
+        this.unlockedCategories.push(categoryElement);
+      }
 
       this.renderLibrary();
-      this.renderAllSlots();
       this.openDetail(this.selectedJutsuId);
+      this.updateResourceDisplay();
     },
 
     equipFromPopup() {
       if (this.selectedJutsuId === null) return;
+      const jutsu = JUTSU_DB.find((entry) => entry.id === this.selectedJutsuId);
+      if (!jutsu || !jutsu.unlocked) return;
+      
       const emptySlot = this.equipped.indexOf(null);
       if (emptySlot !== -1) {
         this.equipToSlot(this.selectedJutsuId, emptySlot);
@@ -281,8 +297,10 @@
     },
 
     updateResourceDisplay() {
-      this.root.querySelector('#jts-res-scrolls').textContent = String(this.resources.scrolls);
-      this.root.querySelector('#jts-res-chakra').textContent = String(this.resources.chakra);
+      const scrollDisplays = this.root.querySelectorAll('#jts-res-scrolls, #jts-res-scrolls-count');
+      scrollDisplays.forEach(el => {
+        if (el) el.textContent = String(this.resources.scrolls);
+      });
     },
 
     capitalize(text) {

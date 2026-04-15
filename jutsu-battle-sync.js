@@ -18,7 +18,7 @@
     const getSkillsForFighter = (fighterId) => {
       if (typeof config.getSkillsForFighter !== 'function') return [];
       const skills = config.getSkillsForFighter(fighterId);
-      return Array.isArray(skills) ? skills.slice(0, 3) : [];
+      return Array.isArray(skills) ? skills.slice() : [];
     };
 
     const canUseSkill = (fighterId, skill) => {

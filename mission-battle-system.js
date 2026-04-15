@@ -56,6 +56,8 @@
   };
 
 
+  // NOTA: Los colores de habilidades ahora son manejados por BattleJutsusSystem
+  // Este mapa se mantiene solo para compatibilidad con código legacy
   const SKILL_ORB_COLORS = {
     'Llama Voraz': '#FF0000',
     'Rayo Destellante': '#FFFF00',
@@ -274,6 +276,21 @@
       let carriedPlayerHp = null;
       let carriedPlayerMp = null;
       let bgMountains; let bgTrees; let bgStars;
+
+      // INTEGRACIÓN CON BATTLE JUTSUS UNIFIED SYSTEM
+      // Inicializar el sistema unificado de jutsus en batalla
+      const battleJutsusContext = {
+        host: self.host,
+        canvas: self.canvas,
+        announcementElement: jutsuAnnouncement,
+        missionIndex: missionIndex,
+        enemyMaxMp: options.enemyStats?.mp || 500
+      };
+      
+      if (window.BattleJutsusSystem) {
+        window.BattleJutsusSystem.init(battleJutsusContext);
+        window.BattleJutsusSystem.particles = particles;
+      }
 
       function loadSpriteSheet(path, callback) {
         const img = new Image();
@@ -967,9 +984,21 @@
         }
 
         const [f0, f1] = fighters;
+        
+        // INTEGRACIÓN CON BATTLE JUTSUS UNIFIED SYSTEM
+        // El nuevo sistema unificado ahora maneja la activación de habilidades
+        const currentTime = performance.now();
+        if (window.BattleJutsusSystem) {
+          window.BattleJutsusSystem.checkSkillActivation(currentTime, f0, f1, { slowMo: slowMo });
+          window.BattleJutsusSystem.updateOrbs(dt, { slowMo: slowMo });
+        }
+        
         f1.externalFreeze = Boolean(currentSlowOrb && !currentSlowOrb.dead && currentSlowOrb.owner === f0);
+        
+        // LEGACY: Mantener el sistema antiguo para compatibilidad mientras se migra
+        // Este código será eliminado en futuras versiones cuando BattleJutsusSystem esté completo
         autoJutsuTimer += dms;
-        if (autoJutsuTimer >= 1000 && equippedJutsus.length > 0 && !gameOver) {
+        if (autoJutsuTimer >= 1000 && equippedJutsus.length > 0 && !gameOver && !window.BattleJutsusSystem?.slowMoActive) {
           autoJutsuTimer = 0;
           if (Math.random() <= 0.30 && f0.statuses.silence <= 0 && !currentSlowOrb) {
             const availableSkills = equippedJutsus.slice(0, 3);
@@ -991,8 +1020,11 @@
           }
         }
         f0.update(dt, dms, f1); f1.update(dt, dms, f0);
+        
+        // Actualizar jutsus legacy
         for (const j of jutsus) j.update(dt);
 
+        // Verificar impactos de jutsus legacy
         for (const j of jutsus) {
           if (j.dead) continue;
           for (const f of fighters) {
@@ -1020,6 +1052,17 @@
           }
         }
 
+        // INTEGRACIÓN: Verificar colisiones y impactos del sistema unificado
+        if (window.BattleJutsusSystem) {
+          window.BattleJutsusSystem.checkOrbCollisions(fighters, particles, triggerShake);
+          window.BattleJutsusSystem.checkOrbHits(fighters, calcDamage, (skillData, target) => {
+            // Función de aplicación de efectos personalizada
+            if (fighters[0].applySkillEffects) {
+              fighters[0].applySkillEffects(skillData, target);
+            }
+          });
+        }
+
         checkJutsuClash();
         jutsus = jutsus.filter((j) => !j.dead);
         if (currentSlowOrb && currentSlowOrb.dead) {
@@ -1036,7 +1079,15 @@
         const avgX = fighters.reduce((s, f) => s + f.cx, 0) / fighters.length;
         const parallaxX = (avgX - W / 2) * 0.10;
         drawBG(parallaxX);
+        
+        // Dibujar jutsus legacy
         for (const j of jutsus) j.draw();
+        
+        // INTEGRACIÓN: Dibujar esferas del sistema unificado
+        if (window.BattleJutsusSystem) {
+          window.BattleJutsusSystem.drawOrbs(ctx);
+        }
+        
         for (const f of fighters) f.draw();
         for (const p of particles) p.draw();
         for (const d of damageNums) d.draw();
@@ -1055,6 +1106,13 @@
         autoJutsuTimer = 0;
         currentSlowOrb = null;
         hideJutsuAnnouncement(true);
+        
+        // INTEGRACIÓN: Limpiar sistema unificado al reiniciar
+        if (window.BattleJutsusSystem) {
+          window.BattleJutsusSystem.cleanup();
+          window.BattleJutsusSystem.particles = particles;
+        }
+        
         fighters = [new Fighter(playerFighterCfg), new Fighter(enemyFighterCfg)];
 
         const hpSource = Number.isFinite(carriedPlayerHp) ? carriedPlayerHp : window.GameState?.getHp?.();

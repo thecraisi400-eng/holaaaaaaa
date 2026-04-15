@@ -1331,6 +1331,7 @@ html, body {
   opacity: 0;
   transition: opacity .15s ease, transform .15s ease;
   pointer-events: none;
+  display: none;
 }
 
 .ms-battle-jutsu-announcement.show {

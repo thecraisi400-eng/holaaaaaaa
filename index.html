@@ -354,16 +354,28 @@
 
 <template id="jutsuSystemTemplate">
   <div id="jts-core" class="jts-core">
+    <!-- Panel de selección de categorías -->
+    <div class="jts-category-selector">
+      <button class="jts-cat-btn" data-element="fire" title="Fuego">🔥</button>
+      <button class="jts-cat-btn" data-element="wind" title="Viento">🌪️</button>
+      <button class="jts-cat-btn" data-element="lightning" title="Trueno">⚡</button>
+      <button class="jts-cat-btn" data-element="earth" title="Roca">🪨</button>
+      <button class="jts-cat-btn" data-element="water" title="Agua">🌊</button>
+    </div>
+
+    <!-- Panel de habilidades -->
     <div class="jts-library-panel">
       <div class="jts-library-header">
-        <span class="jts-header-icon">📜</span>
-        <h2>Biblioteca de Jutsus</h2>
+        <span class="jts-header-icon" id="jts-current-element-icon">🔥</span>
+        <h2 id="jts-current-element-name">Habilidades Fuego</h2>
+        <span class="jts-scrolls-display">📗 <span id="jts-res-scrolls-main">100</span></span>
       </div>
       <div class="jts-library-grid-wrapper">
         <div id="jts-library-grid" class="jts-library-grid"></div>
       </div>
     </div>
 
+    <!-- Panel de slots de equipamiento -->
     <div class="jts-slots-panel">
       <div class="jts-equip-slot jts-is-empty" data-slot="0" id="jts-slot-0">
         <div class="jts-slot-ring"></div>
@@ -394,8 +406,14 @@
         <div class="jts-particle-container"></div>
       </div>
       <div class="jts-slot-label">Técnica Secreta</div>
+
+      <!-- Indicador de clases seleccionadas -->
+      <div class="jts-class-limit-info">
+        <span>Clases: <span id="jts-classes-count">0</span>/2</span>
+      </div>
     </div>
 
+    <!-- Popup de detalle -->
     <div id="jts-detail-overlay" class="jts-detail-overlay">
       <div id="jts-detail-popup" class="jts-detail-popup">
         <button id="jts-popup-close" class="jts-popup-close">✕</button>
@@ -410,16 +428,17 @@
         <div class="jts-popup-body">
           <div class="jts-stat-row"><span class="jts-stat-label">⚔️ Daño</span><span id="jts-popup-damage" class="jts-stat-value jts-damage"></span></div>
           <div class="jts-stat-row"><span class="jts-stat-label">💀 Efecto</span><span id="jts-popup-effect" class="jts-stat-value jts-effect"></span></div>
-          <div class="jts-stat-row"><span class="jts-stat-label">🛡️ Buff</span><span id="jts-popup-buff" class="jts-stat-value jts-buff"></span></div>
+          <div class="jts-stat-row"><span class="jts-stat-label">💫 Buff</span><span id="jts-popup-buff" class="jts-stat-value jts-buff"></span></div>
+          <div class="jts-stat-row"><span class="jts-stat-label">💎 MP</span><span id="jts-popup-mp" class="jts-stat-value jts-mp"></span></div>
           <div class="jts-stat-row"><span class="jts-stat-label">⏱️ Enfriamiento</span><span id="jts-popup-cd" class="jts-stat-value jts-cd"></span></div>
           <div id="jts-popup-passive" class="jts-popup-passive">✦ Efecto Pasivo Desbloqueado ✦</div>
         </div>
         <div class="jts-popup-footer">
+          <button id="jts-btn-unlock" class="jts-btn-unlock">🔓 Desbloquear</button>
           <button id="jts-btn-upgrade" class="jts-btn-upgrade">⬆ Mejorar</button>
           <button id="jts-btn-equip-slot" class="jts-btn-equip-slot">Equipar</button>
           <div class="jts-resources-display">
-            <div class="jts-resource-item"><span class="jts-res-icon">📜</span><span id="jts-res-scrolls" class="jts-res-count">50</span></div>
-            <div class="jts-resource-item"><span class="jts-res-icon">🔵</span><span id="jts-res-chakra" class="jts-res-count">200</span></div>
+            <div class="jts-resource-item"><span class="jts-res-icon">📗</span><span id="jts-res-scrolls" class="jts-res-count">100</span></div>
           </div>
         </div>
       </div>

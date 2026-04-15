@@ -725,8 +725,13 @@
           }
           this.jutsuCD = this.buffs.cdReductionTurns > 0 ? 58 : 90;
           if (this.buffs.cdReductionTurns > 0) this.buffs.cdReductionTurns -= 1;
-          const dx = target.cx - this.cx; const dy = target.cy - this.cy;
-          const d = Math.sqrt(dx * dx + dy * dy);
+          let dx = target.cx - this.cx; let dy = target.cy - this.cy;
+          let d = Math.hypot(dx, dy);
+          if (!Number.isFinite(d) || d < 0.001) {
+            dx = this.facingRight ? 1 : -1;
+            dy = 0;
+            d = 1;
+          }
           const spd = 5;
           jutsus.push(new Jutsu(this.cx, this.cy, (dx / d) * spd, (dy / d) * spd, this));
           spawnSparks(this.cx, this.cy, 14, this.glowColor);
@@ -749,6 +754,13 @@
             return;
           }
           if (hitStop > 0) return;
+          if (!Number.isFinite(this.x) || !Number.isFinite(this.y) || !Number.isFinite(this.vx) || !Number.isFinite(this.vy)) {
+            this.x = Math.max(3, Math.min(W - NW - 3, Number.isFinite(this.tX) ? this.tX : (this.id === 0 ? 70 : 360)));
+            this.y = GROUND - NH;
+            this.vx = 0;
+            this.vy = 0;
+            this.onGround = true;
+          }
           if (this.stunTimer > 0) this.stunTimer -= dt;
           if (this.atkCD > 0) this.atkCD -= dt;
           if (this.jutsuCD > 0) this.jutsuCD -= dt;

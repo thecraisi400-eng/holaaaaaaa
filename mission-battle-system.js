@@ -56,17 +56,12 @@
   };
 
 
-  const SKILL_ORB_COLORS = {
-    'Llama Voraz': '#FF0000',
-    'Rayo Destellante': '#FFFF00',
-    'Ráfaga Cortante': '#FFFFFF',
-    'Prisión Hidráulica': '#0000FF',
-    'Escudo Telúrico': '#FF8C00',
-    'Sello Prohibido': '#8000FF',
-    'Espejismo Mental': '#8B4513',
-    'Bosque Viviente': '#00AA00',
-    'Impacto Brutal': '#000000',
-    'Aliento Vital': '#00AA00'
+  const ELEMENT_SKILL_ORB_COLORS = {
+    fire: '#ff0000',
+    wind: '#ffffff',
+    water: '#0000ff',
+    lightning: '#ffff00',
+    earth: '#808080'
   };
 
   const BattleSystem = {
@@ -207,7 +202,8 @@
       const DASH_EH = Math.round(DASH_EFFECT_H * SPRITE_SCALE);
 
       const hero = options.heroSnapshot || window.CharacterStatsSystem?.getActiveHero?.() || null;
-      const equippedJutsus = window.JutsuSystem?.getEquippedJutsusBattleData?.() || [];
+      const equippedJutsus = window.JutsuSystem?.getEquippedJutsusBattleData?.().slice(0, 3) || [];
+      const enemyEquippedJutsus = window.JutsuSystem?.getEnemyEquippedJutsusBattleData?.(3) || [];
       const mission = options.mission || {};
       const missionIndex = Number(options.missionIndex || 0);
       const playerCharacterId = hero?.characterId || 'naruto';
@@ -216,13 +212,15 @@
       const playerStats = {
         hp: Math.max(1, Math.round(hero?.stats?.HP || 100)),
         atk: Math.max(1, Number(hero?.stats?.ATK || 10)),
-        def: Math.max(0, Number(hero?.stats?.DEF || 0))
+        def: Math.max(0, Number(hero?.stats?.DEF || 0)),
+        mp: Math.max(0, Number(hero?.stats?.MP || 100))
       };
 
       const enemyStats = {
         hp: Math.max(1, Math.round(options.enemyStats?.hp || mission.hp || 120)),
         atk: Math.max(1, Number(options.enemyStats?.atk || mission.atk || 20)),
-        def: Math.max(0, Number(options.enemyStats?.def || mission.def || 10))
+        def: Math.max(0, Number(options.enemyStats?.def || mission.def || 10)),
+        mp: Math.max(60, Math.round((Number(options.enemyStats?.atk || mission.atk || 20) * 1.6) + 30))
       };
 
       const playerSprite = PLAYER_BATTLE_SPRITES[playerCharacterId] || PLAYER_BATTLE_SPRITES.naruto;
@@ -265,9 +263,9 @@
       let gameOver = false;
       let shakeX = 0; let shakeY = 0; let shakeDur = 0; let shakeAmp = 0;
       let jutsuVeil = 0;
-      let autoJutsuTimer = 0;
       let currentSlowOrb = null;
       let activeAnnouncementOrb = null;
+      let jutsuSyncManager = null;
       const spriteSheets = {};
       let spritesLoaded = false;
       let roundResolved = false;
@@ -337,6 +335,16 @@
         if (!jutsuAnnouncement) return;
         activeAnnouncementOrb = orb;
         jutsuAnnouncement.textContent = name;
+        const owner = orb?.owner;
+        if (owner) {
+          const width = Math.max(180, Math.min(360, (name.length * 11) + 64));
+          const x = Math.max(width / 2, Math.min(W - (width / 2), owner.cx));
+          const y = Math.max(18, owner.y - 30);
+          jutsuAnnouncement.style.width = `${width}px`;
+          jutsuAnnouncement.style.left = `${x}px`;
+          jutsuAnnouncement.style.top = `${y}px`;
+          jutsuAnnouncement.style.transform = 'translate(-50%, -100%)';
+        }
         jutsuAnnouncement.classList.remove('show');
         window.requestAnimationFrame(() => {
           jutsuAnnouncement.classList.remove('show');
@@ -464,7 +472,7 @@
           this.owner = owner;
           this.target = target;
           this.skillData = skillData;
-          this.color = SKILL_ORB_COLORS[skillData?.name] || owner.glowColor;
+          this.color = skillData?.sphereColor || ELEMENT_SKILL_ORB_COLORS[skillData?.element] || owner.glowColor;
           this.x = owner.cx;
           this.y = owner.cy;
           this.size = 40;
@@ -541,6 +549,8 @@
           this.baseDef = cfg.stats.def;
           this.hp = cfg.stats.hp;
           this.maxHp = cfg.stats.hp;
+          this.maxMp = Math.max(0, Number(cfg.stats.mp || 0));
+          this.mp = this.maxMp;
           this.isPlayer = cfg.isPlayer;
           this.dashTimer = 0; this.dashInterval = 800; this.tX = cfg.x; this.tY = GROUND - NH;
           this.atkCD = 0; this.jutsuCD = 0; this.stunTimer = 0;
@@ -558,6 +568,13 @@
 
         get cx() { return this.x + NW / 2; }
         get cy() { return this.y + NH / 2; }
+        consumeMp(cost) {
+          const mpCost = Math.max(0, Number(cost || 0));
+          if (this.isPlayer) return false;
+          if (this.mp < mpCost) return false;
+          this.mp = Math.max(0, this.mp - mpCost);
+          return true;
+        }
 
         receiveHit(rawDmg, fromX, attacker) {
           if (this.isDead || this.invincible) return;
@@ -968,28 +985,7 @@
 
         const [f0, f1] = fighters;
         f1.externalFreeze = Boolean(currentSlowOrb && !currentSlowOrb.dead && currentSlowOrb.owner === f0);
-        autoJutsuTimer += dms;
-        if (autoJutsuTimer >= 1000 && equippedJutsus.length > 0 && !gameOver) {
-          autoJutsuTimer = 0;
-          if (Math.random() <= 0.30 && f0.statuses.silence <= 0 && !currentSlowOrb) {
-            const availableSkills = equippedJutsus.slice(0, 3);
-            const skill = availableSkills[Math.floor(Math.random() * availableSkills.length)];
-            const consumed = window.JutsuSystem?.consumeMpForJutsu?.(skill.id);
-            if (consumed) {
-              const orb = new BattleSkillOrb(f0, f1, skill);
-              showJutsuAnnouncement(skill.name, orb);
-              jutsus.push(orb);
-              currentSlowOrb = orb;
-              slowMo = 0.05;
-              jutsuVeil = 80;
-              if (veil) veil.style.background = 'rgba(0,0,0,0.48)';
-              if (f0.buffs.cdReductionTurns > 0) {
-                f0.jutsuCD *= 0.65;
-                f0.buffs.cdReductionTurns -= 1;
-              }
-            }
-          }
-        }
+        jutsuSyncManager?.tick(dms);
         f0.update(dt, dms, f1); f1.update(dt, dms, f0);
         for (const j of jutsus) j.update(dt);
 
@@ -1022,7 +1018,19 @@
 
         checkJutsuClash();
         jutsus = jutsus.filter((j) => !j.dead);
+        if (activeAnnouncementOrb && !activeAnnouncementOrb.dead && activeAnnouncementOrb.owner && jutsuAnnouncement) {
+          const owner = activeAnnouncementOrb.owner;
+          const name = jutsuAnnouncement.textContent || '';
+          const width = Math.max(180, Math.min(360, (name.length * 11) + 64));
+          const x = Math.max(width / 2, Math.min(W - (width / 2), owner.cx));
+          const y = Math.max(18, owner.y - 30);
+          jutsuAnnouncement.style.width = `${width}px`;
+          jutsuAnnouncement.style.left = `${x}px`;
+          jutsuAnnouncement.style.top = `${y}px`;
+          jutsuAnnouncement.style.transform = 'translate(-50%, -100%)';
+        }
         if (currentSlowOrb && currentSlowOrb.dead) {
+          hideJutsuAnnouncement(false, currentSlowOrb);
           currentSlowOrb = null;
           slowMo = 1;
           if (veil) veil.style.background = 'rgba(0,0,0,0)';
@@ -1052,10 +1060,53 @@
         roundResolved = false;
         shakeX = 0; shakeY = 0; shakeDur = 0; shakeAmp = 0;
         jutsuVeil = 0; if (veil) veil.style.background = 'rgba(0,0,0,0)';
-        autoJutsuTimer = 0;
         currentSlowOrb = null;
         hideJutsuAnnouncement(true);
         fighters = [new Fighter(playerFighterCfg), new Fighter(enemyFighterCfg)];
+        const fighterById = new Map();
+        fighters.forEach((fighter) => fighterById.set(fighter.id, fighter));
+        const skillsByFighterId = {
+          0: equippedJutsus,
+          1: enemyEquippedJutsus
+        };
+
+        const castSkillOrb = (casterId, targetId, skillData, meta = {}) => {
+          if (gameOver || currentSlowOrb || !skillData) return false;
+          const caster = fighterById.get(casterId);
+          const target = fighterById.get(targetId);
+          if (!caster || !target || caster.isDead || target.isDead || caster.statuses.silence > 0) return false;
+          const orb = new BattleSkillOrb(caster, target, skillData);
+          showJutsuAnnouncement(skillData.name, orb);
+          jutsus.push(orb);
+          currentSlowOrb = orb;
+          slowMo = 0.1;
+          jutsuVeil = 80;
+          if (veil) veil.style.background = 'rgba(0,0,0,0.48)';
+          if (meta.reason !== 'counter') {
+            jutsuSyncManager?.onSkillCast(casterId, targetId, { sourceSkillId: skillData.id });
+          }
+          return true;
+        };
+
+        jutsuSyncManager = window.JutsuBattleSync?.createManager?.({
+          fighterIds: [0, 1],
+          getSkillsForFighter: (fighterId) => skillsByFighterId[fighterId] || [],
+          canUseSkill: (fighterId, skill) => {
+            const fighter = fighterById.get(fighterId);
+            if (!fighter || !skill || fighter.isDead || fighter.statuses.silence > 0) return false;
+            if (fighterId === 0) return Number(window.GameState?.getMp?.() || 0) >= Number(skill.mpCost || 0);
+            return fighter.mp >= Number(skill.mpCost || 0);
+          },
+          consumeMp: (fighterId, skill) => {
+            if (fighterId === 0) return Boolean(window.JutsuSystem?.consumeMpForJutsu?.(skill.id));
+            const fighter = fighterById.get(fighterId);
+            if (!fighter) return false;
+            return fighter.consumeMp(skill.mpCost);
+          },
+          isLockedByProjectile: () => Boolean(currentSlowOrb && !currentSlowOrb.dead) || gameOver,
+          castSkill: castSkillOrb
+        }) || null;
+        jutsuSyncManager?.reset?.();
 
         const hpSource = Number.isFinite(carriedPlayerHp) ? carriedPlayerHp : window.GameState?.getHp?.();
         if (Number.isFinite(hpSource)) {

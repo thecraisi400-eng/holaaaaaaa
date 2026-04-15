@@ -18,6 +18,7 @@ BASE: {
     EVASION: 5,
     RESISTENCIA: 80,
     ORO: 100,
+    PERGAMINOS: 100,  // Pergaminos 📗 iniciales para el sistema de Jutsus
     XP: 0
 },
     
@@ -453,7 +454,8 @@ function inicializarPersonaje() {
         claseId: personaje.clase?.id,
         nivel: personaje.nivel,
         xp: personaje.xp,
-        oro: personaje.oro
+        oro: personaje.oro,
+        pergaminos: personaje.pergaminos
     });
     
     // Calcular todas las estadísticas para nivel 1
@@ -463,7 +465,7 @@ function inicializarPersonaje() {
     actualizarPanelVisible();
     
     console.log(`Personaje inicializado: ${personaje.nombre} (${personaje.clase.nombre})`);
-    console.log(`Estadísticas: ATK ${personaje.ataque} | DEF ${personaje.defensa} | Oro ${personaje.oro}`);
+    console.log(`Estadísticas: ATK ${personaje.ataque} | DEF ${personaje.defensa} | Oro ${personaje.oro} | Pergaminos: ${personaje.pergaminos}`);
 }
 
 function obtenerClasePorId(id) {
@@ -476,6 +478,7 @@ function establecerPerfilInicial(config = {}) {
     personaje.nivel = Math.max(1, Number(config.nivel) || 1);
     personaje.xp = Math.max(0, Number(config.xp) || 0);
     personaje.oro = config.oro ?? CONFIG_NIVELES.BASE.ORO;
+    personaje.pergaminos = config.pergaminos ?? CONFIG_NIVELES.BASE.PERGAMINOS; // Pergaminos para Jutsus
     personaje.rango = calcularRango(personaje.nivel);
 
     personaje.hp = CONFIG_NIVELES.BASE.HP;

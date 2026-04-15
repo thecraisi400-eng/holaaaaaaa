@@ -148,12 +148,14 @@ function cargarPartida(options = {}) {
                 claseId: datos.claseId,
                 nivel: datos.nivel || 1,
                 xp: datos.xp || 0,
-                oro: datos.oro ?? 100
+                oro: datos.oro ?? 100,
+                pergaminos: datos.pergaminos ?? 100
             });
         } else {
             window.personaje.nivel = datos.nivel || 1;
             window.personaje.xp = datos.xp || 0;
             window.personaje.oro = datos.oro ?? 100;
+            window.personaje.pergaminos = datos.pergaminos ?? 100;
             window.personaje.nombre = datos.nombre || 'Uchiha Sasuke';
         }
         

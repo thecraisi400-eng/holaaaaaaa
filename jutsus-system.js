@@ -423,12 +423,38 @@
             id: jutsu.id,
             name: jutsu.name,
             icon: jutsu.icon,
+            element: jutsu.element,
             damage: stats.damage,
             mpCost: stats.mpCost,
             cooldown: stats.cd,
             sphereColor: jutsu.sphereColor
           };
         });
+    },
+
+    getEnemyEquippedJutsusBattleData(limit = 3) {
+      const maxSlots = Math.max(1, Math.min(3, Number(limit) || 3));
+      const unlockedPool = JUTSU_DB.filter((jutsu) => jutsu.unlocked);
+      const sourcePool = unlockedPool.length > 0 ? unlockedPool : JUTSU_DB.slice();
+      const shuffled = sourcePool
+        .map((entry) => ({ entry, sortKey: Math.random() }))
+        .sort((a, b) => a.sortKey - b.sortKey)
+        .slice(0, maxSlots)
+        .map(({ entry }) => entry);
+
+      return shuffled.map((jutsu) => {
+        const stats = this.getStats(jutsu);
+        return {
+          id: jutsu.id,
+          name: jutsu.name,
+          icon: jutsu.icon,
+          element: jutsu.element,
+          damage: stats.damage,
+          mpCost: stats.mpCost,
+          cooldown: stats.cd,
+          sphereColor: jutsu.sphereColor
+        };
+      });
     },
 
     consumeMpForJutsu(jutsuId) {

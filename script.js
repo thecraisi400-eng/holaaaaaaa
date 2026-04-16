@@ -21,9 +21,62 @@ function setGold(nextGold) {
   window.dispatchEvent(new CustomEvent('ngs:gold-updated', { detail: { gold: state.gold } }));
 }
 
+function recalculateHeroSnapshotWithExp(heroSnapshot, expToAdd) {
+  if (!heroSnapshot || !window.CharacterStatsSystem) return heroSnapshot;
+  const safeExp = Math.max(0, Number(expToAdd) || 0);
+  const nextTotalExp = (Number(heroSnapshot.exp) || 0) + safeExp;
+  let nextLevel = Math.max(1, Number(heroSnapshot.level) || 1);
+  while (nextLevel < 100) {
+    const xpForNext = window.CharacterStatsSystem.getXpAtLevel(heroSnapshot.characterId, nextLevel + 1);
+    if (nextTotalExp >= xpForNext) nextLevel += 1;
+    else break;
+  }
+  return window.CharacterStatsSystem.buildHeroSnapshot(
+    heroSnapshot.characterId,
+    nextLevel,
+    nextTotalExp,
+    heroSnapshot.rank || window.CharacterStatsSystem.DEFAULT_RANK
+  );
+}
+
+function applyHeroSnapshot(snapshot) {
+  if (!snapshot) return;
+  if (window.CharacterStatsSystem && typeof window.CharacterStatsSystem.setActiveHero === 'function') {
+    window.CharacterStatsSystem.setActiveHero(snapshot);
+  }
+  syncStateFromHero(getSyncedHeroSnapshot(snapshot));
+  updateBars();
+}
+
+function grantMissionRewards({ xp = 0, gold = 0 }) {
+  const activeHeroSnapshot = window.CharacterStatsSystem?.getActiveHero?.() || state.heroSnapshot;
+  if (!activeHeroSnapshot) return null;
+  const updatedSnapshot = recalculateHeroSnapshotWithExp(activeHeroSnapshot, xp);
+  applyHeroSnapshot(updatedSnapshot);
+  setGold(state.gold + Math.max(0, Number(gold) || 0));
+  return updatedSnapshot;
+}
+
+function applyBattleVitals({ hp, mp }) {
+  const hasHp = Number.isFinite(Number(hp));
+  const hasMp = Number.isFinite(Number(mp));
+  if (!hasHp && !hasMp) return;
+  if (hasHp) state.hp = Math.max(0, Math.min(state.hpMax, Number(hp)));
+  if (hasMp) state.mp = Math.max(0, Math.min(state.mpMax, Number(mp)));
+  updateBars();
+}
+
 window.GameState = window.GameState || {};
 window.GameState.getGold = () => state.gold;
 window.GameState.setGold = setGold;
+window.GameState.getHeroSnapshot = () => {
+  const active = window.CharacterStatsSystem?.getActiveHero?.() || state.heroSnapshot;
+  return active ? { ...active, stats: { ...(active.stats || {}) } } : null;
+};
+window.GameState.applyHeroSnapshot = applyHeroSnapshot;
+window.GameState.grantMissionRewards = grantMissionRewards;
+window.GameState.applyBattleVitals = applyBattleVitals;
+window.GameState.getCurrentVitals = () => ({ hp: state.hp, mp: state.mp, hpMax: state.hpMax, mpMax: state.mpMax });
 
 const sections = {
   heroe:        { icon:'🥷', title:'HÉROE',           desc:'Consulta y mejora el equipo de tu shinobi. Cambia armadura, armas y accesorios para maximizar tu poder de combate.' },
@@ -259,6 +312,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     state.activeSection = sec;
+    window.dispatchEvent(new CustomEvent('ngs:main-nav-selected', { detail: { section: sec } }));
     renderCenterSection(sec);
   });
 });

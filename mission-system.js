@@ -66,11 +66,22 @@
     },
 
     unmount() {
+      this.stopRankDBattle();
+      if (this.onBattleStopped) {
+        window.removeEventListener('ngs:rank-d-battle-stopped', this.onBattleStopped);
+        this.onBattleStopped = null;
+      }
       if (!this.host) return;
       this.host.innerHTML = '';
       this.root = null;
       this.currentView = 'ms-view-main';
       this.currentRank = null;
+    },
+
+    stopRankDBattle() {
+      if (window.BattleMissionRankD && typeof window.BattleMissionRankD.stop === 'function') {
+        window.BattleMissionRankD.stop('cancelled');
+      }
     },
 
     isMounted() {
@@ -91,13 +102,28 @@
       };
 
       onClick('#ms-openMissionsBtn', () => this.showRanks());
-      onClick('#ms-backToMainBtn', () => this.goBack('ms-view-main'));
-      onClick('#ms-backToRanksBtn', () => this.goBack('ms-view-ranks'));
+      onClick('#ms-backToMainBtn', () => {
+        this.stopRankDBattle();
+        this.goBack('ms-view-main');
+      });
+      onClick('#ms-backToRanksBtn', () => {
+        this.stopRankDBattle();
+        this.goBack('ms-view-ranks');
+      });
       onClick('#ms-closeVictoryBtn', () => this.closeVictory());
 
       this.root.querySelectorAll('.ms-rank-btn').forEach((btn) => {
         btn.addEventListener('click', () => this.showMissions(btn.dataset.rank));
       });
+
+      this.onBattleStopped = (event) => {
+        if (this.currentView !== 'ms-view-battle-rank-d') return;
+        const reason = event?.detail?.reason;
+        if (reason === 'cancelled') {
+          this.switchView('ms-view-battle-rank-d', 'ms-view-missions', 'back');
+        }
+      };
+      window.addEventListener('ngs:rank-d-battle-stopped', this.onBattleStopped);
     },
 
     switchView(fromId, toId, direction) {
@@ -124,10 +150,12 @@
     },
 
     showRanks() {
+      this.stopRankDBattle();
       this.switchView('ms-view-main', 'ms-view-ranks', 'forward');
     },
 
     showMissions(rank) {
+      this.stopRankDBattle();
       this.currentRank = rank;
       const container = this.root.querySelector('#ms-missions-scroll');
       if (!container) return;
@@ -186,11 +214,30 @@
       card.classList.add('ms-combat-flash');
       setTimeout(() => card.classList.remove('ms-combat-flash'), 600);
 
-      if (window.HeroSystem && typeof window.HeroSystem.grantExperience === 'function') {
-        window.HeroSystem.grantExperience(mission.xp);
+      if (rank === 'D' && window.BattleMissionRankD && typeof window.BattleMissionRankD.mount === 'function') {
+        const battleHost = this.root.querySelector('#msBattleRankDHost');
+        if (!battleHost) return;
+
+        const startResult = window.BattleMissionRankD.mount({
+          host: battleHost,
+          mission,
+          missionIndex: index,
+          rank,
+          missionLabel: `MISION RANGO ${rank}`
+        });
+
+        if (startResult) {
+          this.switchView('ms-view-missions', 'ms-view-battle-rank-d', 'forward');
+        }
+        return;
       }
-      if (window.GameState && typeof window.GameState.getGold === 'function' && typeof window.GameState.setGold === 'function') {
-        window.GameState.setGold(window.GameState.getGold() + mission.gold);
+
+      this.handleQuickVictory(mission);
+    },
+
+    handleQuickVictory(mission) {
+      if (window.GameState && typeof window.GameState.grantMissionRewards === 'function') {
+        window.GameState.grantMissionRewards({ xp: mission.xp, gold: mission.gold });
       }
 
       const popup = this.root.querySelector('#ms-victoryPopup');
@@ -210,8 +257,16 @@
 
     goBack(target) {
       if (target === 'ms-view-main') {
+        if (this.currentView === 'ms-view-battle-rank-d') {
+          this.switchView('ms-view-battle-rank-d', 'ms-view-main', 'back');
+          return;
+        }
         this.switchView('ms-view-ranks', 'ms-view-main', 'back');
       } else if (target === 'ms-view-ranks') {
+        if (this.currentView === 'ms-view-battle-rank-d') {
+          this.switchView('ms-view-battle-rank-d', 'ms-view-ranks', 'back');
+          return;
+        }
         this.switchView('ms-view-missions', 'ms-view-ranks', 'back');
       }
     },
@@ -220,9 +275,10 @@
       const main = this.root?.querySelector('#ms-view-main');
       const ranks = this.root?.querySelector('#ms-view-ranks');
       const missions = this.root?.querySelector('#ms-view-missions');
-      if (!main || !ranks || !missions) return;
+      const battle = this.root?.querySelector('#ms-view-battle-rank-d');
+      if (!main || !ranks || !missions || !battle) return;
 
-      [main, ranks, missions].forEach((view) => {
+      [main, ranks, missions, battle].forEach((view) => {
         view.classList.remove('active');
         view.style.opacity = '0';
         view.style.transform = 'translateX(100%)';

@@ -48,6 +48,7 @@
     currentView: 'ms-view-main',
     heroLevel: 1,
     currentRank: null,
+    battleMission: null,
 
     mount() {
       if (this.isMounted()) return;
@@ -67,10 +68,14 @@
 
     unmount() {
       if (!this.host) return;
+      if (window.DRankBattleSystem && typeof window.DRankBattleSystem.unmount === 'function') {
+        window.DRankBattleSystem.unmount();
+      }
       this.host.innerHTML = '';
       this.root = null;
       this.currentView = 'ms-view-main';
       this.currentRank = null;
+      this.battleMission = null;
     },
 
     isMounted() {
@@ -186,19 +191,51 @@
       card.classList.add('ms-combat-flash');
       setTimeout(() => card.classList.remove('ms-combat-flash'), 600);
 
+      if (rank === 'D') {
+        this.battleMission = mission;
+        this.switchView('ms-view-missions', 'ms-view-battle-d', 'forward');
+        const battleRoot = this.root.querySelector('#drb-battle-mision-rango-d');
+        if (window.DRankBattleSystem && battleRoot) {
+          window.DRankBattleSystem.mount(battleRoot, mission, (result) => this.onBattleEnd(result));
+        }
+        return;
+      }
+
+      this.grantMissionRewards(mission);
+      this.showResultPopup(true, mission);
+    },
+
+    onBattleEnd(result) {
+      const mission = result?.mission || this.battleMission;
+      if (!mission) return;
+      if (result?.victory) {
+        this.grantMissionRewards(mission);
+      }
+      this.showResultPopup(Boolean(result?.victory), mission);
+      this.switchView('ms-view-battle-d', 'ms-view-missions', 'back');
+      this.battleMission = null;
+    },
+
+    grantMissionRewards(mission) {
       if (window.HeroSystem && typeof window.HeroSystem.grantExperience === 'function') {
         window.HeroSystem.grantExperience(mission.xp);
       }
       if (window.GameState && typeof window.GameState.getGold === 'function' && typeof window.GameState.setGold === 'function') {
         window.GameState.setGold(window.GameState.getGold() + mission.gold);
       }
+    },
 
+    showResultPopup(victory, mission) {
       const popup = this.root.querySelector('#ms-victoryPopup');
       const info = this.root.querySelector('#ms-victoryInfo');
       const rewards = this.root.querySelector('#ms-victoryRewards');
+      const title = popup?.querySelector('h3');
+      if (title) title.textContent = victory ? '⚔️ ¡VICTORIA!' : '💀 DERROTA';
       if (info) info.textContent = `Misión: ${mission.name}`;
       if (rewards) {
-        rewards.innerHTML = `<span style="color:#34d399">+${mission.xp} XP</span> &nbsp;|&nbsp; <span style="color:#fbbf24">+${mission.gold} Oro</span>`;
+        rewards.innerHTML = victory
+          ? `<span style="color:#34d399">+${mission.xp} XP</span> &nbsp;|&nbsp; <span style="color:#fbbf24">+${mission.gold} Oro</span>`
+          : '<span style="color:#f87171">No recibiste recompensas</span>';
       }
       if (popup) popup.classList.add('show');
     },
@@ -213,6 +250,8 @@
         this.switchView('ms-view-ranks', 'ms-view-main', 'back');
       } else if (target === 'ms-view-ranks') {
         this.switchView('ms-view-missions', 'ms-view-ranks', 'back');
+      } else if (target === 'ms-view-missions') {
+        this.switchView('ms-view-battle-d', 'ms-view-missions', 'back');
       }
     },
 
@@ -220,9 +259,10 @@
       const main = this.root?.querySelector('#ms-view-main');
       const ranks = this.root?.querySelector('#ms-view-ranks');
       const missions = this.root?.querySelector('#ms-view-missions');
-      if (!main || !ranks || !missions) return;
+      const battle = this.root?.querySelector('#ms-view-battle-d');
+      if (!main || !ranks || !missions || !battle) return;
 
-      [main, ranks, missions].forEach((view) => {
+      [main, ranks, missions, battle].forEach((view) => {
         view.classList.remove('active');
         view.style.opacity = '0';
         view.style.transform = 'translateX(100%)';

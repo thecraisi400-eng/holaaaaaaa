@@ -70,7 +70,7 @@
           mpCost: 15,
           cooldown: 3,
           sphereColor: '#000000',
-          effect: 'Daño 20HP. Drena 5% de CP por 3s.',
+          effect: 'Daño 20HP. Drena 1% de CP por 3s.',
           enabled: true
         }
       ]
@@ -807,7 +807,7 @@
             if (this.statuses.cpDrain > 0 && this.isPlayer && typeof window.GameState?.setMp === 'function') {
               const maxCp = Math.max(1, Number(window.GameState?.getHeroSnapshot?.()?.stats?.MP || this.maxMp || 100));
               const currentCp = Number(window.GameState?.getMp?.() || 0);
-              const drainAmount = Math.max(1, Math.round(maxCp * 0.05));
+              const drainAmount = Math.max(1, Math.round(maxCp * 0.01));
               window.GameState.setMp(Math.max(0, currentCp - drainAmount));
             }
           }

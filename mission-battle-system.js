@@ -212,7 +212,6 @@
       const SPRITE_SCALE = 0.70;
       const DASH_EFFECT_W = 74;
       const DASH_EFFECT_H = 64;
-      const PHYSICAL_ATTACK_CHANCE = 0.70;
       const W = 460;
       const H = 360;
       const GROUND = H - 50;
@@ -226,6 +225,7 @@
       const hero = options.heroSnapshot || window.CharacterStatsSystem?.getActiveHero?.() || null;
       const equippedJutsus = window.JutsuSystem?.getEquippedJutsusBattleData?.().slice(0, 3) || [];
       const playerHasEquippedSkills = equippedJutsus.length > 0;
+      const PHYSICAL_ATTACK_CHANCE = playerHasEquippedSkills ? 0.70 : 1.0;
       const mission = options.mission || {};
       const missionIndex = Number(options.missionIndex || 0);
       const enemyProfile = ENEMY_PROFILE_BY_MISSION[missionIndex] || null;

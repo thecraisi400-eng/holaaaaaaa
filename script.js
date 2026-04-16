@@ -1,7 +1,7 @@
 /* ─────────────────────────────────────────────
    ESTADO DEL JUEGO - VALORES FIJOS SOLICITADOS
 ───────────────────────────────────────────── */
-const SAVE_KEY = 'ngs_rpg_save_data';
+const SAVE_KEY = window.NGS_STORAGE?.SAVE_KEY || 'ngs_rpg_save_data';
 const state = {
   hp: 100, hpMax: 100,
   mp: 100, mpMax: 100,
@@ -97,7 +97,12 @@ function syncCharacterIdentity(saveData) {
 
   const heroNameEl = document.querySelector('.hs-char-name');
   if (heroNameEl && saveData.character) {
-    heroNameEl.innerHTML = saveData.character.toUpperCase().replace(/\s+/g, '<br>');
+    heroNameEl.textContent = '';
+    const parts = saveData.character.toUpperCase().split(/\s+/).filter(Boolean);
+    parts.forEach((part, index) => {
+      if (index > 0) heroNameEl.appendChild(document.createElement('br'));
+      heroNameEl.appendChild(document.createTextNode(part));
+    });
   }
 
   const heroClanEl = document.querySelector('.hs-char-clan-name');
@@ -252,12 +257,33 @@ const overlayTitle = document.getElementById('overlayTitle');
 const overlayDesc  = document.getElementById('overlayDesc');
 const overlayClose = document.getElementById('overlayClose');
 
+let regenIntervalId = null;
+
+function startHeroRegenLoop() {
+  if (regenIntervalId) return;
+  regenIntervalId = window.setInterval(() => {
+    const hpRegen = Math.max(1, Math.round(state.hpMax * 0.07));
+    const mpRegen = Math.max(1, Math.round(state.mpMax * 0.07));
+    const nextHp = Math.min(state.hpMax, state.hp + hpRegen);
+    const nextMp = Math.min(state.mpMax, state.mp + mpRegen);
+    if (nextHp !== state.hp) setHp(nextHp);
+    if (nextMp !== state.mp) window.GameState.setMp(nextMp);
+  }, 1000);
+}
+
+function stopHeroRegenLoop() {
+  if (!regenIntervalId) return;
+  window.clearInterval(regenIntervalId);
+  regenIntervalId = null;
+}
+
 function renderCenterSection(sectionKey) {
   const isHero = sectionKey === 'heroe';
   const isMissions = sectionKey === 'misiones';
   const isJutsus = sectionKey === 'jutsus';
 
   if (isHero) {
+    startHeroRegenLoop();
     overlay.classList.remove('visible');
     if (window.JutsuSystem && window.JutsuSystem.isMounted()) {
       window.JutsuSystem.unmount();
@@ -272,6 +298,7 @@ function renderCenterSection(sectionKey) {
   }
 
   if (isMissions) {
+    stopHeroRegenLoop();
     overlay.classList.remove('visible');
     if (window.JutsuSystem && window.JutsuSystem.isMounted()) {
       window.JutsuSystem.unmount();
@@ -289,6 +316,7 @@ function renderCenterSection(sectionKey) {
   }
 
   if (isJutsus) {
+    stopHeroRegenLoop();
     overlay.classList.remove('visible');
     if (window.HeroSystem && window.HeroSystem.isMounted()) {
       window.HeroSystem.unmount();
@@ -302,6 +330,7 @@ function renderCenterSection(sectionKey) {
     return;
   }
 
+  stopHeroRegenLoop();
   if (window.JutsuSystem && window.JutsuSystem.isMounted()) {
     window.JutsuSystem.unmount();
   }
@@ -349,16 +378,6 @@ overlayClose.addEventListener('click', () => {
 });
 
 renderCenterSection(state.activeSection);
-
-setInterval(() => {
-  if (state.activeSection !== 'heroe') return;
-  const hpRegen = Math.max(1, Math.round(state.hpMax * 0.07));
-  const mpRegen = Math.max(1, Math.round(state.mpMax * 0.07));
-  const nextHp = Math.min(state.hpMax, state.hp + hpRegen);
-  const nextMp = Math.min(state.mpMax, state.mp + mpRegen);
-  if (nextHp !== state.hp) setHp(nextHp);
-  if (nextMp !== state.mp) window.GameState.setMp(nextMp);
-}, 1000);
 
 window.addEventListener('ngs:game-entered', (event) => {
   const saveData = event?.detail?.saveData;

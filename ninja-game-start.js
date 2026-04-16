@@ -1,5 +1,5 @@
 (function () {
-  const SAVE_KEY = 'ngs_rpg_save_data';
+  const SAVE_KEY = window.NGS_STORAGE?.SAVE_KEY || 'ngs_rpg_save_data';
 
   const CLANS = [
     {
@@ -76,6 +76,17 @@
   if (!introRoot || !app || !startScreen || !clanScreen || !characterScreen) {
     return;
   }
+
+  function parseSaveData(rawSave) {
+    if (!rawSave) return null;
+    try {
+      return JSON.parse(rawSave);
+    } catch (error) {
+      console.warn('[NGS] Guardado inválido detectado en storage.', error);
+      return null;
+    }
+  }
+
 
   function showScreen(screenName) {
     startScreen.classList.add('ngs-hidden');
@@ -211,35 +222,55 @@
     const savedRaw = localStorage.getItem(SAVE_KEY);
 
     if (savedRaw) {
-      try {
-        const data = JSON.parse(savedRaw);
-        gameSavedData = data;
-        currentCharacterSelected = data.character || null;
-        currentClanSelected = data.clan || null;
-        const dateStr = data.timestamp ? new Date(data.timestamp).toLocaleString() : 'desconocida';
-
-        loadPreviewDataDiv.innerHTML = `🎮 ${data.character} | Nivel ${data.level || 1} | Tiempo: ${data.playTime || '00:00'} <br> <span style="font-size:0.7rem;">Guardado: ${dateStr}</span>`;
-      } catch (e) {
-        loadPreviewDataDiv.innerHTML = 'Error al leer guardado';
+      const data = parseSaveData(savedRaw);
+      if (!data) {
+        loadPreviewDataDiv.textContent = 'Error al leer guardado';
+        return;
       }
+
+      gameSavedData = data;
+      currentCharacterSelected = data.character || null;
+      currentClanSelected = data.clan || null;
+      const dateStr = data.timestamp ? new Date(data.timestamp).toLocaleString() : 'desconocida';
+
+      loadPreviewDataDiv.textContent = '';
+      const previewText = document.createTextNode(`🎮 ${data.character || 'Sin nombre'} | Nivel ${data.level || 1} | Tiempo: ${data.playTime || '00:00'}`);
+      const dateMeta = document.createElement('span');
+      dateMeta.style.fontSize = '0.7rem';
+      dateMeta.textContent = `Guardado: ${dateStr}`;
+      loadPreviewDataDiv.appendChild(previewText);
+      loadPreviewDataDiv.appendChild(document.createElement('br'));
+      loadPreviewDataDiv.appendChild(dateMeta);
     } else {
-      loadPreviewDataDiv.innerHTML = 'No hay partida guardada. Comienza una nueva aventura.';
+      loadPreviewDataDiv.textContent = 'No hay partida guardada. Comienza una nueva aventura.';
     }
   }
 
   function loadGameFromStorage() {
     const saved = localStorage.getItem(SAVE_KEY);
-    if (saved) {
-      const data = JSON.parse(saved);
-      gameSavedData = data;
-      currentClanSelected = data.clan || null;
-      currentCharacterSelected = data.character || null;
-      playPlaceholderSound('select');
-      alert(`Partida cargada: ${data.character} (Clan ${data.clan}) - Nivel ${data.level || 1}\n¡Bienvenido de vuelta, héroe!`);
-      enterGame();
-    } else {
+    if (!saved) {
       alert('No hay partidas guardadas. Comienza Nueva Partida.');
+      return;
     }
+
+    const data = parseSaveData(saved);
+    if (!data) {
+      localStorage.removeItem(SAVE_KEY);
+      gameSavedData = null;
+      currentClanSelected = null;
+      currentCharacterSelected = null;
+      updateLoadPreview();
+      alert('El guardado estaba corrupto y se restableció. Inicia una nueva partida.');
+      return;
+    }
+
+    gameSavedData = data;
+    currentClanSelected = data.clan || null;
+    currentCharacterSelected = data.character || null;
+    playPlaceholderSound('select');
+    alert(`Partida cargada: ${data.character} (Clan ${data.clan}) - Nivel ${data.level || 1}
+¡Bienvenido de vuelta, héroe!`);
+    enterGame();
   }
 
   function getCharacterById(characterId) {
@@ -273,7 +304,7 @@
     for (let i = 0; i < localStorage.length; i += 1) {
       const key = localStorage.key(i);
       if (!key) continue;
-      if (key === SAVE_KEY || key.startsWith('ngs_')) {
+      if (key === SAVE_KEY || key.startsWith(window.NGS_STORAGE?.NAMESPACE_PREFIX || 'ngs_')) {
         keysToDelete.push(key);
       }
     }
@@ -330,16 +361,28 @@
     renderClans();
   });
 
+  const parallaxLayers = Array.from(introRoot.querySelectorAll('.ngs-layer'));
+  let parallaxFrame = null;
+  let parallaxPointer = { x: 0, y: 0 };
+
+  function applyParallax() {
+    const { x, y } = parallaxPointer;
+    if (parallaxLayers[0]) parallaxLayers[0].style.transform = `translate(${x * 8}px, ${y * 6}px)`;
+    if (parallaxLayers[1]) parallaxLayers[1].style.transform = `translate(${x * -12}px, ${y * -8}px) scale(1.02)`;
+    if (parallaxLayers[2]) parallaxLayers[2].style.transform = `translate(${x * 4}px, ${y * 3}px)`;
+    parallaxFrame = null;
+  }
+
   document.addEventListener('mousemove', (e) => {
     if (introRoot.style.display === 'none') return;
 
-    const x = e.clientX / window.innerWidth;
-    const y = e.clientY / window.innerHeight;
-    const layers = introRoot.querySelectorAll('.ngs-layer');
+    parallaxPointer = {
+      x: e.clientX / window.innerWidth,
+      y: e.clientY / window.innerHeight
+    };
 
-    if (layers[0]) layers[0].style.transform = `translate(${x * 8}px, ${y * 6}px)`;
-    if (layers[1]) layers[1].style.transform = `translate(${x * -12}px, ${y * -8}px) scale(1.02)`;
-    if (layers[2]) layers[2].style.transform = `translate(${x * 4}px, ${y * 3}px)`;
+    if (parallaxFrame) return;
+    parallaxFrame = window.requestAnimationFrame(applyParallax);
   });
 
   function init() {

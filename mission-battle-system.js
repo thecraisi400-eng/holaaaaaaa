@@ -294,6 +294,7 @@
       let announcementFrame = null;
       let announcementNonce = 0;
       let jutsuSyncManager = null;
+      const fighterSyncTracker = new Map();
       const spriteSheets = {};
       let spritesLoaded = false;
       let roundResolved = false;
@@ -329,6 +330,24 @@
         }
       }
       function emitBattleSync(type, detail = {}) {
+        if (type === 'fighter-update') {
+          const fighterId = detail?.fighterId;
+          const now = performance.now();
+          const prev = fighterSyncTracker.get(fighterId) || null;
+          const minIntervalMs = 120;
+          const movedEnough = !prev
+            || Math.abs((detail.x || 0) - (prev.x || 0)) > 0.75
+            || Math.abs((detail.y || 0) - (prev.y || 0)) > 0.75
+            || Math.abs((detail.vx || 0) - (prev.vx || 0)) > 0.5
+            || Math.abs((detail.vy || 0) - (prev.vy || 0)) > 0.5
+            || Math.abs((detail.stunTimer || 0) - (prev.stunTimer || 0)) > 0.5
+            || Math.abs((detail.atkCD || 0) - (prev.atkCD || 0)) > 0.5
+            || Math.abs((detail.jutsuCD || 0) - (prev.jutsuCD || 0)) > 0.5
+            || Math.abs((detail.invTimer || 0) - (prev.invTimer || 0)) > 0.5;
+          const elapsedEnough = !prev || (now - prev.ts) >= minIntervalMs;
+          if (!movedEnough && !elapsedEnough) return;
+          fighterSyncTracker.set(fighterId, { ...detail, ts: now });
+        }
         window.dispatchEvent(new CustomEvent('ngs:battle-sync', { detail: { type, ...detail } }));
       }
 
@@ -1124,6 +1143,7 @@
       }
 
       function startGame() {
+        fighterSyncTracker.clear();
         particles = []; damageNums = []; jutsus = [];
         hitStop = 0; slowMo = 1; frameN = 0; gameOver = false;
         roundResolved = false;

@@ -1,6 +1,6 @@
 (function () {
-  const SAVE_KEY = 'ngs_rpg_save_data';
-  const EQUIPMENT_SAVE_PREFIX = 'ngs_equipment_';
+  const SAVE_KEY = window.NGS_STORAGE?.SAVE_KEY || 'ngs_rpg_save_data';
+  const EQUIPMENT_SAVE_PREFIX = window.NGS_STORAGE?.EQUIPMENT_SAVE_PREFIX || 'ngs_equipment_';
   const DEFAULT_HERO = window.CharacterStatsSystem
     ? window.CharacterStatsSystem.buildHeroSnapshot('naruto', 1, 0, window.CharacterStatsSystem.DEFAULT_RANK)
     : null;
@@ -267,6 +267,7 @@
   }
 
   let currentSlot = null;
+  let modalHandlers = null;
 
   function openModal(slot, rar) {
     currentSlot = slot;
@@ -297,9 +298,15 @@
   }
 
   function bindModalHandlers() {
-    refs.btnClose.addEventListener('click', closeModal);
-    refs.overlay.addEventListener('click', (e) => { if (e.target === refs.overlay) closeModal(); });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && mounted) closeModal(); });
+    if (modalHandlers) return;
+
+    const onCloseClick = () => closeModal();
+    const onOverlayClick = (e) => { if (e.target === refs.overlay) closeModal(); };
+    const onKeydown = (e) => { if (e.key === 'Escape' && mounted) closeModal(); };
+
+    refs.btnClose.addEventListener('click', onCloseClick);
+    refs.overlay.addEventListener('click', onOverlayClick);
+    document.addEventListener('keydown', onKeydown);
 
     refs.btnUpgrade.addEventListener('click', () => {
       if (!currentSlot) return;
@@ -363,6 +370,20 @@
       refs.btnUpgrade.textContent = '✓ ¡MEJORADO!';
       setTimeout(() => { refs.btnUpgrade.textContent = '▲ MEJORAR'; }, 1200);
     });
+
+    modalHandlers = {
+      onCloseClick,
+      onOverlayClick,
+      onKeydown
+    };
+  }
+
+  function unbindModalHandlers() {
+    if (!modalHandlers || !refs) return;
+    refs.btnClose.removeEventListener('click', modalHandlers.onCloseClick);
+    refs.overlay.removeEventListener('click', modalHandlers.onOverlayClick);
+    document.removeEventListener('keydown', modalHandlers.onKeydown);
+    modalHandlers = null;
   }
 
   function cacheRefs(root) {
@@ -411,6 +432,7 @@
   function unmount(hostId = 'hero-system-host') {
     const host = document.getElementById(hostId);
     if (!host) return;
+    unbindModalHandlers();
     host.innerHTML = '';
     mounted = false;
     refs = null;

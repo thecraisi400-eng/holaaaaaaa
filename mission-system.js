@@ -180,6 +180,13 @@
     startFight(index, rank, btnEl) {
       const mission = missionsData[rank]?.[index];
       if (!mission) return;
+      
+      // Si es Rango D, usar el nuevo sistema de batalla
+      if (rank === 'D' && window.BattleRankDSystem) {
+        window.BattleRankDSystem.mount('hero-system-host');
+        return;
+      }
+      
       const card = btnEl.closest('.ms-mission-card');
       if (!card) return;
 

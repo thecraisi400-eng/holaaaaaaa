@@ -50,6 +50,22 @@
     currentRank: null,
     activeBattle: null,
     navCancelHandler: null,
+    pendingTimeouts: new Set(),
+
+
+    registerTimeout(callback, delay) {
+      const timeoutId = window.setTimeout(() => {
+        this.pendingTimeouts.delete(timeoutId);
+        callback();
+      }, delay);
+      this.pendingTimeouts.add(timeoutId);
+      return timeoutId;
+    },
+
+    clearPendingTimeouts() {
+      this.pendingTimeouts.forEach((timeoutId) => window.clearTimeout(timeoutId));
+      this.pendingTimeouts.clear();
+    },
 
     mount() {
       if (this.isMounted()) return;
@@ -69,6 +85,7 @@
     },
 
     unmount() {
+      this.clearPendingTimeouts();
       if (!this.host) return;
       this.host.innerHTML = '';
       if (window.MissionBattleSystem && typeof window.MissionBattleSystem.unmount === 'function') {
@@ -154,6 +171,7 @@
       if (!container) return;
 
       const data = missionsData[rank] || [];
+      this.clearPendingTimeouts();
       container.innerHTML = '';
 
       data.forEach((mission, i) => {
@@ -188,7 +206,8 @@
         card.style.transform = 'translateY(8px)';
         container.appendChild(card);
 
-        setTimeout(() => {
+        this.registerTimeout(() => {
+          if (!container.contains(card)) return;
           card.style.transition = 'opacity .25s ease, transform .25s ease';
           card.style.opacity = '1';
           card.style.transform = 'translateY(0)';
@@ -205,7 +224,9 @@
       if (!card) return;
 
       card.classList.add('ms-combat-flash');
-      setTimeout(() => card.classList.remove('ms-combat-flash'), 600);
+      this.registerTimeout(() => {
+        if (card.isConnected) card.classList.remove('ms-combat-flash');
+      }, 600);
 
       if (rank === 'D' && window.MissionBattleSystem) {
         this.openBattle(mission, rank, index);
@@ -229,7 +250,17 @@
       const rewards = this.root.querySelector('#ms-victoryRewards');
       if (info) info.textContent = `Misión: ${mission.name}`;
       if (rewards) {
-        rewards.innerHTML = `<span style="color:#34d399">+${mission.xp} XP</span> &nbsp;|&nbsp; <span style="color:#fbbf24">+${mission.gold} Oro</span>`;
+        rewards.textContent = '';
+        const xpSpan = document.createElement('span');
+        xpSpan.style.color = '#34d399';
+        xpSpan.textContent = `+${mission.xp} XP`;
+        const separator = document.createTextNode(' | ');
+        const goldSpan = document.createElement('span');
+        goldSpan.style.color = '#fbbf24';
+        goldSpan.textContent = `+${mission.gold} Oro`;
+        rewards.appendChild(xpSpan);
+        rewards.appendChild(separator);
+        rewards.appendChild(goldSpan);
       }
       if (popup) popup.classList.add('show');
     },
@@ -316,7 +347,7 @@
         p.style.animationDuration = `${1.2 + Math.random()}s`;
         p.style.animationDelay = `${Math.random() * 0.3}s`;
         el.appendChild(p);
-        setTimeout(() => p.remove(), 2200);
+        this.registerTimeout(() => { if (p.isConnected) p.remove(); }, 2200);
       }
     }
   };

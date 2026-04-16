@@ -882,7 +882,7 @@
                 this.atkCD = this.buffs.atkSpeedBoost > 0 ? 21 : 42;
                 this.animState = 'attack'; this.animF = 0; this.animT = 0;
               } else if (this.jutsuCD <= 0) this.launchJutsu(enemy);
-            } else if (dist > 140 && this.jutsuCD <= 0 && Math.random() < 0.35) this.launchJutsu(enemy);
+            } else if (dist > 140 && this.canCastJutsu && this.jutsuCD <= 0 && Math.random() < 0.35) this.launchJutsu(enemy);
           }
         }
 

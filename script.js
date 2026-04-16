@@ -12,7 +12,10 @@ const state = {
   heroSnapshot: null,
   expCurrentLevelStart: 0,
   activeSection: 'heroe',
+  inBattle: false,
 };
+
+const SAVE_KEY = 'ngs_rpg_save_data';
 
 function setGold(nextGold) {
   const normalizedGold = Math.max(0, Number(nextGold) || 0);
@@ -21,9 +24,55 @@ function setGold(nextGold) {
   window.dispatchEvent(new CustomEvent('ngs:gold-updated', { detail: { gold: state.gold } }));
 }
 
+function setHp(nextHp) {
+  state.hp = Math.max(0, Math.min(state.hpMax, Number(nextHp) || 0));
+  updateBars();
+}
+
+function setMp(nextMp) {
+  state.mp = Math.max(0, Math.min(state.mpMax, Number(nextMp) || 0));
+  updateBars();
+}
+
+function persistGameState() {
+  try {
+    const savedRaw = localStorage.getItem(SAVE_KEY);
+    if (!savedRaw || !state.heroSnapshot) return;
+    const saveObject = JSON.parse(savedRaw);
+    const nextSave = {
+      ...saveObject,
+      level: state.heroSnapshot.level,
+      exp: state.heroSnapshot.exp,
+      rank: state.heroSnapshot.rank || saveObject.rank || 'GENIN',
+      gold: state.gold,
+      hp: state.hp,
+      mp: state.mp,
+      timestamp: Date.now()
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(nextSave));
+  } catch (error) {
+    console.warn('No se pudo persistir el progreso.', error);
+  }
+}
+
+function rankFromLevel(level) {
+  if (level >= 80) return 'KAGE';
+  if (level >= 60) return 'ANBU';
+  if (level >= 40) return 'JONIN';
+  if (level >= 20) return 'CHUNIN';
+  return 'GENIN';
+}
+
 window.GameState = window.GameState || {};
 window.GameState.getGold = () => state.gold;
 window.GameState.setGold = setGold;
+window.GameState.getHpState = () => ({ hp: state.hp, hpMax: state.hpMax });
+window.GameState.getMpState = () => ({ mp: state.mp, mpMax: state.mpMax });
+window.GameState.setHp = setHp;
+window.GameState.setMp = setMp;
+window.GameState.setBattleActive = (active) => { state.inBattle = Boolean(active); };
+window.GameState.isBattleActive = () => state.inBattle;
+window.GameState.persist = persistGameState;
 
 const sections = {
   heroe:        { icon:'🥷', title:'HÉROE',           desc:'Consulta y mejora el equipo de tu shinobi. Cambia armadura, armas y accesorios para maximizar tu poder de combate.' },
@@ -80,10 +129,14 @@ function syncCharacterSprite(saveData) {
 
 function syncStateFromHero(snapshot) {
   if (!snapshot) return;
+  const keepRuntimeResources = window.GameState?.isBattleActive?.() && state.heroSnapshot?.characterId === snapshot.characterId;
+  const preservedHp = keepRuntimeResources ? state.hp : snapshot.stats.HP;
+  const preservedMp = keepRuntimeResources ? state.mp : snapshot.stats.MP;
+
   state.heroSnapshot = snapshot;
-  state.hp = snapshot.stats.HP;
+  state.hp = Math.max(0, Math.min(snapshot.stats.HP, preservedHp));
   state.hpMax = snapshot.stats.HP;
-  state.mp = snapshot.stats.MP;
+  state.mp = Math.max(0, Math.min(snapshot.stats.MP, preservedMp));
   state.mpMax = snapshot.stats.MP;
   state.exp = snapshot.exp;
   state.expCurrentLevelStart = snapshot.expCurrentLevelStart || 0;
@@ -100,6 +153,46 @@ function syncStateFromHero(snapshot) {
   const defEl = document.getElementById('statDef');
   if (defEl) defEl.textContent = state.def.toLocaleString();
 }
+
+window.ProgressionService = {
+  applyRewards({ xp = 0, gold = 0, source = 'unknown', missionName = '' } = {}) {
+    const hero = window.CharacterStatsSystem?.getActiveHero?.();
+    if (!hero || !window.CharacterStatsSystem) return null;
+
+    const totalXp = Math.max(0, Number(hero.exp || 0) + Math.max(0, Number(xp) || 0));
+    let nextLevel = hero.level || 1;
+    while (nextLevel < 100 && totalXp >= window.CharacterStatsSystem.getXpAtLevel(hero.characterId, nextLevel + 1)) {
+      nextLevel += 1;
+    }
+
+    const nextRank = rankFromLevel(nextLevel);
+    const updatedHero = window.CharacterStatsSystem.buildHeroSnapshot(hero.characterId, nextLevel, totalXp, nextRank);
+    if (!updatedHero) return null;
+    const equipmentBonuses = { ...(hero.equipmentBonuses || {}) };
+    const derivedStats = { ...(updatedHero.stats || {}) };
+    Object.entries(equipmentBonuses).forEach(([key, value]) => {
+      derivedStats[key] = (derivedStats[key] || 0) + (Number(value) || 0);
+    });
+    updatedHero.baseStats = { ...(updatedHero.stats || {}) };
+    updatedHero.equipmentBonuses = equipmentBonuses;
+    updatedHero.stats = derivedStats;
+
+    window.CharacterStatsSystem.setActiveHero(updatedHero);
+    setGold(state.gold + Math.max(0, Number(gold) || 0));
+
+    window.dispatchEvent(new CustomEvent('ngs:progression-updated', {
+      detail: {
+        source,
+        missionName,
+        rewards: { xp, gold },
+        level: updatedHero.level,
+        rank: updatedHero.rank
+      }
+    }));
+    persistGameState();
+    return updatedHero;
+  }
+};
 
 function getSyncedHeroSnapshot(snapshot) {
   const heroFromPanel = window.HeroSystem && typeof window.HeroSystem.getHeroSnapshot === 'function'
@@ -291,6 +384,15 @@ window.addEventListener('ngs:game-entered', (event) => {
       if (window.MissionSystem) {
         window.MissionSystem.setHeroLevel(state.level);
       }
+      if (saveData?.gold != null) {
+        setGold(saveData.gold);
+      }
+      if (saveData?.hp != null) {
+        setHp(saveData.hp);
+      }
+      if (saveData?.mp != null) {
+        setMp(saveData.mp);
+      }
     }
   }
 });
@@ -302,5 +404,29 @@ window.addEventListener('ngs:hero-stats-updated', (event) => {
   updateBars();
   if (window.MissionSystem) {
     window.MissionSystem.setHeroLevel(state.level);
+  }
+});
+
+window.addEventListener('ngs:battle-started', (event) => {
+  const context = event?.detail?.context;
+  if (!context) return;
+  window.GameState.setBattleActive(true);
+});
+
+window.addEventListener('ngs:battle-tick', (event) => {
+  const hero = event?.detail?.hero;
+  if (!hero) return;
+  setHp(hero.hp);
+  if (hero.mp != null) setMp(hero.mp);
+});
+
+window.addEventListener('ngs:battle-ended', (event) => {
+  const detail = event?.detail || {};
+  const delta = detail.delta || {};
+  if (delta.hp != null) setHp(delta.hp);
+  if (delta.mp != null) setMp(delta.mp);
+  if (!detail.nextRound) {
+    window.GameState.setBattleActive(false);
+    persistGameState();
   }
 });

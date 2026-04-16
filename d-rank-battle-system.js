@@ -13,9 +13,9 @@
       this.canvas = root.querySelector('#drb-canvas');
       this.ctx = this.canvas ? this.canvas.getContext('2d') : null;
       this.veil = root.querySelector('#drb-veil');
+      this.roundAnnouncementEl = root.querySelector('#drb-round-announcement');
       this.winnerScreen = root.querySelector('#drb-winner-screen');
       this.winNameEl = root.querySelector('#drb-win-name');
-      this.missionNameEl = root.querySelector('#drb-mission-name');
       this.btnRestart = root.querySelector('#drb-btn-restart');
       this.btnExit = root.querySelector('#drb-btn-exit');
 
@@ -30,7 +30,8 @@
       this.resizeObserver = null;
 
       this.onComplete = null;
-      this.currentMission = null;
+      this.battleContext = null;
+      this.combatAdapter = null;
       this.completionSent = false;
 
       this.particles = [];
@@ -80,16 +81,18 @@
       this.displayH = h;
     }
 
-    mountMission(mission, onComplete) {
-      this.currentMission = mission || null;
+    mountMission(battleContext, onComplete) {
+      this.battleContext = battleContext || null;
       this.onComplete = typeof onComplete === 'function' ? onComplete : null;
       this.completionSent = false;
-      if (this.missionNameEl) {
-        this.missionNameEl.textContent = mission ? `Misión: ${mission.name}` : 'Misión sin definir';
-      }
+      this.combatAdapter = this.createCombatAdapter(this.battleContext);
       this.genBG();
       this.startGame();
       this.start();
+      this.dispatchBattleEvent('ngs:battle-started', {
+        context: this.battleContext,
+        round: this.battleContext?.runtimeModifiers?.round || 1
+      });
     }
 
     start() {
@@ -122,13 +125,64 @@
       this.resolveCompletion(winner ? winner.name : '???', true);
     }
 
+    dispatchBattleEvent(eventName, detail) {
+      window.dispatchEvent(new CustomEvent(eventName, { detail }));
+    }
+
+    createCombatAdapter(battleContext) {
+      const heroStats = battleContext?.heroSnapshot?.combatStats || {};
+      const missionConfig = battleContext?.missionConfig || {};
+      const baseHeroAtk = Number(heroStats.ATK || 8);
+      const baseHeroDef = Number(heroStats.DEF || 8);
+      const enemyAtkRaw = Number(missionConfig.atk || 12);
+      const enemyDefRaw = Number(missionConfig.def || 8);
+      const enemyHpRaw = Number(missionConfig.hp || 100);
+      return {
+        hero: {
+          maxHp: Math.max(1, Number(heroStats.HP || 100)),
+          maxMp: Math.max(0, Number(heroStats.MP || 0)),
+          atk: baseHeroAtk,
+          def: baseHeroDef,
+          critChance: Math.min(0.5, 0.08 + Number(heroStats.CRT || 0) / 100),
+          critMult: 1.45 + Number(heroStats.CDMG || 0) / 100,
+          evadeChance: Math.min(0.45, Number(heroStats.EVA || 0) / 100),
+          incomingMitigation: Math.min(0.65, baseHeroDef / (baseHeroDef + 170))
+        },
+        enemy: {
+          maxHp: Math.max(10, enemyHpRaw),
+          atk: Math.max(4, enemyAtkRaw * 0.46),
+          def: Math.max(4, enemyDefRaw * 0.5),
+          critChance: 0.1,
+          critMult: 1.4,
+          evadeChance: 0.08,
+          incomingMitigation: Math.min(0.6, enemyDefRaw / (enemyDefRaw + 220))
+        }
+      };
+    }
+
     resolveCompletion(winnerName, forcedExit = false) {
       if (this.completionSent) return;
       this.completionSent = true;
       if (this.onComplete) {
         const victory = winnerName === 'UZUMAKI';
-        this.onComplete({ victory, winner: winnerName, mission: this.currentMission, forcedExit });
+        const hero = this.fighters[0];
+        const mpRatio = this.combatAdapter?.hero?.maxMp > 0 ? hero.mp / this.combatAdapter.hero.maxMp : 0;
+        const mpCost = Math.round((this.battleContext?.heroSnapshot?.combatStats?.MP_MAX || this.combatAdapter?.hero?.maxMp || 0) * 0.02);
+        this.onComplete({
+          victory,
+          winner: winnerName,
+          mission: this.battleContext?.missionConfig,
+          forcedExit,
+          battleContext: this.battleContext,
+          deltaStats: { hp: Math.max(0, Math.round(hero.hp)), mp: Math.max(0, Math.round(hero.mp - mpCost)), mpRatio }
+        });
       }
+      this.dispatchBattleEvent('ngs:battle-ended', {
+        result: winnerName === 'UZUMAKI' ? 'victory' : 'defeat',
+        context: this.battleContext,
+        nextRound: false,
+        forcedExit
+      });
     }
 
     showWinner(name) {
@@ -415,8 +469,8 @@
         for (const f of this.fighters) {
           if (f === j.owner || f.isDead || f.invincible) continue;
           if (Math.hypot(j.x - f.cx, j.y - f.cy) < j.size + NW / 2) {
-            const dmg = 10 + Math.random() * 10;
-            f.receiveHit(dmg, j.x, j.owner);
+            const dmgPayload = this.calcDamage(j.owner, f, 'jutsu');
+            f.receiveHit(dmgPayload.damage, j.x, j.owner, dmgPayload.crit);
             for (let i = 0; i < 16; i += 1) {
               const ang = Math.random() * Math.PI * 2;
               const spd = 2 + Math.random() * 4;
@@ -491,8 +545,74 @@
       if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
       if (this.winnerScreen) this.winnerScreen.style.display = 'none';
       this.fighters = [new this.Fighter(this, 70, 0), new this.Fighter(this, 360, 1)];
+      if (this.combatAdapter) {
+        const heroRuntime = this.battleContext?.runtimeModifiers?.playerRuntime || {};
+        const heroMaxHp = this.combatAdapter.hero.maxHp;
+        const heroMaxMp = this.combatAdapter.hero.maxMp;
+        const currentHp = Number(heroRuntime.currentHp ?? heroMaxHp);
+        const currentMp = Number(heroRuntime.currentMp ?? heroMaxMp);
+        this.fighters[0].maxHp = heroMaxHp;
+        this.fighters[0].hp = Math.max(1, Math.min(heroMaxHp, currentHp));
+        this.fighters[0].maxMp = heroMaxMp;
+        this.fighters[0].mp = Math.max(0, Math.min(heroMaxMp, currentMp));
+        this.fighters[0].combat = this.combatAdapter.hero;
+        this.fighters[1].name = 'ENEMIGO D';
+        this.fighters[1].maxHp = this.combatAdapter.enemy.maxHp;
+        this.fighters[1].hp = this.combatAdapter.enemy.maxHp;
+        this.fighters[1].combat = this.combatAdapter.enemy;
+      }
       this.fighters[0].tX = 120 + Math.random() * 80;
       this.fighters[1].tX = 250 + Math.random() * 80;
+    }
+
+    showRoundAnnouncement() {
+      if (!this.roundAnnouncementEl) return;
+      this.roundAnnouncementEl.classList.remove('show');
+      void this.roundAnnouncementEl.offsetWidth;
+      this.roundAnnouncementEl.classList.add('show');
+      setTimeout(() => this.roundAnnouncementEl?.classList.remove('show'), 1050);
+    }
+
+    handleRoundVictory() {
+      const hero = this.fighters[0];
+      const runtime = this.battleContext?.runtimeModifiers?.playerRuntime;
+      if (runtime) {
+        runtime.currentHp = Math.max(1, Math.round(hero.hp));
+        runtime.currentMp = Math.max(0, Math.round(hero.mp));
+      }
+      if (this.battleContext?.runtimeModifiers) {
+        this.battleContext.runtimeModifiers.round = (this.battleContext.runtimeModifiers.round || 1) + 1;
+      }
+      if (this.onComplete) {
+        this.onComplete({
+          victory: true,
+          nextRound: true,
+          mission: this.battleContext?.missionConfig,
+          battleContext: this.battleContext,
+          deltaStats: { hp: runtime?.currentHp, mp: runtime?.currentMp }
+        });
+      }
+      this.dispatchBattleEvent('ngs:battle-ended', {
+        result: 'victory',
+        rewards: { xp: this.battleContext?.missionConfig?.xp || 0, gold: this.battleContext?.missionConfig?.gold || 0 },
+        delta: { hp: runtime?.currentHp, mp: runtime?.currentMp },
+        context: this.battleContext,
+        nextRound: true
+      });
+      this.showRoundAnnouncement();
+      setTimeout(() => this.startGame(), 1000);
+    }
+
+    calcDamage(attacker, defender, type = 'basic') {
+      const atk = attacker.combat?.atk || 10;
+      const base = type === 'jutsu' ? atk * 1.15 : atk * 0.75;
+      const defense = defender.combat?.def || 8;
+      const defenseFactor = defense / (defense + 120);
+      const mitigation = Math.min(0.8, (defender.combat?.incomingMitigation || 0) + defenseFactor * 0.35);
+      let dmg = Math.max(2, base * (1 - mitigation) + Math.random() * 3);
+      const crit = Math.random() < (attacker.combat?.critChance || 0.1);
+      if (crit) dmg *= attacker.combat?.critMult || 1.5;
+      return { damage: dmg, crit };
     }
 
     loop(ts) {
@@ -502,6 +622,13 @@
       const dt = rawDt * this.slowMo;
       const dms = rawDt * 16.667 * this.slowMo;
       this.update(dt, dms);
+      const hero = this.fighters[0];
+      const enemy = this.fighters[1];
+      this.dispatchBattleEvent('ngs:battle-tick', {
+        round: this.battleContext?.runtimeModifiers?.round || 1,
+        hero: { hp: Math.max(0, Math.round(hero?.hp || 0)), mp: Math.max(0, Math.round(hero?.mp || 0)) },
+        enemy: { hp: Math.max(0, Math.round(enemy?.hp || 0)) }
+      });
       this.render();
       this.animationId = requestAnimationFrame(this.boundLoop);
     }
@@ -550,7 +677,7 @@
     get DamageNum() {
       return class DamageNum {
         constructor(x, y, val, crit) {
-          this.x = x; this.y = y; this.val = Math.round(val); this.crit = crit;
+          this.x = x; this.y = y; this.val = typeof val === 'number' ? Math.round(val) : String(val); this.crit = crit;
           this.vx = (Math.random() - 0.5) * 2.5;
           this.vy = -4.5;
           this.life = 60;
@@ -560,13 +687,14 @@
         isDead() { return this.life <= 0; }
         draw(ctx) {
           const a = Math.max(0, this.life / this.maxLife);
-          const sz = this.crit ? 15 : 11;
+          const isText = Number.isNaN(Number(this.val));
+          const sz = isText ? 9 : (this.crit ? 15 : 11);
           ctx.save();
           ctx.globalAlpha = a;
           ctx.font = `bold ${sz}px Arial Black`;
           ctx.textAlign = 'center';
           ctx.strokeStyle = '#000'; ctx.lineWidth = 3.5; ctx.strokeText(this.val, this.x, this.y);
-          ctx.fillStyle = this.crit ? '#FFE040' : '#FF6644'; ctx.fillText(this.val, this.x, this.y);
+          ctx.fillStyle = isText ? '#60a5fa' : (this.crit ? '#FFE040' : '#FF6644'); ctx.fillText(this.val, this.x, this.y);
           if (this.crit) {
             ctx.font = 'bold 7px Arial';
             ctx.fillStyle = '#FFFACC';
@@ -627,6 +755,9 @@
           this.skinColor = id === 0 ? '#F5C09A' : '#D8C8E8';
           this.hp = 100;
           this.maxHp = 100;
+          this.mp = 100;
+          this.maxMp = 100;
+          this.combat = null;
           this.dashTimer = 0;
           this.dashInterval = 800;
           this.tX = x;
@@ -654,8 +785,12 @@
         get cx() { return this.x + NW / 2; }
         get cy() { return this.y + NH / 2; }
 
-        receiveHit(rawDmg, fromX, attacker) {
+        receiveHit(rawDmg, fromX, attacker, forcedCrit = false) {
           if (this.isDead || this.invincible) return;
+          if (Math.random() < (this.combat?.evadeChance || 0.08)) {
+            this.e.damageNums.push(new this.e.DamageNum(this.cx, this.y - 7, 'EVA', false));
+            return;
+          }
           if (Math.random() < 0.15 && this.stunTimer <= 0) {
             this.doKawarimi(attacker);
             return;
@@ -684,7 +819,7 @@
           }
 
           this.hp = Math.max(0, this.hp - dmg);
-          const isCrit = rawDmg >= 14;
+          const isCrit = forcedCrit || rawDmg >= 14;
           this.e.damageNums.push(new this.e.DamageNum(this.cx + (Math.random() - 0.5) * 8, this.y - 5, dmg, isCrit));
           const dir = fromX < this.cx ? 1 : -1;
           const clr = isCrit ? '#FFD700' : '#FF4422';
@@ -719,6 +854,9 @@
 
         launchJutsu(target) {
           if (this.jutsuCD > 0) return;
+          const mpCost = Math.max(2, Math.round(this.maxMp * 0.02));
+          if (this.mp < mpCost) return;
+          this.mp = Math.max(0, this.mp - mpCost);
           this.jutsuCD = 90;
           const dx = target.cx - this.cx;
           const dy = target.cy - this.cy;
@@ -737,6 +875,10 @@
           this.e.slowMo = 0.16;
           this.e.gameOver = true;
           const winner = this.e.fighters.find((f) => !f.isDead);
+          if (winner?.id === 0 && this.id === 1) {
+            setTimeout(() => this.e.handleRoundVictory(), 1100);
+            return;
+          }
           setTimeout(() => this.e.showWinner(winner ? winner.name : '???'), 2600);
         }
 
@@ -828,7 +970,8 @@
           if (!enemy.isDead) {
             const dist = Math.hypot(this.cx - enemy.cx, this.cy - enemy.cy);
             if (dist < 50 && this.atkCD <= 0) {
-              enemy.receiveHit(8 + Math.random() * 7, this.cx, this);
+              const dmgPayload = this.e.calcDamage(this, enemy, 'basic');
+              enemy.receiveHit(dmgPayload.damage, this.cx, this, dmgPayload.crit);
               this.atkCD = 42;
             } else if (dist > 150 && this.jutsuCD <= 0) {
               this.launchJutsu(enemy);
@@ -1005,13 +1148,17 @@
 
   window.DRankBattleSystem = {
     engine: null,
-    mount(rootEl, mission, onComplete) {
+    mount(rootEl, battleContext, onComplete) {
       if (!rootEl) return;
       if (!this.engine || this.engine.root !== rootEl) {
         if (this.engine) this.engine.destroy();
         this.engine = new DRankBattleEngine(rootEl);
       }
-      this.engine.mountMission(mission, onComplete);
+      this.engine.mountMission(battleContext, onComplete);
+    },
+    finishBattle() {
+      if (!this.engine) return;
+      this.engine.finishAndExit();
     },
     unmount() {
       if (!this.engine) return;

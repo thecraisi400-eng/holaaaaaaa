@@ -107,7 +107,7 @@
       });
     },
 
-    createBattleContext(mission) {
+    createBattleContext(mission, missionIndex = 0) {
       const globalHero = window.CharacterStatsSystem?.getActiveHero?.();
       const panelHero = window.HeroSystem?.getHeroSnapshot?.();
       const sourceHero = panelHero && globalHero && panelHero.characterId === globalHero.characterId ? panelHero : (globalHero || panelHero);
@@ -142,7 +142,8 @@
           xp: mission.xp,
           gold: mission.gold,
           lvl: mission.lvl,
-          rank: this.currentRank || 'D'
+          rank: this.currentRank || 'D',
+          missionIndex
         },
         runtimeModifiers: {
           buffs: [],
@@ -245,7 +246,7 @@
 
       if (rank === 'D') {
         this.battleMission = mission;
-        this.battleContext = this.createBattleContext(mission);
+        this.battleContext = this.createBattleContext(mission, index);
         if (!this.battleContext) return;
 
         this.switchView('ms-view-missions', 'ms-view-battle-d', 'forward');

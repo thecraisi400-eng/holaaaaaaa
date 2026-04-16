@@ -5,6 +5,37 @@
   const NW = Math.round(30 * SC);
   const NH = Math.round(50 * SC);
   const G = 0.44;
+  const SPRITE_SIZE = 256;
+  const SPRITE_FRAMES = 4;
+  const SPRITE_FRAME_SIZE = SPRITE_SIZE / SPRITE_FRAMES;
+
+  const HERO_BATTLE_SPRITES = {
+    madara: 'assets/images/madara_battle.png',
+    itachi: 'assets/images/itachi_battle.png',
+    obito: 'assets/images/obito_battle.png',
+    sasuke: 'assets/images/sasuke_battle.png',
+    naruto: 'assets/images/naruto_battle.png',
+    nagato: 'assets/images/nagato_battle.png',
+    kushina: 'assets/images/kushina_battle.png',
+    karin: 'assets/images/karin_battle.png',
+    tsunade: 'assets/images/tsunade_battle.png',
+    hashirama: 'assets/images/hashirama_battle.png',
+    tobirama: 'assets/images/tobirama_battle.png',
+    itama: 'assets/images/itama_battle.png',
+    kaguya: 'assets/images/kaguya_battle.png',
+    hagoromo: 'assets/images/hagoromo_battle.png',
+    indra: 'assets/images/indra_battle.png',
+    asura: 'assets/images/asura_battle.png'
+  };
+
+  const ENEMY_D_RANK_SPRITES = {
+    1: 'assets/images/enemies/rank-d/mission-1.png',
+    2: 'assets/images/enemies/rank-d/mission-2.png',
+    3: 'assets/images/enemies/rank-d/mission-3.png',
+    4: 'assets/images/enemies/rank-d/mission-4.png',
+    5: 'assets/images/enemies/rank-d/mission-5.png',
+    6: 'assets/images/enemies/rank-d/mission-6.png'
+  };
 
   class DRankBattleEngine {
     constructor(root) {
@@ -53,6 +84,7 @@
       this.bgRocks = [];
       this.bgClouds = [];
       this.lastTs = 0;
+      this.spriteCache = new Map();
 
       this.boundLoop = this.loop.bind(this);
       this.bindUI();
@@ -544,7 +576,14 @@
       this.completionSent = false;
       if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
       if (this.winnerScreen) this.winnerScreen.style.display = 'none';
-      this.fighters = [new this.Fighter(this, 70, 0), new this.Fighter(this, 360, 1)];
+      const heroCharacterId = this.battleContext?.heroSnapshot?.characterId || '';
+      const heroSpritePath = HERO_BATTLE_SPRITES[heroCharacterId] || '';
+      const missionIndex = Number(this.battleContext?.missionConfig?.missionIndex ?? 0) + 1;
+      const enemySpritePath = ENEMY_D_RANK_SPRITES[missionIndex] || '';
+
+      const heroProfile = this.buildSpriteProfile(heroSpritePath);
+      const enemyProfile = this.buildSpriteProfile(enemySpritePath);
+      this.fighters = [new this.Fighter(this, 70, 0, heroProfile), new this.Fighter(this, 360, 1, enemyProfile)];
       if (this.combatAdapter) {
         const heroRuntime = this.battleContext?.runtimeModifiers?.playerRuntime || {};
         const heroMaxHp = this.combatAdapter.hero.maxHp;
@@ -571,6 +610,26 @@
       void this.roundAnnouncementEl.offsetWidth;
       this.roundAnnouncementEl.classList.add('show');
       setTimeout(() => this.roundAnnouncementEl?.classList.remove('show'), 1050);
+    }
+
+    buildSpriteProfile(path) {
+      if (!path) return null;
+      return {
+        path,
+        image: this.getSpriteImage(path),
+        frameW: SPRITE_FRAME_SIZE,
+        frameH: SPRITE_FRAME_SIZE,
+        framesPerRow: SPRITE_FRAMES
+      };
+    }
+
+    getSpriteImage(path) {
+      if (!path) return null;
+      if (this.spriteCache.has(path)) return this.spriteCache.get(path);
+      const img = new Image();
+      img.src = path;
+      this.spriteCache.set(path, img);
+      return img;
     }
 
     handleRoundVictory() {
@@ -740,7 +799,7 @@
 
     get Fighter() {
       return class Fighter {
-        constructor(engine, x, id) {
+        constructor(engine, x, id, spriteProfile = null) {
           this.e = engine;
           this.id = id;
           this.x = x;
@@ -781,6 +840,7 @@
           this.isDead = false;
           this.deathT = 0;
           this.deathSmoke = 0;
+          this.spriteProfile = spriteProfile;
         }
         get cx() { return this.x + NW / 2; }
         get cy() { return this.y + NH / 2; }
@@ -991,6 +1051,11 @@
           const deadAlpha = this.isDead ? Math.max(0, 1 - this.deathSmoke) : 1;
           if (deadAlpha <= 0) return;
 
+          if (this.drawSprite(ctx, deadAlpha)) {
+            this.drawHPBar(ctx, deadAlpha);
+            return;
+          }
+
           const flashOn = this.flashTimer > 0 && Math.sin(this.flashTimer * 1.6) > 0;
           const bC = flashOn ? '#FF3333' : this.color;
           const sC = flashOn ? '#FF8866' : this.skinColor;
@@ -1122,6 +1187,54 @@
 
           ctx.restore();
           this.drawHPBar(ctx, deadAlpha);
+        }
+
+        drawSprite(ctx, deadAlpha = 1) {
+          if (!this.spriteProfile?.image?.complete) return false;
+          const image = this.spriteProfile.image;
+          if (!image.naturalWidth || !image.naturalHeight) return false;
+
+          const row = this.getSpriteRow();
+          const frame = this.animF % (this.spriteProfile.framesPerRow || SPRITE_FRAMES);
+          const sx = frame * this.spriteProfile.frameW;
+          const sy = row * this.spriteProfile.frameH;
+
+          ctx.save();
+          ctx.globalAlpha = deadAlpha;
+          if (!this.facingRight) {
+            ctx.translate(this.x + NW / 2, 0);
+            ctx.scale(-1, 1);
+            ctx.translate(-(this.x + NW / 2), 0);
+          }
+
+          const shadowAlpha = Math.max(0, 0.35 - (this.e.GROUND - NH - this.y) * 0.005);
+          ctx.globalAlpha = deadAlpha * shadowAlpha;
+          ctx.fillStyle = 'rgba(0,0,0,.45)';
+          ctx.beginPath();
+          ctx.ellipse(this.x + NW / 2, this.e.GROUND - 1, NW * 0.7, 4, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.globalAlpha = deadAlpha;
+          ctx.drawImage(
+            image,
+            sx,
+            sy,
+            this.spriteProfile.frameW,
+            this.spriteProfile.frameH,
+            this.x,
+            this.y,
+            NW,
+            NH
+          );
+          ctx.restore();
+          return true;
+        }
+
+        getSpriteRow() {
+          if (this.stunTimer > 0 || this.flashTimer > 0) return 3; // hurt
+          if (this.atkCD > 34 || this.jutsuCD > 86) return 2; // attack
+          if (Math.abs(this.vx) + Math.abs(this.vy) > 1.2 || !this.onGround) return 1; // walk
+          return 0; // idle
         }
 
         drawHPBar(ctx, alpha = 1) {

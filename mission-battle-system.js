@@ -758,6 +758,28 @@
           triggerShake(6, 14);
         }
 
+        launchBasicMissile(target) {
+          // Ataque básico a distancia (misil) disponible incluso sin habilidades equipadas
+          if (this.atkCD > 0 || this.jutsuCD > 0) return;
+          if (this.statuses.blind > 0 && Math.random() < 0.30) {
+            this.atkCD = 18;
+            return;
+          }
+          this.atkCD = this.buffs.atkSpeedBoost > 0 ? 21 : 42;
+          this.jutsuCD = 30;
+          let dx = target.cx - this.cx; let dy = target.cy - this.cy;
+          let d = Math.hypot(dx, dy);
+          if (!Number.isFinite(d) || d < 0.001) {
+            dx = this.facingRight ? 1 : -1;
+            dy = 0;
+            d = 1;
+          }
+          const spd = 6;
+          jutsus.push(new Jutsu(this.cx, this.cy, (dx / d) * spd, (dy / d) * spd, this));
+          spawnSparks(this.cx, this.cy, 10, this.glowColor);
+          triggerShake(3, 8);
+        }
+
         die() {
           this.isDead = true; slowMo = 0.16; gameOver = true;
           const winner = fighters.find((f) => !f.isDead);
@@ -882,7 +904,12 @@
                 this.atkCD = this.buffs.atkSpeedBoost > 0 ? 21 : 42;
                 this.animState = 'attack'; this.animF = 0; this.animT = 0;
               } else if (this.jutsuCD <= 0) this.launchJutsu(enemy);
-            } else if (dist > 140 && this.canCastJutsu && this.jutsuCD <= 0 && Math.random() < 0.35) this.launchJutsu(enemy);
+            } else if (dist > 200 && this.canCastJutsu && this.jutsuCD <= 0 && Math.random() < 0.35) {
+              this.launchJutsu(enemy);
+            } else if (dist <= 200 && dist >= 55 && this.atkCD <= 0 && this.jutsuCD <= 0 && Math.random() < 0.25) {
+              // Ataque básico a distancia (misil) incluso sin habilidades equipadas
+              this.launchBasicMissile(enemy);
+            }
           }
         }
 
@@ -1164,11 +1191,23 @@
           return enemyDescription.includes(String(skill.name || '').toLowerCase());
         };
 
+        // Función para verificar si un luchador puede usar habilidades basado en la distancia de 200px
+        const canFighterUseSkillsAtDistance = (fighterId) => {
+          const fighter = fighterById.get(fighterId);
+          const target = fighterId === 0 ? fighterById.get(1) : fighterById.get(0);
+          if (!fighter || !target || fighter.isDead || target.isDead) return false;
+          const distance = Math.hypot(fighter.cx - target.cx, fighter.cy - target.cy);
+          return distance <= 200;
+        };
+
         const castSkillOrb = (casterId, targetId, skillData, meta = {}) => {
           if (gameOver || currentSlowOrb || !skillData) return false;
           const caster = fighterById.get(casterId);
           const target = fighterById.get(targetId);
           if (!caster || !target || caster.isDead || target.isDead || caster.statuses.silence > 0) return false;
+          // Verificar distancia de 200px para usar habilidades
+          const distance = Math.hypot(caster.cx - target.cx, caster.cy - target.cy);
+          if (distance > 200) return false;
           if (!caster.canCastJutsu) return false;
           const orb = new BattleSkillOrb(caster, target, skillData);
           showJutsuAnnouncement(skillData.name, orb);
@@ -1188,7 +1227,11 @@
           getSkillsForFighter: (fighterId) => skillsByFighterId[fighterId] || [],
           canUseSkill: (fighterId, skill) => {
             const fighter = fighterById.get(fighterId);
+            const target = fighterId === 0 ? fighterById.get(1) : fighterById.get(0);
             if (!fighter || !skill || fighter.isDead || fighter.statuses.silence > 0) return false;
+            if (!target || target.isDead) return false;
+            // Verificar distancia de 200px para usar habilidades
+            if (!canFighterUseSkillsAtDistance(fighterId)) return false;
             if (!fighter.canCastJutsu) return false;
             if (fighterId === 0) return Number(window.GameState?.getMp?.() || 0) >= Number(skill.mpCost || 0);
             if (!enemyHasSkillAvailable(skill)) return false;

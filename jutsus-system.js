@@ -5,19 +5,19 @@
     { id: 0, name: 'Bola Fuego', icon: '🔥', element: 'fire', baseDamage: 70, effect: 'Quemadura (Baja -10% HP al enemigo durante 3 segundos)', buff: '', baseCD: 3, currentLevel: 1, mpCost: 25, unlocked: false, sphereColor: '#ff0000' },
     { id: 1, name: 'Llama Fénix', icon: '🔥', element: 'fire', baseDamage: 80, effect: 'Baja Evasión del enemigo en -30% durante 4 segundos', buff: '', baseCD: 3, currentLevel: 1, mpCost: 25, unlocked: false, sphereColor: '#ff0000' },
     { id: 2, name: 'Lanza Ígnea', icon: '🔥', element: 'fire', baseDamage: 60, effect: 'Baja Defensa del enemigo -25% durante 4 segundos', buff: '', baseCD: 3, currentLevel: 1, mpCost: 25, unlocked: false, sphereColor: '#ff0000' },
-    { id: 3, name: 'Explosión Calor', icon: '🔥', element: 'fire', baseDamage: 73, effect: 'Aturdir al enemigo (Stun) al 4 segundos', buff: '', baseCD: 3, currentLevel: 1, mpCost: 25, unlocked: false, sphereColor: '#ff0000' },
+    { id: 3, name: 'Explosión Calor', icon: '🔥', element: 'fire', baseDamage: 73, effect: 'Aumenta Ataque del personaje en 15% durante 3 segundos', buff: '', baseCD: 3, currentLevel: 1, mpCost: 25, unlocked: false, sphereColor: '#ff0000' },
     
     // 🌪️ WIND abilities (White sphere in battle)
     { id: 4, name: 'Ráfaga Veloz', icon: '🌪️', element: 'wind', baseDamage: 60, effect: 'Aumenta Evasion en +15% durante 4 segundos', buff: '', baseCD: 3, currentLevel: 1, mpCost: 25, unlocked: false, sphereColor: '#ffffff' },
-    { id: 5, name: 'Shuriken Viento', icon: '🌪️', element: 'wind', baseDamage: 70, effect: 'Hemorragia Grave al enemigo -25% HP', buff: '', baseCD: 3, currentLevel: 1, mpCost: 25, unlocked: false, sphereColor: '#ffffff' },
+    { id: 5, name: 'Shuriken Viento', icon: '🌪️', element: 'wind', baseDamage: 70, effect: 'Hemorragia Grave al enemigo -15% HP', buff: '', baseCD: 3, currentLevel: 1, mpCost: 25, unlocked: false, sphereColor: '#ffffff' },
     { id: 6, name: 'Cuchilla Vacío', icon: '🌪️', element: 'wind', baseDamage: 73, effect: 'Ignorar la Defensa del enemigo -20%', buff: '', baseCD: 3, currentLevel: 1, mpCost: 25, unlocked: false, sphereColor: '#ffffff' },
-    { id: 7, name: 'Gran Torbellino', icon: '🌪️', element: 'wind', baseDamage: 80, effect: 'Desorientar Enemigo no ataca durante 4 segundos', buff: '', baseCD: 3, currentLevel: 1, mpCost: 25, unlocked: false, sphereColor: '#ffffff' },
+    { id: 7, name: 'Gran Torbellino', icon: '🌪️', element: 'wind', baseDamage: 80, effect: 'Aumento de Velocidad del personaje en 40% durante 3 segundos', buff: '', baseCD: 3, currentLevel: 1, mpCost: 25, unlocked: false, sphereColor: '#ffffff' },
     
     // ⚡ LIGHTNING abilities (Yellow sphere in battle)
     { id: 8, name: 'Cuchilla Rayo', icon: '⚡', element: 'lightning', baseDamage: 70, effect: 'Perforar Defensa del enemigo -35% durante 4 segundos', buff: '', baseCD: 3, currentLevel: 1, mpCost: 25, unlocked: false, sphereColor: '#ffff00' },
     { id: 9, name: 'Armadura Rayo', icon: '⚡', element: 'lightning', baseDamage: 60, effect: 'Aumenta Agilidad en +40% durante 4 segundos', buff: '', baseCD: 3, currentLevel: 1, mpCost: 25, unlocked: false, sphereColor: '#ffff00' },
     { id: 10, name: 'Rayo Veloz', icon: '⚡', element: 'lightning', baseDamage: 80, effect: 'Aumenta El Crítico en +40%', buff: '', baseCD: 3, currentLevel: 1, mpCost: 25, unlocked: false, sphereColor: '#ffff00' },
-    { id: 11, name: 'Trueno Astral', icon: '⚡', element: 'lightning', baseDamage: 73, effect: 'Aturdir al enemigo durante 4 segundos', buff: '', baseCD: 3, currentLevel: 1, mpCost: 25, unlocked: false, sphereColor: '#ffff00' },
+    { id: 11, name: 'Trueno Astral', icon: '⚡', element: 'lightning', baseDamage: 73, effect: 'Baja la velocidad del enemigo en 30% durante 4 segundos', buff: '', baseCD: 3, currentLevel: 1, mpCost: 25, unlocked: false, sphereColor: '#ffff00' },
     
     // 🪨 EARTH abilities (Gray sphere in battle)
     { id: 12, name: 'Roca Sólida', icon: '🪨', element: 'earth', baseDamage: 80, effect: 'Aumenta Defensa en 45% durante 4 segundos', buff: '', baseCD: 3, currentLevel: 1, mpCost: 25, unlocked: false, sphereColor: '#808080' },
@@ -27,7 +27,7 @@
     
     // 🌊 WATER abilities (Blue sphere in battle)
     { id: 16, name: 'Gran Catarata', icon: '🌊', element: 'water', baseDamage: 60, effect: 'Recuperación de MP 20% durante 3 segundo', buff: '', baseCD: 3, currentLevel: 1, mpCost: 25, unlocked: false, sphereColor: '#0000ff' },
-    { id: 17, name: 'Prisión Agua', icon: '🌊', element: 'water', baseDamage: 67, effect: 'Restricción al al enemigo (No mover) durante 4 segundos', buff: '', baseCD: 3, currentLevel: 1, mpCost: 25, unlocked: false, sphereColor: '#0000ff' },
+    { id: 17, name: 'Prisión Agua', icon: '🌊', element: 'water', baseDamage: 67, effect: 'Regenera 7% de HP durante 3 segundos', buff: '', baseCD: 3, currentLevel: 1, mpCost: 25, unlocked: false, sphereColor: '#0000ff' },
     { id: 18, name: 'Tsunami Devastador', icon: '🌊', element: 'water', baseDamage: 80, effect: 'Reducción MP al enemigo 15% durante 3 segundos', buff: '', baseCD: 3, currentLevel: 1, mpCost: 25, unlocked: false, sphereColor: '#0000ff' },
     { id: 19, name: 'Tiburón Hambriento', icon: '🌊', element: 'water', baseDamage: 70, effect: 'Robo de Chakra al enemigo 10% durante 3 segundos', buff: '', baseCD: 3, currentLevel: 1, mpCost: 25, unlocked: false, sphereColor: '#0000ff' }
   ];

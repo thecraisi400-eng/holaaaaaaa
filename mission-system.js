@@ -183,6 +183,17 @@
       const card = btnEl.closest('.ms-mission-card');
       if (!card) return;
 
+      // Si es Rango D, usar el nuevo sistema de batalla
+      if (rank === 'D' && window.BatallaRangoDSystem) {
+        card.classList.add('ms-combat-flash');
+        setTimeout(() => card.classList.remove('ms-combat-flash'), 600);
+        
+        // Iniciar el sistema de batalla con los datos de la misión
+        window.BatallaRangoDSystem.startBattle(mission);
+        return;
+      }
+
+      // Para otros rangos, usar el sistema clásico
       card.classList.add('ms-combat-flash');
       setTimeout(() => card.classList.remove('ms-combat-flash'), 600);
 

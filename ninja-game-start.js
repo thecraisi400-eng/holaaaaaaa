@@ -148,9 +148,22 @@
       const heroSnapshot = window.CharacterStatsSystem
         ? window.CharacterStatsSystem.buildHeroSnapshot(character.id, 1, 0, window.CharacterStatsSystem.DEFAULT_RANK)
         : null;
-      const previewATK = heroSnapshot?.stats?.ATK ?? character.stats.str;
-      const previewHP = heroSnapshot?.stats?.HP ?? 100;
-      const previewMP = heroSnapshot?.stats?.MP ?? 100;
+      
+      // Obtener todas las estadísticas completas del personaje
+      const allStats = heroSnapshot?.stats || {};
+      const previewHP = allStats.HP ?? 100;
+      const previewMP = allStats.MP ?? 100;
+      const previewATK = allStats.ATK ?? character.stats.str;
+      const previewDEF = allStats.DEF ?? 10;
+      const previewAGI = allStats.AGI ?? 10;
+      const previewINT = allStats.INT ?? 10;
+      const previewCRT = allStats.CRT ?? 0;
+      const previewCDMG = allStats.CDMG ?? 0;
+      const previewEVA = allStats.EVA ?? 0;
+      const previewREGEN = allStats.REGEN ?? 0;
+      const previewRES = allStats.RES ?? 0;
+      const previewLCK = allStats.LCK ?? 0;
+
       const card = document.createElement('div');
       card.className = 'ngs-character-card';
 
@@ -164,17 +177,55 @@
       card.innerHTML = `
         <div class="ngs-sprite-idle">${spriteContent}</div>
         <div class="ngs-character-name">${character.name}</div>
-        <div class="ngs-stat-item">
-          <div class="ngs-stat-label"><span>⚔️ ATK</span><span>${previewATK}</span></div>
-          <div class="ngs-stat-bar-container"><div class="ngs-stat-fill ngs-str" style="width: 100%;"></div></div>
-        </div>
-        <div class="ngs-stat-item">
-          <div class="ngs-stat-label"><span>❤️ HP</span><span>${previewHP}</span></div>
-          <div class="ngs-stat-bar-container"><div class="ngs-stat-fill ngs-agi" style="width: 100%;"></div></div>
-        </div>
-        <div class="ngs-stat-item">
-          <div class="ngs-stat-label"><span>🔵 MP</span><span>${previewMP}</span></div>
-          <div class="ngs-stat-bar-container"><div class="ngs-stat-fill ngs-int" style="width: 100%;"></div></div>
+        <div class="ngs-stats-grid">
+          <div class="ngs-stat-item">
+            <div class="ngs-stat-label"><span>❤️ HP</span><span>${previewHP}</span></div>
+            <div class="ngs-stat-bar-container"><div class="ngs-stat-fill ngs-hp" style="width: ${Math.min(100, previewHP / 2)}%;"></div></div>
+          </div>
+          <div class="ngs-stat-item">
+            <div class="ngs-stat-label"><span>🔵 MP</span><span>${previewMP}</span></div>
+            <div class="ngs-stat-bar-container"><div class="ngs-stat-fill ngs-mp" style="width: ${Math.min(100, previewMP / 2)}%;"></div></div>
+          </div>
+          <div class="ngs-stat-item">
+            <div class="ngs-stat-label"><span>⚔️ ATK</span><span>${previewATK}</span></div>
+            <div class="ngs-stat-bar-container"><div class="ngs-stat-fill ngs-atk" style="width: ${Math.min(100, previewATK / 2)}%;"></div></div>
+          </div>
+          <div class="ngs-stat-item">
+            <div class="ngs-stat-label"><span>🛡️ DEF</span><span>${previewDEF}</span></div>
+            <div class="ngs-stat-bar-container"><div class="ngs-stat-fill ngs-def" style="width: ${Math.min(100, previewDEF / 2)}%;"></div></div>
+          </div>
+          <div class="ngs-stat-item">
+            <div class="ngs-stat-label"><span>💨 AGI</span><span>${previewAGI}</span></div>
+            <div class="ngs-stat-bar-container"><div class="ngs-stat-fill ngs-agi" style="width: ${Math.min(100, previewAGI / 2)}%;"></div></div>
+          </div>
+          <div class="ngs-stat-item">
+            <div class="ngs-stat-label"><span>🧠 INT</span><span>${previewINT}</span></div>
+            <div class="ngs-stat-bar-container"><div class="ngs-stat-fill ngs-int" style="width: ${Math.min(100, previewINT / 2)}%;"></div></div>
+          </div>
+          <div class="ngs-stat-item">
+            <div class="ngs-stat-label"><span>◎ CRT</span><span>${previewCRT.toFixed(1)}%</span></div>
+            <div class="ngs-stat-bar-container"><div class="ngs-stat-fill ngs-crt" style="width: ${Math.min(100, previewCRT * 2)}%;"></div></div>
+          </div>
+          <div class="ngs-stat-item">
+            <div class="ngs-stat-label"><span>💥 CDMG</span><span>${previewCDMG.toFixed(1)}%</span></div>
+            <div class="ngs-stat-bar-container"><div class="ngs-stat-fill ngs-cdmg" style="width: ${Math.min(100, previewCDMG)}%;"></div></div>
+          </div>
+          <div class="ngs-stat-item">
+            <div class="ngs-stat-label"><span>〇 EVA</span><span>${previewEVA.toFixed(1)}%</span></div>
+            <div class="ngs-stat-bar-container"><div class="ngs-stat-fill ngs-eva" style="width: ${Math.min(100, previewEVA * 2)}%;"></div></div>
+          </div>
+          <div class="ngs-stat-item">
+            <div class="ngs-stat-label"><span>♥ REGEN</span><span>${previewREGEN.toFixed(1)}%</span></div>
+            <div class="ngs-stat-bar-container"><div class="ngs-stat-fill ngs-regen" style="width: ${Math.min(100, previewREGEN * 5)}%;"></div></div>
+          </div>
+          <div class="ngs-stat-item">
+            <div class="ngs-stat-label"><span>♾️ RES</span><span>${previewRES.toFixed(1)}%</span></div>
+            <div class="ngs-stat-bar-container"><div class="ngs-stat-fill ngs-res" style="width: ${Math.min(100, previewRES * 2)}%;"></div></div>
+          </div>
+          <div class="ngs-stat-item">
+            <div class="ngs-stat-label"><span>✦ LCK</span><span>${previewLCK.toFixed(1)}</span></div>
+            <div class="ngs-stat-bar-container"><div class="ngs-stat-fill ngs-lck" style="width: ${Math.min(100, previewLCK * 2)}%;"></div></div>
+          </div>
         </div>
         <button class="ngs-btn ngs-select-char-btn">Iniciar Aventura</button>
       `;

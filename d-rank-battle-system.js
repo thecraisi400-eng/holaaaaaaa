@@ -5,6 +5,32 @@
   const NW = Math.round(30 * SC);
   const NH = Math.round(50 * SC);
   const G = 0.44;
+  const BATTLE_SPRITES_BY_CHARACTER = {
+    madara: 'assets/images/madara_battle.png',
+    itachi: 'assets/images/itachi_battle.png',
+    obito: 'assets/images/obito_battle.png',
+    sasuke: 'assets/images/sasuke_battle.png',
+    naruto: 'assets/images/naruto_battle.png',
+    nagato: 'assets/images/nagato_battle.png',
+    kushina: 'assets/images/kushina_battle.png',
+    karin: 'assets/images/karin_battle.png',
+    tsunade: 'assets/images/tsunade_battle.png',
+    hashirama: 'assets/images/hashirama_battle.png',
+    tobirama: 'assets/images/tobirama_battle.png',
+    itama: 'assets/images/itama_battle.png',
+    kaguya: 'assets/images/kaguya_battle.png',
+    hagoromo: 'assets/images/hagoromo_battle.png',
+    indra: 'assets/images/indra_battle.png',
+    asura: 'assets/images/asura_battle.png'
+  };
+  const D_RANK_ENEMY_SPRITES_BY_MISSION = {
+    1: '/assets/images/enemies/rank-d/mission-1.png',
+    2: '/assets/images/enemies/rank-d/mission-2.png',
+    3: '/assets/images/enemies/rank-d/mission-3.png',
+    4: '/assets/images/enemies/rank-d/mission-4.png',
+    5: '/assets/images/enemies/rank-d/mission-5.png',
+    6: '/assets/images/enemies/rank-d/mission-6.png'
+  };
 
   class DRankBattleEngine {
     constructor(root) {
@@ -53,6 +79,7 @@
       this.bgRocks = [];
       this.bgClouds = [];
       this.lastTs = 0;
+      this.spriteCache = new Map();
 
       this.boundLoop = this.loop.bind(this);
       this.bindUI();
@@ -545,6 +572,7 @@
       if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
       if (this.winnerScreen) this.winnerScreen.style.display = 'none';
       this.fighters = [new this.Fighter(this, 70, 0), new this.Fighter(this, 360, 1)];
+      this.assignBattleSprites();
       if (this.combatAdapter) {
         const heroRuntime = this.battleContext?.runtimeModifiers?.playerRuntime || {};
         const heroMaxHp = this.combatAdapter.hero.maxHp;
@@ -563,6 +591,24 @@
       }
       this.fighters[0].tX = 120 + Math.random() * 80;
       this.fighters[1].tX = 250 + Math.random() * 80;
+    }
+
+    loadSprite(spritePath) {
+      if (!spritePath) return null;
+      if (this.spriteCache.has(spritePath)) return this.spriteCache.get(spritePath);
+      const image = new Image();
+      image.src = spritePath;
+      this.spriteCache.set(spritePath, image);
+      return image;
+    }
+
+    assignBattleSprites() {
+      const heroId = String(this.battleContext?.heroSnapshot?.characterId || '').toLowerCase();
+      const missionNumber = Number(this.battleContext?.missionConfig?.missionNumber || 1);
+      const heroSpritePath = BATTLE_SPRITES_BY_CHARACTER[heroId] || '';
+      const enemySpritePath = D_RANK_ENEMY_SPRITES_BY_MISSION[missionNumber] || D_RANK_ENEMY_SPRITES_BY_MISSION[1];
+      if (this.fighters[0]) this.fighters[0].setSprite(this.loadSprite(heroSpritePath));
+      if (this.fighters[1]) this.fighters[1].setSprite(this.loadSprite(enemySpritePath));
     }
 
     showRoundAnnouncement() {
@@ -781,9 +827,66 @@
           this.isDead = false;
           this.deathT = 0;
           this.deathSmoke = 0;
+          this.sprite = null;
+          this.spriteFrameCols = 4;
+          this.spriteFrameRows = 4;
+          this.spriteFrameW = 64;
+          this.spriteFrameH = 64;
+          this.spriteAnimTimer = 0;
+          this.spriteAnimFrame = 0;
+          this.spriteState = 'idle';
         }
         get cx() { return this.x + NW / 2; }
         get cy() { return this.y + NH / 2; }
+
+        setSprite(sprite) {
+          this.sprite = sprite || null;
+        }
+
+        getSpriteState() {
+          if (this.stunTimer > 0 || this.flashTimer > 0) return 'hurt';
+          if (this.atkCD > 26 || this.jutsuCD > 82) return 'attack';
+          if (Math.abs(this.vx) > 0.8 || Math.abs(this.vy) > 0.8 || !this.onGround) return 'walk';
+          return 'idle';
+        }
+
+        updateSpriteAnimation(dt) {
+          if (!this.sprite) return;
+          const nextState = this.getSpriteState();
+          if (nextState !== this.spriteState) {
+            this.spriteState = nextState;
+            this.spriteAnimFrame = 0;
+            this.spriteAnimTimer = 0;
+          }
+          this.spriteAnimTimer += dt;
+          if (this.spriteAnimTimer >= 6) {
+            this.spriteAnimTimer = 0;
+            this.spriteAnimFrame = (this.spriteAnimFrame + 1) % this.spriteFrameCols;
+          }
+        }
+
+        drawSprite(ctx, alpha = 1) {
+          if (!this.sprite || !this.sprite.complete || this.sprite.naturalWidth <= 0 || this.sprite.naturalHeight <= 0) return false;
+          const stateRowMap = { idle: 0, walk: 1, attack: 2, hurt: 3 };
+          const row = stateRowMap[this.spriteState] ?? 0;
+          const sx = this.spriteAnimFrame * this.spriteFrameW;
+          const sy = row * this.spriteFrameH;
+          const dw = NW * 2.6;
+          const dh = NH * 2.1;
+          const dx = this.x - (dw - NW) * 0.5;
+          const dy = this.y - (dh - NH) * 0.86;
+
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          if (!this.facingRight) {
+            ctx.translate(this.x + NW / 2, 0);
+            ctx.scale(-1, 1);
+            ctx.translate(-(this.x + NW / 2), 0);
+          }
+          ctx.drawImage(this.sprite, sx, sy, this.spriteFrameW, this.spriteFrameH, dx, dy, dw, dh);
+          ctx.restore();
+          return true;
+        }
 
         receiveHit(rawDmg, fromX, attacker, forcedCrit = false) {
           if (this.isDead || this.invincible) return;
@@ -933,6 +1036,7 @@
           }
 
           this.facingRight = enemy.cx > this.cx;
+          this.updateSpriteAnimation(dt);
           if (this.stunTimer > 0) return;
 
           this.dashTimer += dms;
@@ -966,7 +1070,6 @@
           }
           for (const t of this.trail) t.a -= 0.04 * dt;
           this.trail = this.trail.filter((t) => t.a > 0);
-
           if (!enemy.isDead) {
             const dist = Math.hypot(this.cx - enemy.cx, this.cy - enemy.cy);
             if (dist < 50 && this.atkCD <= 0) {
@@ -990,6 +1093,12 @@
 
           const deadAlpha = this.isDead ? Math.max(0, 1 - this.deathSmoke) : 1;
           if (deadAlpha <= 0) return;
+
+          const usedBattleSprite = this.drawSprite(ctx, deadAlpha);
+          if (usedBattleSprite) {
+            this.drawHPBar(ctx, deadAlpha);
+            return;
+          }
 
           const flashOn = this.flashTimer > 0 && Math.sin(this.flashTimer * 1.6) > 0;
           const bC = flashOn ? '#FF3333' : this.color;

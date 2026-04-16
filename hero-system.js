@@ -322,7 +322,23 @@
     refs = null;
   }
 
-  window.HeroSystem = { mount, unmount, isMounted: () => mounted, setCharacterSprite, getHeroSnapshot };
+  window.HeroSystem = { mount, unmount, isMounted: () => mounted, setCharacterSprite, getHeroSnapshot, grantExperience };
+
+  function grantExperience(amount) {
+    if (!character.hero || !window.CharacterStatsSystem) return;
+    
+    const hero = window.CharacterStatsSystem.getActiveHero();
+    if (!hero) return;
+    
+    const newExp = hero.exp + (amount || 0);
+    const updatedHero = window.CharacterStatsSystem.buildHeroSnapshot(
+      hero.characterId,
+      hero.level,
+      newExp,
+      hero.rank
+    );
+    window.CharacterStatsSystem.setActiveHero(updatedHero);
+  }
 
   window.addEventListener('ngs:hero-stats-updated', (event) => {
     const hero = event?.detail?.hero;

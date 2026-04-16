@@ -49,6 +49,7 @@
     heroLevel: 1,
     currentRank: null,
     battleMission: null,
+    battleContext: null,
 
     mount() {
       if (this.isMounted()) return;
@@ -76,6 +77,7 @@
       this.currentView = 'ms-view-main';
       this.currentRank = null;
       this.battleMission = null;
+      this.battleContext = null;
     },
 
     isMounted() {
@@ -103,6 +105,56 @@
       this.root.querySelectorAll('.ms-rank-btn').forEach((btn) => {
         btn.addEventListener('click', () => this.showMissions(btn.dataset.rank));
       });
+    },
+
+    createBattleContext(mission) {
+      const globalHero = window.CharacterStatsSystem?.getActiveHero?.();
+      const panelHero = window.HeroSystem?.getHeroSnapshot?.();
+      const sourceHero = panelHero && globalHero && panelHero.characterId === globalHero.characterId ? panelHero : (globalHero || panelHero);
+      if (!sourceHero) return null;
+
+      const baseStats = { ...(sourceHero.baseStats || sourceHero.stats || {}) };
+      const derivedStats = { ...(sourceHero.stats || sourceHero.baseStats || {}) };
+      const hpState = window.GameState?.getHpState?.() || { hp: derivedStats.HP || 0, hpMax: derivedStats.HP || 0 };
+      const mpState = window.GameState?.getMpState?.() || { mp: derivedStats.MP || 0, mpMax: derivedStats.MP || 0 };
+
+      return {
+        heroSnapshot: {
+          characterId: sourceHero.characterId,
+          name: sourceHero.name,
+          level: sourceHero.level,
+          rank: sourceHero.rank,
+          baseStats,
+          derivedStats,
+          combatStats: {
+            ...derivedStats,
+            HP: hpState.hp,
+            MP: mpState.mp,
+            HP_MAX: hpState.hpMax || derivedStats.HP || hpState.hp,
+            MP_MAX: mpState.mpMax || derivedStats.MP || mpState.mp
+          }
+        },
+        missionConfig: {
+          name: mission.name,
+          hp: mission.hp,
+          atk: mission.atk,
+          def: mission.def,
+          xp: mission.xp,
+          gold: mission.gold,
+          lvl: mission.lvl,
+          rank: this.currentRank || 'D'
+        },
+        runtimeModifiers: {
+          buffs: [],
+          debuffs: [],
+          events: [],
+          playerRuntime: {
+            currentHp: hpState.hp,
+            currentMp: mpState.mp
+          },
+          round: 1
+        }
+      };
     },
 
     switchView(fromId, toId, direction) {
@@ -193,36 +245,48 @@
 
       if (rank === 'D') {
         this.battleMission = mission;
+        this.battleContext = this.createBattleContext(mission);
+        if (!this.battleContext) return;
+
         this.switchView('ms-view-missions', 'ms-view-battle-d', 'forward');
         const battleRoot = this.root.querySelector('#drb-battle-mision-rango-d');
         if (window.DRankBattleSystem && battleRoot) {
-          window.DRankBattleSystem.mount(battleRoot, mission, (result) => this.onBattleEnd(result));
+          window.DRankBattleSystem.mount(battleRoot, this.battleContext, (result) => this.onBattleEnd(result));
         }
         return;
       }
 
-      this.grantMissionRewards(mission);
+      this.applyMissionRewards(mission, `mission-${rank}`);
       this.showResultPopup(true, mission);
+    },
+
+    applyMissionRewards(mission, source) {
+      if (!window.ProgressionService || typeof window.ProgressionService.applyRewards !== 'function') return;
+      window.ProgressionService.applyRewards({
+        xp: mission.xp,
+        gold: mission.gold,
+        source,
+        missionName: mission.name
+      });
     },
 
     onBattleEnd(result) {
       const mission = result?.mission || this.battleMission;
       if (!mission) return;
+
       if (result?.victory) {
-        this.grantMissionRewards(mission);
+        this.applyMissionRewards(mission, 'battle-rank-d');
       }
+
+      if (result?.nextRound) {
+        this.battleContext = result.battleContext || this.battleContext;
+        return;
+      }
+
       this.showResultPopup(Boolean(result?.victory), mission);
       this.switchView('ms-view-battle-d', 'ms-view-missions', 'back');
       this.battleMission = null;
-    },
-
-    grantMissionRewards(mission) {
-      if (window.HeroSystem && typeof window.HeroSystem.grantExperience === 'function') {
-        window.HeroSystem.grantExperience(mission.xp);
-      }
-      if (window.GameState && typeof window.GameState.getGold === 'function' && typeof window.GameState.setGold === 'function') {
-        window.GameState.setGold(window.GameState.getGold() + mission.gold);
-      }
+      this.battleContext = null;
     },
 
     showResultPopup(victory, mission) {
@@ -251,7 +315,12 @@
       } else if (target === 'ms-view-ranks') {
         this.switchView('ms-view-missions', 'ms-view-ranks', 'back');
       } else if (target === 'ms-view-missions') {
+        if (window.DRankBattleSystem && typeof window.DRankBattleSystem.finishBattle === 'function') {
+          window.DRankBattleSystem.finishBattle();
+        }
         this.switchView('ms-view-battle-d', 'ms-view-missions', 'back');
+        this.battleMission = null;
+        this.battleContext = null;
       }
     },
 

@@ -59,7 +59,7 @@
     0: {
       id: 'mission-1',
       name: 'ENEMIGO M-1',
-      description: 'Sombras encadenantes que usan Grillete Sombrío para inmovilizar y drenar CP.',
+      description: 'Sombras encadenantes que usan Grillete Sombrío para drenar CP.',
       mp: 50,
       skills: [
         {
@@ -70,7 +70,7 @@
           mpCost: 15,
           cooldown: 3,
           sphereColor: '#000000',
-          effect: 'Daño 20HP. Inmoviliza 3s y drena 5% de CP por 3s.',
+          effect: 'Daño 20HP. Drena 5% de CP por 3s.',
           enabled: true
         }
       ]
@@ -699,7 +699,6 @@
             case 'Aliento Vital':
               target.applyStatus('deafness', 4 * sec); this.buffs.debuffImmunity = clampTimer(this.buffs.debuffImmunity, 5 * sec); break;
             case 'Grillete Sombrío':
-              target.applyStatus('root', 3 * sec);
               target.applyStatus('cpDrain', 3 * sec);
               break;
             default:

@@ -1365,3 +1365,363 @@ html, body {
   .ngs-btn { padding: 0.7rem 1rem; font-size: 0.9rem; }
   .ngs-sprite-idle { width: 48px; height: 48px; font-size: 2rem; }
 }
+
+/* ═══════════════════════════════════════════
+   JUTSU SYSTEM (sección JUTSUS) - scoped styles
+   ═══════════════════════════════════════════ */
+.jutsu-system-root {
+  --jsu-bg:#0d1117;
+  --jsu-panel:#131a26;
+  --jsu-accent:#00d4ff;
+  --jsu-gold:#ffd700;
+  --jsu-silver:#c0c8d8;
+  --jsu-red:#ff2244;
+  --jsu-border:#1e2d45;
+  --jsu-text:#a8c4d8;
+  width: 100%;
+  height: 100%;
+  background: var(--jsu-bg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: 'Rajdhani', sans-serif;
+  position: relative;
+}
+
+.jutsu-system-root * { box-sizing: border-box; }
+
+.jsu-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.jsu-top-bar {
+  height: 34px;
+  background: var(--jsu-panel);
+  border-bottom: 1px solid var(--jsu-border);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.jsu-bar-title {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 13px;
+  color: var(--jsu-accent);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.jsu-res-pill {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.jsu-pill {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--jsu-border);
+  border-radius: 2px;
+  padding: 2px 7px;
+  color: var(--jsu-text);
+}
+
+.jsu-pill span { color: var(--jsu-gold); font-weight: 700; }
+
+.jsu-main-area {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.jsu-skill-lib {
+  width: 64%;
+  min-width: 0;
+  padding: 8px;
+  border-right: 1px solid var(--jsu-border);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--jsu-border) transparent;
+}
+
+.jsu-skill-icon {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  background: var(--jsu-panel);
+  border: 1px solid var(--jsu-border);
+  cursor: grab;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  transition: border-color .2s, transform .15s;
+  clip-path: polygon(4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px), 0 4px);
+}
+
+.jsu-skill-icon:hover { border-color: var(--jsu-accent); transform: scale(1.04); }
+.jsu-skill-icon.dragging { opacity: 0.4; transform: scale(0.95); }
+.jsu-skill-icon.lv-sennin { animation: jsu-sennin-glow 1.8s ease-in-out infinite alternate; border-color: var(--jsu-gold); }
+.jsu-skill-icon.lv-silver { border-color: var(--jsu-silver); }
+
+@keyframes jsu-sennin-glow {
+  from { box-shadow: 0 0 6px var(--jsu-gold), inset 0 0 8px rgba(255, 215, 0, 0.15); }
+  to { box-shadow: 0 0 18px var(--jsu-gold), 0 0 30px rgba(255, 215, 0, 0.3), inset 0 0 12px rgba(255, 215, 0, 0.25); }
+}
+
+.jsu-skill-em { font-size: 22px; line-height: 1; }
+.jsu-skill-name {
+  font-size: 8.5px;
+  color: var(--jsu-text);
+  text-align: center;
+  font-weight: 600;
+  line-height: 1.1;
+  padding: 0 2px;
+  letter-spacing: 0.3px;
+}
+
+.jsu-skill-lvl {
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--jsu-accent);
+}
+
+.jsu-skill-icon.lv-sennin .jsu-skill-lvl { color: var(--jsu-gold); }
+.jsu-skill-icon.lv-silver .jsu-skill-lvl { color: var(--jsu-silver); }
+
+.jsu-passive-tag {
+  position: absolute;
+  bottom: 2px;
+  font-size: 6.5px;
+  color: var(--jsu-gold);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.jsu-slot-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-around;
+  padding: 8px 6px;
+}
+
+.jsu-slot-wrap { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+
+.jsu-slot-label {
+  font-size: 9px;
+  color: rgba(168, 196, 216, 0.6);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  font-family: 'Noto Serif JP', serif;
+}
+
+.jsu-slot-circle {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  border: 2px solid var(--jsu-border);
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  position: relative;
+  cursor: pointer;
+  transition: border-color .2s;
+  overflow: hidden;
+}
+
+.jsu-slot-circle.empty { animation: jsu-chakra-pulse 2.5s ease-in-out infinite; }
+.jsu-slot-circle.has-skill { border-color: var(--jsu-accent); animation: none; }
+.jsu-slot-circle.shake { animation: jsu-shake-red 0.4s ease !important; }
+
+@keyframes jsu-chakra-pulse {
+  0%, 100% { border-color: rgba(0, 170, 255, 0.2); box-shadow: 0 0 6px rgba(0, 170, 255, 0.1); }
+  50% { border-color: rgba(0, 170, 255, 0.7); box-shadow: 0 0 16px rgba(0, 170, 255, 0.35), inset 0 0 12px rgba(0, 170, 255, 0.08); }
+}
+
+@keyframes jsu-shake-red {
+  0%, 100% { transform: translateX(0); border-color: var(--jsu-red); }
+  20% { transform: translateX(-5px); border-color: var(--jsu-red); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+.jsu-slot-sname {
+  font-size: 8px;
+  color: var(--jsu-accent);
+  font-weight: 700;
+  text-align: center;
+  padding: 0 4px;
+  line-height: 1.1;
+}
+
+.jsu-slot-aura,
+.jsu-particles-container {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.jsu-particles-container { overflow: hidden; }
+
+.jsu-particle {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  animation: jsu-particle-burst 0.6s ease-out forwards;
+}
+
+@keyframes jsu-particle-burst {
+  0% { opacity: 1; transform: scale(1) translate(0, 0); }
+  100% { opacity: 0; transform: scale(0) translate(var(--tx), var(--ty)); }
+}
+
+.jsu-detail-panel {
+  position: absolute;
+  top: 34px;
+  left: 64%;
+  right: 0;
+  bottom: 22px;
+  background: rgba(13, 17, 23, 0.97);
+  border-left: 1px solid var(--jsu-border);
+  padding: 12px;
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 5;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--jsu-border) transparent;
+}
+
+.jsu-detail-panel.visible { display: flex; }
+
+.jsu-dp-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: var(--jsu-text);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 6px;
+  font-family: 'Rajdhani', sans-serif;
+}
+
+.jsu-dp-close:hover { color: var(--jsu-red); }
+
+.jsu-dp-name {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 14px;
+  color: var(--jsu-accent);
+  border-bottom: 1px solid var(--jsu-border);
+  padding-bottom: 6px;
+  padding-right: 24px;
+}
+
+.jsu-dp-name.gold { color: var(--jsu-gold); }
+
+.jsu-dp-row { display: flex; gap: 4px; font-size: 10px; }
+.jsu-dp-lbl { color: rgba(168, 196, 216, 0.55); min-width: 68px; font-weight: 600; letter-spacing: 0.5px; }
+.jsu-dp-val { color: var(--jsu-text); flex: 1; }
+.jsu-dp-val.jsu-buff { color: #44ff88; }
+.jsu-dp-val.jsu-dmg { color: #ff8844; }
+.jsu-dp-val.jsu-debuff { color: #ff4488; }
+
+.jsu-dp-passive {
+  background: rgba(255, 215, 0, 0.06);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 2px;
+  padding: 5px 7px;
+  font-size: 9px;
+  color: var(--jsu-gold);
+  display: none;
+}
+
+.jsu-dp-lvlbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--jsu-panel);
+  padding: 5px 7px;
+  border-radius: 2px;
+}
+
+.jsu-dp-lvlnum { font-size: 10px; color: var(--jsu-accent); font-weight: 700; min-width: 42px; }
+.jsu-dp-progress { flex: 1; height: 4px; background: rgba(255, 255, 255, 0.08); border-radius: 2px; }
+.jsu-dp-bar { height: 100%; background: var(--jsu-accent); border-radius: 2px; transition: width .3s; }
+.jsu-dp-maxlvl { font-size: 9px; color: var(--jsu-text); }
+
+.jsu-btn-row { display: flex; gap: 6px; margin-top: 2px; }
+
+.jsu-btn-mejorar,
+.jsu-btn-equipar {
+  flex: 1;
+  padding: 5px;
+  border: 1px solid;
+  font-family: 'Noto Serif JP', serif;
+  font-size: 9px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  border-radius: 2px;
+  text-transform: uppercase;
+  font-weight: 700;
+  transition: all .15s;
+}
+
+.jsu-btn-mejorar {
+  background: rgba(255, 215, 0, 0.08);
+  border-color: rgba(255, 215, 0, 0.5);
+  color: var(--jsu-gold);
+}
+
+.jsu-btn-mejorar:hover { background: rgba(255, 215, 0, 0.18); box-shadow: 0 0 8px rgba(255, 215, 0, 0.3); }
+.jsu-btn-mejorar:disabled { opacity: 0.35; cursor: not-allowed; box-shadow: none; }
+
+.jsu-btn-equipar {
+  background: rgba(0, 212, 255, 0.08);
+  border-color: rgba(0, 212, 255, 0.5);
+  color: var(--jsu-accent);
+}
+
+.jsu-btn-equipar:hover { background: rgba(0, 212, 255, 0.18); box-shadow: 0 0 8px rgba(0, 212, 255, 0.3); }
+
+.jsu-upgrade-msg { font-size: 9px; color: var(--jsu-red); min-height: 12px; text-align: center; }
+
+.jsu-status-bar {
+  height: 22px;
+  background: var(--jsu-panel);
+  border-top: 1px solid var(--jsu-border);
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.jsu-status-txt { font-size: 9px; color: rgba(168, 196, 216, 0.45); letter-spacing: 0.5px; }
+.jsu-status-msg { font-size: 9px; color: var(--jsu-accent); margin-left: auto; }

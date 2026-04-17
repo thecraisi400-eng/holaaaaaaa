@@ -10,6 +10,24 @@
       dur: 'Impacto inmediato + DoT 4s'
     },
     {
+      id: 'amaterasu',
+      name: 'Amaterasu',
+      em: '⚫',
+      dmg: '-52 HP + quemadura intensa',
+      efecto: 'Llama negra de alta precisión al objetivo',
+      buff: 'Reduce movilidad del objetivo',
+      dur: 'Impacto directo'
+    },
+    {
+      id: 'yasaka_magatama',
+      name: 'Yasaka Magatama',
+      em: '🌀',
+      dmg: '-45 HP',
+      efecto: 'Proyectil espiritual de mediano alcance',
+      buff: '+8% ATK por 4s',
+      dur: 'Impacto directo'
+    },
+    {
       id: 'kage_bunshin',
       name: 'Kage Bunshin no Jutsu',
       em: '👥',
@@ -26,6 +44,15 @@
       efecto: 'Inmoviliza 4s dentro de esfera ilusoria',
       buff: '+20% ATK por 5s',
       dur: 'Control 4s + buff 5s'
+    },
+    {
+      id: 'shuriken_kage_bunshin',
+      name: 'Shuriken Kage Bunshin',
+      em: '🗡️',
+      dmg: '-38 HP',
+      efecto: 'Multiplica proyectiles y aumenta presión ofensiva',
+      buff: '+6% velocidad de ataque por 4s',
+      dur: 'Impacto directo'
     }
   ];
 

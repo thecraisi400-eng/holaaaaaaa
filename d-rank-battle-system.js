@@ -38,13 +38,17 @@
   };
 
 
-  const AUTO_JUTSU_CHANCE = 0.20;
-  const AUTO_JUTSU_CHECK_FRAMES = 60;
-  const MIN_CAST_DISTANCE_RATIO = 0.40;
+  const AUTO_JUTSU_CHECK_MS = 1000;
+  const PLAYER_AUTO_JUTSU_CHANCE = 0.30;
+  const ENEMY_AUTO_JUTSU_CHANCE = 0.35;
+  const MIN_CAST_DISTANCE_RATIO = 0.35;
   const ITACHI_SKILLS = {
     katon_gokakyu: { id: 'katon_gokakyu', name: 'Katon: Gōkakyū no Jutsu', emoji: '🔥' },
+    amaterasu: { id: 'amaterasu', name: 'Amaterasu', emoji: '⚫' },
+    yasaka_magatama: { id: 'yasaka_magatama', name: 'Yasaka Magatama', emoji: '🌀' },
     kage_bunshin: { id: 'kage_bunshin', name: 'Kage Bunshin no Jutsu', emoji: '👥' },
-    tsukuyomi: { id: 'tsukuyomi', name: 'Tsukuyomi', emoji: '🌑' }
+    tsukuyomi: { id: 'tsukuyomi', name: 'Tsukuyomi', emoji: '🌑' },
+    shuriken_kage_bunshin: { id: 'shuriken_kage_bunshin', name: 'Shuriken Kage Bunshin', emoji: '🗡️' }
   };
 
   class DRankBattleEngine {
@@ -90,6 +94,7 @@
       this.critFlash = 0;
       this.jutsuVeil = 0;
       this.activeTsukuyomi = null;
+      this.skillCinematic = null;
       this.bgMountains = [];
       this.bgMountains2 = [];
       this.bgRocks = [];
@@ -488,7 +493,7 @@
         this.jutsuVeil -= dt;
         if (this.jutsuVeil <= 0) {
           this.jutsuVeil = 0;
-          if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
+          if (this.veil && !this.skillCinematic && !this.activeTsukuyomi) this.veil.style.background = 'rgba(0,0,0,0)';
         }
       }
 
@@ -531,6 +536,7 @@
               const spd = 2 + Math.random() * 4;
               this.particles.push(new this.Particle(this, j.x, j.y, Math.cos(ang) * spd, Math.sin(ang) * spd, j.color, 20, 3, 'spark'));
             }
+            if (this.skillCinematic?.caster === j.owner) this.endSkillCinematic();
             j.dead = true;
           }
         }
@@ -598,6 +604,7 @@
       this.critFlash = 0;
       this.jutsuVeil = 0;
       this.activeTsukuyomi = null;
+      this.skillCinematic = null;
       this.completionSent = false;
       if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
       if (this.winnerScreen) this.winnerScreen.style.display = 'none';
@@ -632,8 +639,12 @@
       const heroLoadout = window.JutsuSystem?.getBattleLoadout?.(heroId) || [];
       this.fighters[0].equippedSkills = heroLoadout.map((skill) => ITACHI_SKILLS[skill.id]).filter(Boolean);
 
-      const enemyLoadout = Array.isArray(this.battleContext?.missionConfig?.enemySkills)
-        ? this.battleContext.missionConfig.enemySkills.map((id) => ITACHI_SKILLS[id]).filter(Boolean)
+      const enemySkillIds = this.battleContext?.missionConfig?.enemyStats?.skills
+        || this.battleContext?.missionConfig?.enemyPanelSkills
+        || this.battleContext?.missionConfig?.enemySkills
+        || [];
+      const enemyLoadout = Array.isArray(enemySkillIds)
+        ? enemySkillIds.map((id) => ITACHI_SKILLS[id]).filter(Boolean)
         : [];
       this.fighters[1].equippedSkills = enemyLoadout;
     }
@@ -741,7 +752,7 @@
       owner.x = Math.max(3, Math.min(this.W - NW - 3, newX));
       owner.y = this.GROUND - NH;
       this.jutsuVeil = 240;
-      if (this.veil) this.veil.style.background = 'rgba(120,0,0,0.25)';
+      this.startSkillCinematic(owner, 'Tsukuyomi');
     }
 
     updateTsukuyomi() {
@@ -760,8 +771,23 @@
       target.status.slowTimer = 240;
       owner.status.atkBuffPct = Math.max(owner.status.atkBuffPct, 20);
       owner.status.atkBuffTimer = 300;
-      this.slowMo = Math.min(this.slowMo, 0.10);
+      this.endSkillCinematic();
       this.triggerShake(7, 24);
+    }
+
+    startSkillCinematic(caster, skillName) {
+      this.skillCinematic = { caster, skillName };
+      this.jutsuVeil = Math.max(this.jutsuVeil, 24);
+      this.slowMo = Math.min(this.slowMo, 0.90);
+      if (caster?.showSkillLabel) caster.showSkillLabel(skillName, true);
+      if (this.veil) this.veil.style.background = 'rgba(0,0,0,0.35)';
+    }
+
+    endSkillCinematic() {
+      if (this.skillCinematic?.caster?.clearSkillLabel) this.skillCinematic.caster.clearSkillLabel();
+      this.skillCinematic = null;
+      this.jutsuVeil = 0;
+      this.slowMo = 1;
       if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
     }
 
@@ -973,7 +999,7 @@
           this.spriteProfile = spriteProfile;
           this.characterId = id === 0 ? (this.e.battleContext?.heroSnapshot?.characterId || '') : `enemy-${this.e.battleContext?.missionConfig?.missionIndex || 0}`;
           this.equippedSkills = [];
-          this.skillCheckTimer = AUTO_JUTSU_CHECK_FRAMES;
+          this.skillCheckTimerMs = AUTO_JUTSU_CHECK_MS;
           this.status = { burnTimer: 0, burnTick: 0, slowTimer: 0, atkBuffPct: 0, atkBuffTimer: 0 };
           this.skillLabel = null;
         }
@@ -1069,29 +1095,33 @@
           });
         }
 
-        maybeActivateAutoSkill(target) {
+        maybeActivateAutoSkill(target, dms) {
           if (this.e.activeTsukuyomi || this.isDead || this.stunTimer > 0 || this.e.hitStop > 0) return;
           const available = this.getActiveCastSkills();
           if (!available.length) return;
           if (this.getDistanceRatio(target) < MIN_CAST_DISTANCE_RATIO) return;
 
-          this.skillCheckTimer -= 1;
-          if (this.skillCheckTimer > 0) return;
-          this.skillCheckTimer = AUTO_JUTSU_CHECK_FRAMES;
+          this.skillCheckTimerMs -= dms;
+          if (this.skillCheckTimerMs > 0) return;
+          this.skillCheckTimerMs = AUTO_JUTSU_CHECK_MS;
 
-          if (Math.random() > AUTO_JUTSU_CHANCE) return;
+          const chance = this.id === 0 ? PLAYER_AUTO_JUTSU_CHANCE : ENEMY_AUTO_JUTSU_CHANCE;
+          if (Math.random() > chance) return;
           const picked = available[Math.floor(Math.random() * available.length)];
           this.activateSkill(picked.id, target);
         }
 
         activateSkill(skillId, target) {
           if (skillId === 'katon_gokakyu') this.castKaton(target);
+          if (skillId === 'amaterasu') this.castGenericProjectile(target, ITACHI_SKILLS.amaterasu);
+          if (skillId === 'yasaka_magatama') this.castGenericProjectile(target, ITACHI_SKILLS.yasaka_magatama);
           if (skillId === 'kage_bunshin') this.castKage(target);
           if (skillId === 'tsukuyomi') this.castTsukuyomi(target);
+          if (skillId === 'shuriken_kage_bunshin') this.castGenericProjectile(target, ITACHI_SKILLS.shuriken_kage_bunshin);
         }
 
         castKaton(target) {
-          this.showSkillLabel('Katon: Gōkakyū no Jutsu', true);
+          this.e.startSkillCinematic(this, 'Katon: Gōkakyū no Jutsu');
           const dx = target.cx - this.cx;
           const dy = target.cy - this.cy;
           const d = Math.hypot(dx, dy) || 1;
@@ -1110,28 +1140,40 @@
               victim.status.burnTick = 0;
               this.status.atkBuffPct = Math.max(this.status.atkBuffPct, 10);
               this.status.atkBuffTimer = 300;
-              this.clearSkillLabel();
-              this.e.slowMo = Math.min(this.e.slowMo, 0.10);
+              this.e.endSkillCinematic();
               this.e.hitStop = Math.max(this.e.hitStop, 3);
               this.e.triggerShake(5, 16);
             }
           }));
           this.e.spawnSparks(this.cx, this.cy, 14, '#ff6a00');
-          this.e.jutsuVeil = 24;
-          this.e.slowMo = Math.min(this.e.slowMo, 0.10);
+        }
+
+        castGenericProjectile(target, skillMeta) {
+          const skillName = skillMeta?.name || 'Jutsu';
+          this.e.startSkillCinematic(this, skillName);
+          const dx = target.cx - this.cx;
+          const dy = target.cy - this.cy;
+          const d = Math.hypot(dx, dy) || 1;
+          this.e.jutsus.push(new this.e.Jutsu(this.cx, this.cy, (dx / d) * 5.2, (dy / d) * 5.2, this, {
+            color: this.id === 0 ? '#7dd3fc' : '#c4b5fd',
+            size: 11,
+            life: 280,
+            target,
+            homing: true,
+            speed: 5.2
+          }));
+          this.e.spawnSparks(this.cx, this.cy, 10, this.id === 0 ? '#60a5fa' : '#a78bfa');
         }
 
         castKage(target) {
-          this.showSkillLabel('Kage Bunshin no Jutsu', false);
+          this.e.startSkillCinematic(this, 'Kage Bunshin no Jutsu');
           this.e.spawnClonePair(this, target);
-          this.e.slowMo = Math.min(this.e.slowMo, 0.10);
+          setTimeout(() => this.e.endSkillCinematic(), 260);
         }
 
         castTsukuyomi(target) {
           if (this.e.activeTsukuyomi) return;
-          this.showSkillLabel('Tsukuyomi', true);
           this.e.beginTsukuyomi(this, target);
-          this.e.slowMo = Math.min(this.e.slowMo, 0.10);
         }
 
 
@@ -1257,8 +1299,8 @@
               const dmgPayload = this.e.calcDamage(this, enemy, 'basic');
               enemy.receiveHit(dmgPayload.damage, this.cx, this, dmgPayload.crit);
               this.atkCD = 42;
-            } else if (dist > 120) {
-              this.maybeActivateAutoSkill(enemy);
+            } else {
+              this.maybeActivateAutoSkill(enemy, dms);
             }
           }
         }
@@ -1479,23 +1521,24 @@
           ctx.fillText(this.name, this.x + NW / 2, by - 3);
           if (this.skillLabel?.text) {
             const text = this.skillLabel.text;
-            ctx.font = 'bold 7px Arial';
+            ctx.font = 'bold 10px Arial Black';
             const tw = ctx.measureText(text).width;
-            const padX = 6;
+            const padX = 8;
             const labelW = tw + padX * 2;
-            const labelH = 14;
-            const lx = this.x + NW / 2 - (labelW / 2);
-            const ly = by - 22;
-            ctx.fillStyle = 'rgba(10,10,18,0.92)';
+            const labelH = 19;
+            const desiredX = this.x + NW / 2 - (labelW / 2);
+            const lx = Math.max(4, Math.min(this.e.W - labelW - 4, desiredX));
+            const ly = Math.max(4, by - 28);
+            ctx.fillStyle = 'rgba(10,10,18,0.95)';
             ctx.strokeStyle = '#f0c060';
-            ctx.lineWidth = 1;
+            ctx.lineWidth = 1.2;
             ctx.beginPath();
             ctx.roundRect(lx, ly, labelW, labelH, 3);
             ctx.fill();
             ctx.stroke();
             ctx.fillStyle = '#f0c060';
             ctx.textAlign = 'left';
-            ctx.fillText(text, lx + padX, ly + 9.5);
+            ctx.fillText(text, lx + padX, ly + 13);
           }
           ctx.restore();
         }

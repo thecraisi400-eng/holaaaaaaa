@@ -1,11 +1,19 @@
 (function () {
-  const JUTSU_LIBRARY = [
+  const DEFAULT_JUTSU_LIBRARY = [
     { id: 0, name: 'Llama Voraz', em: '🔥', dmg: 'Fuego DOT (quemadura continua)', efecto: 'Ceguera — -30% puntería', buff: '+10% Ataque físico', dur: '3s' },
     { id: 1, name: 'Rayo Destellante', em: '⚡', dmg: 'Eléctrico (descarga masiva)', efecto: 'Parálisis — -80% velocidad', buff: '+15% Evasión', dur: '2s' },
     { id: 2, name: 'Ráfaga Cortante', em: '🌀', dmg: 'Corte (laceración profunda)', efecto: 'Hemorragia — daño por tiempo', buff: '+Velocidad de ataque', dur: '2s' },
     { id: 3, name: 'Prisión Hidráulica', em: '💧', dmg: 'Presión (aplastamiento acuático)', efecto: 'Asfixia — bloquea habilidades', buff: '-CD Tiempos de espera', dur: '3s' },
     { id: 4, name: 'Escudo Telúrico', em: '🪨', dmg: 'Impacto (golpe sísmico)', efecto: 'Pesadez — sin saltos', buff: 'Inmunidad a empujones', dur: '3s' },
     { id: 5, name: 'Impacto Brutal', em: '💥', dmg: 'Físico masivo (golpe definitivo)', efecto: 'Aturdimiento total', buff: 'Próximo golpe crítico', dur: '2s' }
+  ];
+  const ITACHI_JUTSU_LIBRARY = [
+    { id: 0, name: 'KATON: GŌKAKYŪ NO JUTSU', em: '🔥', dmg: '-40HP', efecto: 'Quemadura al enemigo -2%HP', buff: 'Aumenta Ataque del personaje en 15%', dur: '4s' },
+    { id: 1, name: 'KAGE BUNSHIN NO JUTSU', em: '👥', dmg: '0HP', efecto: 'Crea 2 Clones con 20% de Estadísticas', buff: '-', dur: '-' },
+    { id: 2, name: 'SHURIKEN JUTSU', em: '🌟', dmg: '-30HP', efecto: 'Crea 5 Shuriken', buff: '-', dur: '-' },
+    { id: 3, name: 'TSUKUYOMI', em: '🌙', dmg: '-70HP', efecto: 'Baja Velocidad del enemigo -50%', buff: 'Aumenta Defensa del personaje +20%', dur: '4s' },
+    { id: 4, name: 'AMATERASU', em: '👁', dmg: '-50HP', efecto: 'Quemadura al enemigo -15%HP', buff: 'Daña al jugador -15%HP', dur: '3s' },
+    { id: 5, name: 'SUSANOO', em: '🛡️', dmg: '-', efecto: 'Baja al enemigo -90% Ataque', buff: 'Aumenta Ataque del personaje en 15%', dur: '4s' }
   ];
 
   const UPGRADE_COSTS = { pergaminos: 15, chakra: 10 };
@@ -15,10 +23,11 @@
     root: null,
     selected: null,
     state: {
-      levels: Array(JUTSU_LIBRARY.length).fill(1),
+      levels: Array(DEFAULT_JUTSU_LIBRARY.length).fill(1),
       slots: [null, null, null],
       resources: { pergaminos: 120, chakra: 85 }
     },
+    activeLibrary: DEFAULT_JUTSU_LIBRARY,
 
     mount() {
       if (this.isMounted()) return;
@@ -30,6 +39,7 @@
       this.host.innerHTML = '';
       this.host.appendChild(tpl.content.cloneNode(true));
       this.root = this.host.querySelector('#jutsu-system-root');
+      this.syncLibraryByCharacter();
       this.bindEvents();
       this.renderLib();
       this.renderSlots();
@@ -69,6 +79,26 @@
       if (equipBtn) equipBtn.addEventListener('click', () => this.equipFromDetail());
     },
 
+    getCurrentCharacterId() {
+      try {
+        const savedRaw = localStorage.getItem('ngs_rpg_save_data');
+        if (!savedRaw) return '';
+        const saved = JSON.parse(savedRaw);
+        return String(saved?.characterId || '').toLowerCase();
+      } catch (error) {
+        return '';
+      }
+    },
+
+    syncLibraryByCharacter() {
+      const characterId = this.getCurrentCharacterId();
+      this.activeLibrary = characterId === 'itachi' ? ITACHI_JUTSU_LIBRARY : DEFAULT_JUTSU_LIBRARY;
+    },
+
+    getLibrary() {
+      return this.activeLibrary || DEFAULT_JUTSU_LIBRARY;
+    },
+
     getLvlClass(lv) {
       if (lv >= 10) return 'lv-sennin';
       if (lv >= 6) return 'lv-silver';
@@ -80,7 +110,7 @@
       if (!lib) return;
       lib.innerHTML = '';
 
-      JUTSU_LIBRARY.forEach((jutsu) => {
+      this.getLibrary().forEach((jutsu) => {
         const lv = this.state.levels[jutsu.id];
         const cls = this.getLvlClass(lv);
         const item = document.createElement('div');
@@ -106,7 +136,7 @@
     },
 
     openDetail(id) {
-      const jutsu = JUTSU_LIBRARY[id];
+      const jutsu = this.getJutsuById(id);
       if (!jutsu) return;
       const lv = this.state.levels[id];
       this.selected = id;
@@ -163,7 +193,7 @@
       this.state.levels[id] += 1;
 
       this.syncResources();
-      this.setStatus(`⬆ ${JUTSU_LIBRARY[id].name} mejorado → Lv ${this.state.levels[id]}`);
+      this.setStatus(`⬆ ${this.getJutsuById(id)?.name || 'Jutsu'} mejorado → Lv ${this.state.levels[id]}`);
       this.openDetail(id);
       this.renderLib();
       this.renderSlots();
@@ -178,7 +208,7 @@
         this.state.slots[empty] = id;
         this.renderSlots();
         this.spawnParticles(empty);
-        this.setStatus(`⬣ ${JUTSU_LIBRARY[id].name} equipado en slot ${empty + 1}`);
+        this.setStatus(`⬣ ${this.getJutsuById(id)?.name || 'Jutsu'} equipado en slot ${empty + 1}`);
       } else {
         this.state.slots[2] = id;
         this.renderSlots();
@@ -201,7 +231,7 @@
 
       this.renderSlots();
       this.spawnParticles(slot);
-      this.setStatus(`⬣ ${JUTSU_LIBRARY[id].name} equipado`);
+      this.setStatus(`⬣ ${this.getJutsuById(id)?.name || 'Jutsu'} equipado`);
     },
 
     renderSlots() {
@@ -212,7 +242,7 @@
         const name = this.root.querySelector(`#jsuSlotName${i}`);
 
         if (id != null) {
-          const jutsu = JUTSU_LIBRARY[id];
+          const jutsu = this.getJutsuById(id);
           circle.classList.remove('empty');
           circle.classList.add('has-skill');
           em.style.fontSize = '28px';
@@ -279,7 +309,7 @@
     },
 
     getJutsuById(id) {
-      return JUTSU_LIBRARY.find((jutsu) => jutsu.id === Number(id)) || null;
+      return this.getLibrary().find((jutsu) => jutsu.id === Number(id)) || null;
     },
 
     getEquippedSkills() {
@@ -289,6 +319,15 @@
         .map((jutsu) => ({ ...jutsu }));
     }
   };
+
+  window.addEventListener('ngs:game-entered', () => {
+    if (!window.JutsuSystem) return;
+    window.JutsuSystem.syncLibraryByCharacter();
+    if (window.JutsuSystem.isMounted()) {
+      window.JutsuSystem.renderLib();
+      window.JutsuSystem.renderSlots();
+    }
+  });
 
   window.JutsuSystem = JutsuSystem;
 }());

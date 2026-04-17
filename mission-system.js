@@ -1,12 +1,12 @@
 (function () {
   const missionsData = {
     D: [
-      { name: 'Eliminar lobos hambrientos', xp: 8, gold: 4, hp: 60, atk: 15, def: 7, lvl: 1 },
-      { name: 'Recuperar suministros robados por goblins', xp: 4, gold: 8, hp: 174, atk: 43, def: 28, lvl: 3 },
-      { name: 'Proteger la aldea de jabalíes', xp: 6, gold: 12, hp: 210, atk: 61, def: 39, lvl: 5 },
-      { name: 'Investigar ruinas infestadas de ratas gigantes', xp: 8, gold: 16, hp: 246, atk: 78, def: 50, lvl: 7 },
-      { name: 'Escoltar a un mercader (bandido)', xp: 9, gold: 18, hp: 264, atk: 87, def: 55, lvl: 9 },
-      { name: 'Cazar una bestia nocturna', xp: 10, gold: 20, hp: 282, atk: 96, def: 61, lvl: 12 }
+      { name: 'Eliminar lobos hambrientos', xp: 8, gold: 4, hp: 60, atk: 15, def: 7, lvl: 1, enemySkills: [0] },
+      { name: 'Recuperar suministros robados por goblins', xp: 4, gold: 8, hp: 174, atk: 43, def: 28, lvl: 3, enemySkills: [0, 2] },
+      { name: 'Proteger la aldea de jabalíes', xp: 6, gold: 12, hp: 210, atk: 61, def: 39, lvl: 5, enemySkills: [1, 3] },
+      { name: 'Investigar ruinas infestadas de ratas gigantes', xp: 8, gold: 16, hp: 246, atk: 78, def: 50, lvl: 7, enemySkills: [2, 4] },
+      { name: 'Escoltar a un mercader (bandido)', xp: 9, gold: 18, hp: 264, atk: 87, def: 55, lvl: 9, enemySkills: [3, 5] },
+      { name: 'Cazar una bestia nocturna', xp: 10, gold: 20, hp: 282, atk: 96, def: 61, lvl: 12, enemySkills: [0, 4, 5] }
     ],
     C: [
       { name: 'Limpiar una mina de murciélagos vampíricos', xp: 12, gold: 24, hp: 318, atk: 113, def: 72, lvl: 14 },
@@ -142,6 +142,7 @@
           xp: mission.xp,
           gold: mission.gold,
           lvl: mission.lvl,
+          enemySkills: Array.isArray(mission.enemySkills) ? [...mission.enemySkills] : [],
           rank: this.currentRank || 'D',
           missionIndex
         },

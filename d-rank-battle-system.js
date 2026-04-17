@@ -495,6 +495,26 @@
       return (Math.abs(a.cx - b.cx) / safeWidth) * 100;
     }
 
+    resolveSkillKind(skillMeta = {}) {
+      const byId = Number(skillMeta?.id);
+      if (!Number.isNaN(byId)) {
+        if (byId === 0) return 'katon';
+        if (byId === 1) return 'kage_bunshin';
+        if (byId === 2) return 'shuriken';
+        if (byId === 3) return 'tsukuyomi';
+        if (byId === 4) return 'amaterasu';
+        if (byId === 5) return 'susanoo';
+      }
+      const raw = String(skillMeta?.name || '').toLowerCase();
+      if (raw.includes('katon') || raw.includes('gōkakyū') || raw.includes('gokakyu')) return 'katon';
+      if (raw.includes('bunshin')) return 'kage_bunshin';
+      if (raw.includes('shuriken')) return 'shuriken';
+      if (raw.includes('tsukuyomi')) return 'tsukuyomi';
+      if (raw.includes('amaterasu')) return 'amaterasu';
+      if (raw.includes('susanoo')) return 'susanoo';
+      return 'generic';
+    }
+
     beginSkillCast(owner, skillName, sourceJutsu) {
       this.activeSkillCast = {
         owner,
@@ -551,8 +571,15 @@
         for (const f of this.fighters) {
           if (f === j.owner || f.isDead || f.invincible) continue;
           if (Math.hypot(j.x - f.cx, j.y - f.cy) < j.size + NW / 2) {
-            const dmgPayload = this.calcDamage(j.owner, f, 'jutsu');
-            f.receiveHit(dmgPayload.damage, j.x, j.owner, dmgPayload.crit);
+            const meta = j.meta || {};
+            if (meta.baseDamage > 0) {
+              const skillDamage = meta.baseDamage * (j.owner.atkBuffMult || 1);
+              f.receiveHit(skillDamage, j.x, j.owner, skillDamage >= 30);
+            } else if (!meta.noImpactDamage) {
+              const dmgPayload = this.calcDamage(j.owner, f, 'jutsu');
+              f.receiveHit(dmgPayload.damage, j.x, j.owner, dmgPayload.crit);
+            }
+            j.owner.applySkillOnHit(meta, f);
             for (let i = 0; i < 16; i += 1) {
               const ang = Math.random() * Math.PI * 2;
               const spd = 2 + Math.random() * 4;
@@ -716,9 +743,9 @@
     }
 
     calcDamage(attacker, defender, type = 'basic') {
-      const atk = attacker.combat?.atk || 10;
+      const atk = (attacker.combat?.atk || 10) * (attacker.atkBuffMult || 1) * (attacker.atkDebuffMult || 1);
       const base = type === 'jutsu' ? atk * 1.15 : atk * 0.75;
-      const defense = defender.combat?.def || 8;
+      const defense = (defender.combat?.def || 8) * (defender.defBuffMult || 1);
       const defenseFactor = defense / (defense + 120);
       const mitigation = Math.min(0.8, (defender.combat?.incomingMitigation || 0) + defenseFactor * 0.35);
       let dmg = Math.max(2, base * (1 - mitigation) + Math.random() * 3);
@@ -846,20 +873,63 @@
 
     get Jutsu() {
       return class Jutsu {
-        constructor(x, y, vx, vy, owner, skillName = 'Jutsu') {
+        constructor(x, y, vx, vy, owner, skillName = 'Jutsu', meta = {}) {
           this.x = x; this.y = y; this.vx = vx; this.vy = vy; this.owner = owner;
-          this.color = owner.glowColor; this.size = 9; this.life = 200; this.dead = false; this.trail = [];
+          this.color = meta.color || owner.glowColor;
+          this.size = meta.size || 9;
+          this.life = meta.life || 200;
+          this.dead = false;
+          this.trail = [];
           this.skillName = skillName;
+          this.meta = meta;
+          this.rotation = 0;
         }
         update(dt) {
           this.trail.unshift({ x: this.x, y: this.y });
-          if (this.trail.length > 12) this.trail.pop();
+          if (this.trail.length > (this.meta?.trailLength || 12)) this.trail.pop();
+          const target = this.meta?.target;
+          if (this.meta?.homing && target && !target.isDead) {
+            const dx = target.cx - this.x;
+            const dy = target.cy - this.y;
+            const len = Math.hypot(dx, dy) || 1;
+            const desiredSpeed = this.meta.speed || 5;
+            const tx = (dx / len) * desiredSpeed;
+            const ty = (dy / len) * desiredSpeed;
+            this.vx += (tx - this.vx) * 0.08 * dt;
+            this.vy += (ty - this.vy) * 0.08 * dt;
+          }
           this.x += this.vx * dt; this.y += this.vy * dt; this.life -= dt;
+          this.rotation += 0.22 * dt;
           const e = this.owner.e;
           if (this.x < -12 || this.x > e.W + 12 || this.y < -12 || this.y > e.H + 12 || this.life <= 0) this.dead = true;
-          if (Math.random() < 0.35) e.particles.push(new e.Particle(e, this.x, this.y, (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 1.5, this.color, 10, 2, 'spark'));
+          if (Math.random() < 0.35) {
+            const trailColor = this.meta?.trailColor || this.color;
+            e.particles.push(new e.Particle(e, this.x, this.y, (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 1.5, trailColor, 10, 2, 'spark'));
+          }
         }
         draw(ctx) {
+          if (this.meta?.shape === 'shuriken') {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.rotate(this.rotation);
+            ctx.fillStyle = '#9CA3AF';
+            ctx.strokeStyle = '#E5E7EB';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for (let i = 0; i < 4; i += 1) {
+              const angle = (i / 4) * Math.PI * 2;
+              const nextAngle = ((i + 0.5) / 4) * Math.PI * 2;
+              const outer = this.size * 1.5;
+              const inner = this.size * 0.5;
+              ctx.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
+              ctx.lineTo(Math.cos(nextAngle) * inner, Math.sin(nextAngle) * inner);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+            return;
+          }
           for (let i = 0; i < this.trail.length; i += 1) {
             const t = this.trail[i];
             const r = this.size * (1 - i / this.trail.length) * 0.9;
@@ -923,6 +993,16 @@
           this.deathSmoke = 0;
           this.spriteProfile = spriteProfile;
           this.skillDecisionTimer = 0;
+          this.atkBuffMult = 1;
+          this.atkBuffTimer = 0;
+          this.defBuffMult = 1;
+          this.defBuffTimer = 0;
+          this.atkDebuffMult = 1;
+          this.atkDebuffTimer = 0;
+          this.slowMult = 1;
+          this.slowTimer = 0;
+          this.dotEffects = [];
+          this.cloneStrikes = [];
         }
         get cx() { return this.x + NW / 2; }
         get cy() { return this.y + NH / 2; }
@@ -1000,17 +1080,135 @@
           if (this.mp < mpCost) return;
           this.mp = Math.max(0, this.mp - mpCost);
           this.jutsuCD = 90;
+          const skillName = skillMeta?.name || 'Jutsu';
+          const kind = this.e.resolveSkillKind(skillMeta);
           const dx = target.cx - this.cx;
           const dy = target.cy - this.cy;
           const d = Math.sqrt(dx * dx + dy * dy) || 1;
-          const spd = 5;
-          const skillName = skillMeta?.name || 'Jutsu';
-          const launchedJutsu = new this.e.Jutsu(this.cx, this.cy, (dx / d) * spd, (dy / d) * spd, this, skillName);
-          this.e.jutsus.push(launchedJutsu);
+          const ux = dx / d;
+          const uy = dy / d;
+          let launchedJutsu = null;
+
+          if (kind === 'kage_bunshin') {
+            for (let i = 0; i < 2; i += 1) {
+              this.cloneStrikes.push({
+                remainingMs: 2400,
+                intervalMs: 500,
+                tickMs: i * 180,
+                target
+              });
+            }
+            this.e.spawnSmoke(this.cx, this.cy, 10);
+          } else if (kind === 'tsukuyomi') {
+            target.receiveHit(70 * this.atkBuffMult, this.cx, this, true);
+            target.slowMult = 0.5;
+            target.slowTimer = 4000;
+            this.defBuffMult = 1.2;
+            this.defBuffTimer = 4000;
+            for (let i = 0; i < 12; i += 1) this.e.particles.push(new this.e.Particle(this.e, target.cx, target.cy, (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 3, '#C4B5FD', 24, 2.5, 'spark'));
+          } else if (kind === 'susanoo') {
+            target.atkDebuffMult = 0.1;
+            target.atkDebuffTimer = 4000;
+            this.atkBuffMult = 1.15;
+            this.atkBuffTimer = 4000;
+            for (let i = 0; i < 16; i += 1) this.e.particles.push(new this.e.Particle(this.e, this.cx, this.cy, (Math.random() - 0.5) * 4, (Math.random() - 0.5) * 4, '#60A5FA', 30, 3, 'spark'));
+          } else {
+            let speed = 5;
+            let meta = { kind, target };
+            if (kind === 'katon') {
+              speed = 4.2;
+              meta = { ...meta, size: 15, color: '#ff6b00', trailColor: '#ffd166', homing: true, speed, life: 240, baseDamage: 40 };
+            } else if (kind === 'amaterasu') {
+              const selfDmg = this.maxHp * 0.15;
+              this.hp = Math.max(1, this.hp - selfDmg);
+              this.e.damageNums.push(new this.e.DamageNum(this.cx, this.y - 10, Math.round(selfDmg), false));
+              speed = 3.7;
+              meta = { ...meta, size: 12, color: '#111111', trailColor: '#2f2f2f', homing: true, speed, life: 230, baseDamage: 50 };
+            } else if (kind === 'shuriken') {
+              const count = 5;
+              for (let i = 0; i < count; i += 1) {
+                const spread = (i - (count - 1) / 2) * 0.1;
+                const vx = (ux + spread) * 6;
+                const vy = (uy + spread * 0.4) * 6;
+                const shMeta = { kind, target, shape: 'shuriken', size: 6, color: '#9CA3AF', trailColor: '#D1D5DB', homing: true, speed: 6, life: 180, baseDamage: 30 / count };
+                const shurikenShot = new this.e.Jutsu(this.cx, this.cy, vx, vy, this, skillName, shMeta);
+                this.e.jutsus.push(shurikenShot);
+                if (i === 0) launchedJutsu = shurikenShot;
+              }
+            } else {
+              meta = { ...meta, size: 9 };
+            }
+
+            if (kind !== 'shuriken') {
+              launchedJutsu = new this.e.Jutsu(this.cx, this.cy, ux * speed, uy * speed, this, skillName, meta);
+              this.e.jutsus.push(launchedJutsu);
+            }
+          }
+
           this.e.beginSkillCast(this, skillName, launchedJutsu);
+          if (!launchedJutsu) {
+            setTimeout(() => this.e.endSkillCastIfMatched(null), 450);
+          }
           this.e.spawnSparks(this.cx, this.cy, 14, this.glowColor);
           this.e.triggerShake(6, 14);
           this.flashTimer = 8;
+        }
+
+        applySkillOnHit(meta, target) {
+          const kind = meta?.kind || 'generic';
+          if (kind === 'katon') {
+            target.dotEffects.push({ remainingMs: 4000, dpsPct: 0.02, tickMs: 0, color: '#F97316' });
+            this.atkBuffMult = 1.15;
+            this.atkBuffTimer = 4000;
+          } else if (kind === 'amaterasu') {
+            target.dotEffects.push({ remainingMs: 3000, dpsPct: 0.15, tickMs: 0, color: '#111111' });
+          }
+        }
+
+        updateTimedEffects(dms) {
+          if (this.atkBuffTimer > 0) {
+            this.atkBuffTimer -= dms;
+            if (this.atkBuffTimer <= 0) this.atkBuffMult = 1;
+          }
+          if (this.defBuffTimer > 0) {
+            this.defBuffTimer -= dms;
+            if (this.defBuffTimer <= 0) this.defBuffMult = 1;
+          }
+          if (this.atkDebuffTimer > 0) {
+            this.atkDebuffTimer -= dms;
+            if (this.atkDebuffTimer <= 0) this.atkDebuffMult = 1;
+          }
+          if (this.slowTimer > 0) {
+            this.slowTimer -= dms;
+            if (this.slowTimer <= 0) this.slowMult = 1;
+          }
+
+          this.dotEffects = this.dotEffects.filter((dot) => {
+            dot.remainingMs -= dms;
+            dot.tickMs += dms;
+            if (dot.tickMs >= 250) {
+              dot.tickMs = 0;
+              const damage = (this.maxHp * dot.dpsPct) / 4;
+              this.hp = Math.max(0, this.hp - damage);
+              this.e.damageNums.push(new this.e.DamageNum(this.cx + (Math.random() - 0.5) * 6, this.y - 5, Math.max(1, Math.round(damage)), false));
+              if (Math.random() < 0.9) this.e.particles.push(new this.e.Particle(this.e, this.cx, this.cy, (Math.random() - 0.5) * 2, -1 - Math.random(), dot.color, 18, 2, 'spark'));
+              if (this.hp <= 0 && !this.isDead) this.die();
+            }
+            return dot.remainingMs > 0;
+          });
+
+          this.cloneStrikes = this.cloneStrikes.filter((cloneStrike) => {
+            cloneStrike.remainingMs -= dms;
+            cloneStrike.tickMs += dms;
+            const target = cloneStrike.target;
+            if (cloneStrike.tickMs >= cloneStrike.intervalMs && target && !target.isDead) {
+              cloneStrike.tickMs = 0;
+              const cloneDamage = (this.combat?.atk || 10) * 0.2;
+              target.receiveHit(cloneDamage, this.cx, this, false);
+              this.e.spawnSmoke(target.cx, target.cy, 4);
+            }
+            return cloneStrike.remainingMs > 0 && target && !target.isDead;
+          });
         }
 
         tryCastEquippedSkill(enemy, elapsedMs) {
@@ -1070,6 +1268,7 @@
             if (this.shieldBreakTimer <= 0) this.shieldBroken = false;
           }
           if (this.shieldTime > 0) this.shieldTime = Math.max(0, this.shieldTime - dms);
+          this.updateTimedEffects(dms);
           this.dmgBurstTimer += dms;
           if (this.dmgBurstTimer >= 2000) {
             this.dmgBurstTimer = 0;
@@ -1079,7 +1278,7 @@
           if (!this.onGround) this.vy += G * dt;
           this.x += this.vx * dt;
           this.y += this.vy * dt;
-          this.vx *= 0.87;
+          this.vx *= this.slowMult < 1 ? 0.82 : 0.87;
           if (this.y >= this.e.GROUND - NH) { this.y = this.e.GROUND - NH; this.vy = 0; this.onGround = true; } else this.onGround = false;
           if (this.y < 4) { this.y = 4; this.vy = 0; }
 
@@ -1105,11 +1304,12 @@
             this.tY = aerial ? this.e.GROUND - NH - 55 - Math.random() * 130 : this.e.GROUND - NH;
           }
 
+          const moveMult = this.slowMult || 1;
           const tdx = this.tX - this.x;
           const tdy = this.tY - this.y;
           const tLen = Math.sqrt(tdx * tdx + tdy * tdy);
           if (tLen > 8) {
-            this.vx += (tdx / tLen) * 5 * 0.26;
+            this.vx += (tdx / tLen) * 5 * 0.26 * moveMult;
             if (tdy < -22 && this.onGround) {
               this.vy = -11;
               this.onGround = false;

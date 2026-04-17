@@ -284,7 +284,11 @@
         return;
       }
 
-      this.showResultPopup(Boolean(result?.victory), mission);
+      if (result?.victory) {
+        this.showResultPopup(true, mission);
+      } else {
+        this.closeVictory();
+      }
       this.switchView('ms-view-battle-d', 'ms-view-missions', 'back');
       this.battleMission = null;
       this.battleContext = null;

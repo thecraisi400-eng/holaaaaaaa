@@ -16,6 +16,9 @@ const state = {
 };
 
 const SAVE_KEY = 'ngs_rpg_save_data';
+const HERO_REGEN_RATE_PER_SECOND = 0.07;
+const HERO_REGEN_INTERVAL_MS = 1000;
+let heroRegenIntervalId = null;
 
 function setGold(nextGold) {
   const normalizedGold = Math.max(0, Number(nextGold) || 0);
@@ -129,9 +132,9 @@ function syncCharacterSprite(saveData) {
 
 function syncStateFromHero(snapshot) {
   if (!snapshot) return;
-  const keepRuntimeResources = window.GameState?.isBattleActive?.() && state.heroSnapshot?.characterId === snapshot.characterId;
-  const preservedHp = keepRuntimeResources ? state.hp : snapshot.stats.HP;
-  const preservedMp = keepRuntimeResources ? state.mp : snapshot.stats.MP;
+  const sameCharacter = state.heroSnapshot?.characterId === snapshot.characterId;
+  const preservedHp = sameCharacter ? state.hp : snapshot.stats.HP;
+  const preservedMp = sameCharacter ? state.mp : snapshot.stats.MP;
 
   state.heroSnapshot = snapshot;
   state.hp = Math.max(0, Math.min(snapshot.stats.HP, preservedHp));
@@ -152,6 +155,33 @@ function syncStateFromHero(snapshot) {
   if (atkEl) atkEl.textContent = state.atk.toLocaleString();
   const defEl = document.getElementById('statDef');
   if (defEl) defEl.textContent = state.def.toLocaleString();
+}
+
+function stopHeroRegen() {
+  if (!heroRegenIntervalId) return;
+  clearInterval(heroRegenIntervalId);
+  heroRegenIntervalId = null;
+}
+
+function runHeroRegenTick() {
+  if (state.activeSection !== 'heroe') return;
+  if (state.hpMax <= 0 && state.mpMax <= 0) return;
+
+  const hpGain = state.hpMax > 0 ? Math.max(1, Math.round(state.hpMax * HERO_REGEN_RATE_PER_SECOND)) : 0;
+  const mpGain = state.mpMax > 0 ? Math.max(1, Math.round(state.mpMax * HERO_REGEN_RATE_PER_SECOND)) : 0;
+  const nextHp = Math.min(state.hpMax, state.hp + hpGain);
+  const nextMp = Math.min(state.mpMax, state.mp + mpGain);
+  const changed = nextHp !== state.hp || nextMp !== state.mp;
+  if (!changed) return;
+
+  setHp(nextHp);
+  setMp(nextMp);
+  persistGameState();
+}
+
+function startHeroRegen() {
+  stopHeroRegen();
+  heroRegenIntervalId = setInterval(runHeroRegenTick, HERO_REGEN_INTERVAL_MS);
 }
 
 window.ProgressionService = {
@@ -299,6 +329,7 @@ function renderCenterSection(sectionKey) {
 
   if (isHero) {
     overlay.classList.remove('visible');
+    startHeroRegen();
     if (window.MissionSystem && window.MissionSystem.isMounted()) {
       window.MissionSystem.unmount();
     }
@@ -313,6 +344,7 @@ function renderCenterSection(sectionKey) {
 
   if (isMissions) {
     overlay.classList.remove('visible');
+    stopHeroRegen();
     if (window.HeroSystem && window.HeroSystem.isMounted()) {
       window.HeroSystem.unmount();
     }
@@ -330,6 +362,7 @@ function renderCenterSection(sectionKey) {
 
   if (isJutsus) {
     overlay.classList.remove('visible');
+    stopHeroRegen();
     if (window.HeroSystem && window.HeroSystem.isMounted()) {
       window.HeroSystem.unmount();
     }
@@ -342,6 +375,7 @@ function renderCenterSection(sectionKey) {
     return;
   }
 
+  stopHeroRegen();
   if (window.HeroSystem && window.HeroSystem.isMounted()) {
     window.HeroSystem.unmount();
   }

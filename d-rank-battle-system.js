@@ -939,7 +939,7 @@
             setTimeout(() => this.e.handleRoundVictory(), 1100);
             return;
           }
-          setTimeout(() => this.e.showWinner(winner ? winner.name : '???'), 2600);
+          setTimeout(() => this.e.resolveCompletion(winner ? winner.name : '???', false), 700);
         }
 
         update(dt, dms, enemy) {

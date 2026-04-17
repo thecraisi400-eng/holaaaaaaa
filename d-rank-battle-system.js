@@ -37,6 +37,16 @@
     6: 'assets/images/enemies/rank-d/mission-6.png'
   };
 
+
+  const AUTO_JUTSU_CHANCE = 0.20;
+  const AUTO_JUTSU_CHECK_FRAMES = 60;
+  const MIN_CAST_DISTANCE_RATIO = 0.40;
+  const ITACHI_SKILLS = {
+    katon_gokakyu: { id: 'katon_gokakyu', name: 'Katon: Gōkakyū no Jutsu', emoji: '🔥' },
+    kage_bunshin: { id: 'kage_bunshin', name: 'Kage Bunshin no Jutsu', emoji: '👥' },
+    tsukuyomi: { id: 'tsukuyomi', name: 'Tsukuyomi', emoji: '🌑' }
+  };
+
   class DRankBattleEngine {
     constructor(root) {
       this.root = root;
@@ -79,6 +89,7 @@
       this.shakeAmp = 0;
       this.critFlash = 0;
       this.jutsuVeil = 0;
+      this.activeTsukuyomi = null;
       this.bgMountains = [];
       this.bgMountains2 = [];
       this.bgRocks = [];
@@ -153,7 +164,7 @@
     }
 
     finishAndExit() {
-      const winner = this.fighters.find((f) => !f.isDead);
+      const winner = this.fighters.find((f) => !f.isDead && !f.isClone);
       this.resolveCompletion(winner ? winner.name : '???', true);
     }
 
@@ -481,6 +492,9 @@
         }
       }
 
+      this.slowMo += (1 - this.slowMo) * 0.06;
+      this.updateTsukuyomi();
+
       if (this.hitStop > 0) {
         this.hitStop -= dt;
         this.particles.forEach((p) => p.update(dt));
@@ -494,6 +508,11 @@
       if (!f0 || !f1) return;
       f0.update(dt, dms, f1);
       f1.update(dt, dms, f0);
+      for (let i = 2; i < this.fighters.length; i += 1) {
+        const clone = this.fighters[i];
+        const target = clone.id === 0 ? f1 : f0;
+        clone.update(dt, dms, target);
+      }
 
       for (const j of this.jutsus) j.update(dt);
       for (const j of this.jutsus) {
@@ -501,8 +520,12 @@
         for (const f of this.fighters) {
           if (f === j.owner || f.isDead || f.invincible) continue;
           if (Math.hypot(j.x - f.cx, j.y - f.cy) < j.size + NW / 2) {
-            const dmgPayload = this.calcDamage(j.owner, f, 'jutsu');
-            f.receiveHit(dmgPayload.damage, j.x, j.owner, dmgPayload.crit);
+            if (typeof j.onHit === 'function') {
+              j.onHit(f);
+            } else {
+              const dmgPayload = this.calcDamage(j.owner, f, 'jutsu');
+              f.receiveHit(dmgPayload.damage, j.x, j.owner, dmgPayload.crit);
+            }
             for (let i = 0; i < 16; i += 1) {
               const ang = Math.random() * Math.PI * 2;
               const spd = 2 + Math.random() * 4;
@@ -515,6 +538,7 @@
 
       this.checkJutsuClash();
       this.jutsus = this.jutsus.filter((j) => !j.dead);
+      this.fighters = this.fighters.filter((fighter, idx) => idx < 2 || !fighter.isDead);
       this.particles.forEach((p) => p.update(dt));
       this.particles = this.particles.filter((p) => !p.isDead());
       this.damageNums.forEach((d) => d.update(dt));
@@ -573,6 +597,7 @@
       this.shakeAmp = 0;
       this.critFlash = 0;
       this.jutsuVeil = 0;
+      this.activeTsukuyomi = null;
       this.completionSent = false;
       if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
       if (this.winnerScreen) this.winnerScreen.style.display = 'none';
@@ -602,6 +627,15 @@
       }
       this.fighters[0].tX = 120 + Math.random() * 80;
       this.fighters[1].tX = 250 + Math.random() * 80;
+
+      const heroId = this.battleContext?.heroSnapshot?.characterId || '';
+      const heroLoadout = window.JutsuSystem?.getBattleLoadout?.(heroId) || [];
+      this.fighters[0].equippedSkills = heroLoadout.map((skill) => ITACHI_SKILLS[skill.id]).filter(Boolean);
+
+      const enemyLoadout = Array.isArray(this.battleContext?.missionConfig?.enemySkills)
+        ? this.battleContext.missionConfig.enemySkills.map((id) => ITACHI_SKILLS[id]).filter(Boolean)
+        : [];
+      this.fighters[1].equippedSkills = enemyLoadout;
     }
 
     showRoundAnnouncement() {
@@ -662,8 +696,78 @@
       setTimeout(() => this.startGame(), 1000);
     }
 
+    spawnClonePair(owner, target) {
+      const cloneStats = {
+        maxHp: Math.max(1, owner.maxHp * 0.2),
+        atk: Math.max(2, (owner.combat?.atk || 10) * 0.2),
+        def: Math.max(1, (owner.combat?.def || 8) * 0.2),
+        critChance: 0,
+        critMult: 1,
+        evadeChance: 0,
+        incomingMitigation: 0.05
+      };
+      for (let i = 0; i < 2; i += 1) {
+        const offset = i === 0 ? -22 : 22;
+        const clone = new this.Fighter(this, Math.max(3, Math.min(this.W - NW - 3, owner.x + offset)), owner.id, owner.spriteProfile);
+        clone.name = `${owner.name} CLON`;
+        clone.isClone = true;
+        clone.color = '#7A56FF';
+        clone.glowColor = '#9E7BFF';
+        clone.skinColor = owner.skinColor;
+        clone.maxHp = cloneStats.maxHp;
+        clone.hp = cloneStats.maxHp;
+        clone.maxMp = 0;
+        clone.mp = 0;
+        clone.combat = cloneStats;
+        clone.equippedSkills = [];
+        clone.atkCD = 18;
+        this.fighters.push(clone);
+      }
+      this.spawnSmoke(owner.cx, owner.cy, 16);
+      setTimeout(() => owner.clearSkillLabel(), 1000);
+    }
+
+    beginTsukuyomi(owner, target) {
+      this.activeTsukuyomi = { owner, target, timer: 240 };
+      owner.showSkillLabel('Tsukuyomi', true);
+      target.showSkillLabel('Tsukuyomi', true);
+      owner.invincible = true;
+      owner.invTimer = Math.max(owner.invTimer, 240);
+      owner.stunTimer = Math.max(owner.stunTimer, 240);
+      target.stunTimer = Math.max(target.stunTimer, 240);
+
+      const desiredGap = this.W * 0.60;
+      const newX = target.cx > this.W / 2 ? target.x - desiredGap : target.x + desiredGap;
+      owner.x = Math.max(3, Math.min(this.W - NW - 3, newX));
+      owner.y = this.GROUND - NH;
+      this.jutsuVeil = 240;
+      if (this.veil) this.veil.style.background = 'rgba(120,0,0,0.25)';
+    }
+
+    updateTsukuyomi() {
+      if (!this.activeTsukuyomi) return;
+      this.activeTsukuyomi.timer -= 1;
+      if (this.activeTsukuyomi.timer > 0) return;
+      const { owner, target } = this.activeTsukuyomi;
+      this.activeTsukuyomi = null;
+      owner.stunTimer = 0;
+      target.stunTimer = 0;
+      owner.clearSkillLabel();
+      target.clearSkillLabel();
+
+      const dmg = 100 * (1 + (owner.status?.atkBuffPct || 0) / 100);
+      target.receiveHit(dmg, owner.cx, owner, true);
+      target.status.slowTimer = 240;
+      owner.status.atkBuffPct = Math.max(owner.status.atkBuffPct, 20);
+      owner.status.atkBuffTimer = 300;
+      this.slowMo = Math.min(this.slowMo, 0.10);
+      this.triggerShake(7, 24);
+      if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
+    }
+
     calcDamage(attacker, defender, type = 'basic') {
-      const atk = attacker.combat?.atk || 10;
+      const atkBuff = attacker.status?.atkBuffPct || 0;
+      const atk = (attacker.combat?.atk || 10) * (1 + atkBuff / 100);
       const base = type === 'jutsu' ? atk * 1.15 : atk * 0.75;
       const defense = defender.combat?.def || 8;
       const defenseFactor = defense / (defense + 120);
@@ -766,16 +870,40 @@
 
     get Jutsu() {
       return class Jutsu {
-        constructor(x, y, vx, vy, owner) {
-          this.x = x; this.y = y; this.vx = vx; this.vy = vy; this.owner = owner;
-          this.color = owner.glowColor; this.size = 9; this.life = 200; this.dead = false; this.trail = [];
+        constructor(x, y, vx, vy, owner, config = {}) {
+          this.x = x;
+          this.y = y;
+          this.vx = vx;
+          this.vy = vy;
+          this.owner = owner;
+          this.color = config.color || owner.glowColor;
+          this.size = config.size || 9;
+          this.life = config.life || 200;
+          this.dead = false;
+          this.trail = [];
+          this.target = config.target || null;
+          this.homing = Boolean(config.homing);
+          this.speed = config.speed || Math.hypot(vx, vy) || 5;
+          this.skillId = config.skillId || null;
+          this.onHit = typeof config.onHit === 'function' ? config.onHit : null;
         }
         update(dt) {
           this.trail.unshift({ x: this.x, y: this.y });
           if (this.trail.length > 12) this.trail.pop();
-          this.x += this.vx * dt; this.y += this.vy * dt; this.life -= dt;
+
+          if (this.homing && this.target && !this.target.isDead) {
+            const dx = this.target.cx - this.x;
+            const dy = this.target.cy - this.y;
+            const d = Math.hypot(dx, dy) || 1;
+            this.vx = (dx / d) * this.speed;
+            this.vy = (dy / d) * this.speed;
+          }
+
+          this.x += this.vx * dt;
+          this.y += this.vy * dt;
+          this.life -= dt;
           const e = this.owner.e;
-          if (this.x < -12 || this.x > e.W + 12 || this.y < -12 || this.y > e.H + 12 || this.life <= 0) this.dead = true;
+          if (this.x < -20 || this.x > e.W + 20 || this.y < -20 || this.y > e.H + 20 || this.life <= 0) this.dead = true;
           if (Math.random() < 0.35) e.particles.push(new e.Particle(e, this.x, this.y, (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 1.5, this.color, 10, 2, 'spark'));
         }
         draw(ctx) {
@@ -796,6 +924,7 @@
         }
       };
     }
+
 
     get Fighter() {
       return class Fighter {
@@ -840,7 +969,13 @@
           this.isDead = false;
           this.deathT = 0;
           this.deathSmoke = 0;
+          this.isClone = false;
           this.spriteProfile = spriteProfile;
+          this.characterId = id === 0 ? (this.e.battleContext?.heroSnapshot?.characterId || '') : `enemy-${this.e.battleContext?.missionConfig?.missionIndex || 0}`;
+          this.equippedSkills = [];
+          this.skillCheckTimer = AUTO_JUTSU_CHECK_FRAMES;
+          this.status = { burnTimer: 0, burnTick: 0, slowTimer: 0, atkBuffPct: 0, atkBuffTimer: 0 };
+          this.skillLabel = null;
         }
         get cx() { return this.x + NW / 2; }
         get cy() { return this.y + NH / 2; }
@@ -912,29 +1047,100 @@
           this.e.triggerShake(2, 6);
         }
 
-        launchJutsu(target) {
-          if (this.jutsuCD > 0) return;
-          const mpCost = Math.max(2, Math.round(this.maxMp * 0.02));
-          if (this.mp < mpCost) return;
-          this.mp = Math.max(0, this.mp - mpCost);
-          this.jutsuCD = 90;
+        getDistanceRatio(target) {
+          const maxDist = Math.max(1, this.e.W - NW);
+          return Math.min(1, Math.hypot(this.cx - target.cx, this.cy - target.cy) / maxDist);
+        }
+
+        showSkillLabel(skillName, persistUntilHit = false) {
+          this.skillLabel = { text: skillName, timer: persistUntilHit ? 999 : 60, persistUntilHit };
+        }
+
+        clearSkillLabel() {
+          this.skillLabel = null;
+        }
+
+        getActiveCastSkills() {
+          if (!Array.isArray(this.equippedSkills) || !this.equippedSkills.length) return [];
+          return this.equippedSkills.filter((skill) => {
+            if (!skill?.id) return false;
+            if (skill.id === 'tsukuyomi') return !this.e.activeTsukuyomi;
+            return true;
+          });
+        }
+
+        maybeActivateAutoSkill(target) {
+          if (this.e.activeTsukuyomi || this.isDead || this.stunTimer > 0 || this.e.hitStop > 0) return;
+          const available = this.getActiveCastSkills();
+          if (!available.length) return;
+          if (this.getDistanceRatio(target) < MIN_CAST_DISTANCE_RATIO) return;
+
+          this.skillCheckTimer -= 1;
+          if (this.skillCheckTimer > 0) return;
+          this.skillCheckTimer = AUTO_JUTSU_CHECK_FRAMES;
+
+          if (Math.random() > AUTO_JUTSU_CHANCE) return;
+          const picked = available[Math.floor(Math.random() * available.length)];
+          this.activateSkill(picked.id, target);
+        }
+
+        activateSkill(skillId, target) {
+          if (skillId === 'katon_gokakyu') this.castKaton(target);
+          if (skillId === 'kage_bunshin') this.castKage(target);
+          if (skillId === 'tsukuyomi') this.castTsukuyomi(target);
+        }
+
+        castKaton(target) {
+          this.showSkillLabel('Katon: Gōkakyū no Jutsu', true);
           const dx = target.cx - this.cx;
           const dy = target.cy - this.cy;
-          const d = Math.sqrt(dx * dx + dy * dy) || 1;
-          const spd = 5;
-          this.e.jutsus.push(new this.e.Jutsu(this.cx, this.cy, (dx / d) * spd, (dy / d) * spd, this));
-          this.e.spawnSparks(this.cx, this.cy, 14, this.glowColor);
-          this.e.jutsuVeil = 30;
-          if (this.e.veil) this.e.veil.style.background = 'rgba(0,0,0,0.22)';
-          this.e.triggerShake(6, 14);
-          this.flashTimer = 8;
+          const d = Math.hypot(dx, dy) || 1;
+          this.e.jutsus.push(new this.e.Jutsu(this.cx, this.cy, (dx / d) * 5, (dy / d) * 5, this, {
+            color: '#ff3b1f',
+            size: 14,
+            life: 320,
+            target,
+            homing: true,
+            speed: 5,
+            skillId: 'katon_gokakyu',
+            onHit: (victim) => {
+              const dmg = 40 * (1 + this.status.atkBuffPct / 100);
+              victim.receiveHit(dmg, this.cx, this, true);
+              victim.status.burnTimer = 240;
+              victim.status.burnTick = 0;
+              this.status.atkBuffPct = Math.max(this.status.atkBuffPct, 10);
+              this.status.atkBuffTimer = 300;
+              this.clearSkillLabel();
+              this.e.slowMo = Math.min(this.e.slowMo, 0.10);
+              this.e.hitStop = Math.max(this.e.hitStop, 3);
+              this.e.triggerShake(5, 16);
+            }
+          }));
+          this.e.spawnSparks(this.cx, this.cy, 14, '#ff6a00');
+          this.e.jutsuVeil = 24;
+          this.e.slowMo = Math.min(this.e.slowMo, 0.10);
         }
+
+        castKage(target) {
+          this.showSkillLabel('Kage Bunshin no Jutsu', false);
+          this.e.spawnClonePair(this, target);
+          this.e.slowMo = Math.min(this.e.slowMo, 0.10);
+        }
+
+        castTsukuyomi(target) {
+          if (this.e.activeTsukuyomi) return;
+          this.showSkillLabel('Tsukuyomi', true);
+          this.e.beginTsukuyomi(this, target);
+          this.e.slowMo = Math.min(this.e.slowMo, 0.10);
+        }
+
 
         die() {
           this.isDead = true;
+          if (this.isClone) return;
           this.e.slowMo = 0.16;
           this.e.gameOver = true;
-          const winner = this.e.fighters.find((f) => !f.isDead);
+          const winner = this.e.fighters.find((f) => !f.isDead && !f.isClone);
           if (winner?.id === 0 && this.id === 1) {
             setTimeout(() => this.e.handleRoundVictory(), 1100);
             return;
@@ -953,8 +1159,21 @@
 
           if (this.flashTimer > 0) this.flashTimer -= dt;
           if (this.stunTimer > 0) this.stunTimer -= dt;
+          if (this.status.slowTimer > 0) this.status.slowTimer -= dt;
+          if (this.status.atkBuffTimer > 0) {
+            this.status.atkBuffTimer -= dt;
+            if (this.status.atkBuffTimer <= 0) this.status.atkBuffPct = 0;
+          }
+          if (this.status.burnTimer > 0) {
+            this.status.burnTimer -= dt;
+            this.status.burnTick += dt;
+            if (this.status.burnTick >= 60) {
+              this.status.burnTick = 0;
+              const burnDamage = this.maxHp * 0.02;
+              this.receiveHit(burnDamage, this.cx, enemy, false);
+            }
+          }
           if (this.atkCD > 0) this.atkCD -= dt;
-          if (this.jutsuCD > 0) this.jutsuCD -= dt;
           if (this.invTimer > 0) {
             this.invTimer -= dt;
             if (this.invTimer <= 0) this.invincible = false;
@@ -974,10 +1193,11 @@
             this.dmgBurst = 0;
           }
 
-          if (!this.onGround) this.vy += G * dt;
-          this.x += this.vx * dt;
-          this.y += this.vy * dt;
-          this.vx *= 0.87;
+          const slowFactor = this.status.slowTimer > 0 ? 0.5 : 1;
+          if (!this.onGround) this.vy += G * dt * slowFactor;
+          this.x += this.vx * dt * slowFactor;
+          this.y += this.vy * dt * slowFactor;
+          this.vx *= (0.87 + (1 - slowFactor) * 0.08);
           if (this.y >= this.e.GROUND - NH) { this.y = this.e.GROUND - NH; this.vy = 0; this.onGround = true; } else this.onGround = false;
           if (this.y < 4) { this.y = 4; this.vy = 0; }
 
@@ -1026,6 +1246,10 @@
           }
           for (const t of this.trail) t.a -= 0.04 * dt;
           this.trail = this.trail.filter((t) => t.a > 0);
+          if (this.skillLabel) {
+            this.skillLabel.timer -= dt;
+            if (this.skillLabel.timer <= 0 && !this.skillLabel.persistUntilHit) this.skillLabel = null;
+          }
 
           if (!enemy.isDead) {
             const dist = Math.hypot(this.cx - enemy.cx, this.cy - enemy.cy);
@@ -1033,8 +1257,8 @@
               const dmgPayload = this.e.calcDamage(this, enemy, 'basic');
               enemy.receiveHit(dmgPayload.damage, this.cx, this, dmgPayload.crit);
               this.atkCD = 42;
-            } else if (dist > 150 && this.jutsuCD <= 0) {
-              this.launchJutsu(enemy);
+            } else if (dist > 120) {
+              this.maybeActivateAutoSkill(enemy);
             }
           }
         }
@@ -1253,6 +1477,26 @@
           ctx.textAlign = 'center';
           ctx.fillStyle = this.isDead ? '#666' : (this.id === 0 ? '#FFD700' : '#AA88FF');
           ctx.fillText(this.name, this.x + NW / 2, by - 3);
+          if (this.skillLabel?.text) {
+            const text = this.skillLabel.text;
+            ctx.font = 'bold 7px Arial';
+            const tw = ctx.measureText(text).width;
+            const padX = 6;
+            const labelW = tw + padX * 2;
+            const labelH = 14;
+            const lx = this.x + NW / 2 - (labelW / 2);
+            const ly = by - 22;
+            ctx.fillStyle = 'rgba(10,10,18,0.92)';
+            ctx.strokeStyle = '#f0c060';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.roundRect(lx, ly, labelW, labelH, 3);
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = '#f0c060';
+            ctx.textAlign = 'left';
+            ctx.fillText(text, lx + padX, ly + 9.5);
+          }
           ctx.restore();
         }
       };

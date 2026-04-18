@@ -44,6 +44,7 @@
       this.canvas = root.querySelector('#drb-canvas');
       this.ctx = this.canvas ? this.canvas.getContext('2d') : null;
       this.veil = root.querySelector('#drb-veil');
+      this.skillSlotsEl = root.querySelector('#drb-skill-slots');
       this.roundAnnouncementEl = root.querySelector('#drb-round-announcement');
       this.winnerScreen = root.querySelector('#drb-winner-screen');
       this.winNameEl = root.querySelector('#drb-win-name');
@@ -64,6 +65,7 @@
       this.battleContext = null;
       this.combatAdapter = null;
       this.completionSent = false;
+      this.renderEquippedSkillSlots(this.getHeroEquippedSkills());
 
       this.particles = [];
       this.damageNums = [];
@@ -197,7 +199,21 @@
 
     getHeroEquippedSkills() {
       if (!window.JutsuSystem || typeof window.JutsuSystem.getEquippedSkills !== 'function') return [];
-      return window.JutsuSystem.getEquippedSkills();
+      return window.JutsuSystem.getEquippedSkills().slice(0, 3);
+    }
+
+    renderEquippedSkillSlots(skills = []) {
+      if (!this.skillSlotsEl) return;
+      const slots = Array.isArray(skills) ? skills.slice(0, 3) : [];
+      this.skillSlotsEl.innerHTML = '';
+      for (let i = 0; i < 3; i += 1) {
+        const skill = slots[i] || null;
+        const slotEl = document.createElement('div');
+        slotEl.className = `drb-skill-slot${skill ? '' : ' empty'}`;
+        slotEl.title = skill ? `Habilidad equipada: ${skill.name || 'Jutsu'}` : 'Slot vacío';
+        slotEl.textContent = skill?.em || '✦';
+        this.skillSlotsEl.appendChild(slotEl);
+      }
     }
 
     getEnemySkills() {
@@ -656,6 +672,7 @@
       this.activeSkillProjectile = null;
       this.activeSkillLabel = null;
       this.completionSent = false;
+      this.renderEquippedSkillSlots(this.getHeroEquippedSkills());
       if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
       if (this.winnerScreen) this.winnerScreen.style.display = 'none';
       const heroCharacterId = this.battleContext?.heroSnapshot?.characterId || '';

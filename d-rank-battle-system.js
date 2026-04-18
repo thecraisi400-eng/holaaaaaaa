@@ -82,6 +82,10 @@
       this.skillRollTimer = 0;
       this.activeSkillProjectile = null;
       this.activeSkillLabel = null;
+      this.skillCooldownHud = null;
+      this.skillCooldownState = {};
+      this.itachiEffectsLayer = null;
+      this.itachiCloneActors = [];
       this.bgMountains = [];
       this.bgMountains2 = [];
       this.bgRocks = [];
@@ -200,6 +204,72 @@
       return window.JutsuSystem.getEquippedSkills();
     }
 
+    isItachiHero() {
+      return this.battleContext?.heroSnapshot?.characterId === 'itachi';
+    }
+
+    ensureItachiEffectsLayer() {
+      if (!this.root) return null;
+      if (this.itachiEffectsLayer && this.root.contains(this.itachiEffectsLayer)) return this.itachiEffectsLayer;
+      const layer = document.createElement('div');
+      layer.className = 'drb-itachi-effects-layer';
+      this.root.appendChild(layer);
+      this.itachiEffectsLayer = layer;
+      return layer;
+    }
+
+    ensureSkillCooldownHud() {
+      if (!this.root) return null;
+      if (this.skillCooldownHud && this.root.contains(this.skillCooldownHud)) return this.skillCooldownHud;
+      const hud = document.createElement('div');
+      hud.className = 'drb-skill-hud';
+      hud.id = 'drb-skill-hud';
+      this.root.appendChild(hud);
+      this.skillCooldownHud = hud;
+      return hud;
+    }
+
+    resetSkillCooldowns() {
+      const skills = this.getHeroEquippedSkills();
+      this.skillCooldownState = {};
+      const hud = this.ensureSkillCooldownHud();
+      if (!hud) return;
+      hud.innerHTML = '';
+      skills.forEach((skill, index) => {
+        const slot = document.createElement('div');
+        slot.className = 'drb-skill-slot';
+        slot.dataset.skillId = String(skill.id);
+        slot.innerHTML = `
+          <span class="drb-skill-emoji">${skill.em || '✦'}</span>
+          <div class="drb-skill-cd-mask"></div>
+          <span class="drb-skill-cd-text"></span>
+        `;
+        hud.appendChild(slot);
+        this.skillCooldownState[skill.id] = { remainMs: 0, totalMs: 1, el: slot, name: skill.name, index };
+      });
+    }
+
+    setSkillCooldown(skillId, totalMs) {
+      if (!this.skillCooldownState[skillId]) return;
+      this.skillCooldownState[skillId].remainMs = Math.max(0, totalMs);
+      this.skillCooldownState[skillId].totalMs = Math.max(1, totalMs);
+    }
+
+    updateSkillCooldownHud(dms) {
+      const entries = Object.values(this.skillCooldownState || {});
+      entries.forEach((entry) => {
+        const slot = entry.el;
+        if (!slot) return;
+        const mask = slot.querySelector('.drb-skill-cd-mask');
+        const text = slot.querySelector('.drb-skill-cd-text');
+        entry.remainMs = Math.max(0, entry.remainMs - dms);
+        const ratio = Math.min(1, entry.remainMs / entry.totalMs);
+        if (mask) mask.style.height = `${Math.round(ratio * 100)}%`;
+        if (text) text.textContent = entry.remainMs > 0 ? `${(entry.remainMs / 1000).toFixed(1)}s` : '';
+        slot.classList.toggle('ready', entry.remainMs <= 0);
+      });
+    }
+
     getEnemySkills() {
       const skills = this.battleContext?.missionConfig?.enemySkills;
       return Array.isArray(skills) ? skills.filter(Boolean) : [];
@@ -256,7 +326,8 @@
       const selected = skills[Math.floor(Math.random() * skills.length)];
       attacker.launchJutsu(defender, {
         isEquipped: true,
-        skillName: selected.name || selected
+        skillName: selected.name || selected,
+        skillData: selected
       });
     }
 
@@ -561,6 +632,7 @@
       const [f0, f1] = this.fighters;
       if (!f0 || !f1) return;
       this.skillRollTimer += dms;
+      this.updateSkillCooldownHud(dms);
       while (this.skillRollTimer >= 1000) {
         this.skillRollTimer -= 1000;
         this.tryAutoLaunchEquippedSkill(f0, f1, 0.25, () => this.getHeroEquippedSkills());
@@ -655,9 +727,17 @@
       this.skillRollTimer = 0;
       this.activeSkillProjectile = null;
       this.activeSkillLabel = null;
+      this.itachiCloneActors.forEach((clone) => {
+        clone.intervalId && clearInterval(clone.intervalId);
+        clone.el?.remove();
+      });
+      this.itachiCloneActors = [];
+      this.skillCooldownState = {};
       this.completionSent = false;
       if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
       if (this.winnerScreen) this.winnerScreen.style.display = 'none';
+      this.ensureItachiEffectsLayer();
+      this.resetSkillCooldowns();
       const heroCharacterId = this.battleContext?.heroSnapshot?.characterId || '';
       const heroSpritePath = HERO_BATTLE_SPRITES[heroCharacterId] || '';
       const missionIndex = Number(this.battleContext?.missionConfig?.missionIndex ?? 0) + 1;
@@ -744,9 +824,177 @@
       setTimeout(() => this.startGame(), 1000);
     }
 
+    useItachiSkill(attacker, target, skillData = {}) {
+      const skillId = Number(skillData?.id);
+      if (skillId === 0) {
+        this.useKaton(attacker, target, skillData);
+        return true;
+      }
+      if (skillId === 1) {
+        this.useKageBunshin(attacker, target, skillData);
+        return true;
+      }
+      if (skillId === 2) {
+        this.useShurikenjutsu(attacker, target, skillData);
+        return true;
+      }
+      return false;
+    }
+
+    useKaton(attacker, target, skillData = {}) {
+      const layer = this.ensureItachiEffectsLayer();
+      if (!layer) return;
+      const fireball = document.createElement('div');
+      fireball.className = 'drb-itachi-fireball';
+      fireball.style.left = `${attacker.cx / this.W * 100}%`;
+      fireball.style.top = `${attacker.cy / this.H * 100}%`;
+      layer.appendChild(fireball);
+
+      let x = attacker.cx;
+      let y = attacker.cy;
+      let alive = true;
+      const step = () => {
+        if (!alive || this.gameOver || attacker.isDead || target.isDead) {
+          fireball.remove();
+          return;
+        }
+        const dx = target.cx - x;
+        const dy = target.cy - y;
+        const d = Math.sqrt(dx * dx + dy * dy) || 1;
+        x += (dx / d) * 8;
+        y += (dy / d) * 8;
+        fireball.style.left = `${x / this.W * 100}%`;
+        fireball.style.top = `${y / this.H * 100}%`;
+        if (d < 26) {
+          alive = false;
+          fireball.remove();
+          target.receiveHit(40, x, attacker, true);
+          this.applyItachiBurn(target, attacker);
+          attacker.attackBuffUntil = performance.now() + 4000;
+          this.setSkillCooldown(skillData.id, 8000);
+          return;
+        }
+        requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }
+
+    applyItachiBurn(target, attacker) {
+      const layer = this.ensureItachiEffectsLayer();
+      if (!layer) return;
+      const burn = document.createElement('div');
+      burn.className = 'drb-itachi-burn';
+      layer.appendChild(burn);
+      let ticks = 0;
+      const burnInterval = setInterval(() => {
+        if (this.gameOver || target.isDead) {
+          clearInterval(burnInterval);
+          burn.remove();
+          return;
+        }
+        ticks += 1;
+        const damage = Math.max(1, Math.ceil(target.maxHp * 0.005));
+        target.receiveHit(damage, target.cx, attacker, false);
+        burn.style.left = `${target.cx / this.W * 100}%`;
+        burn.style.top = `${target.cy / this.H * 100}%`;
+        if (ticks >= 40) {
+          clearInterval(burnInterval);
+          burn.remove();
+        }
+      }, 100);
+    }
+
+    useKageBunshin(attacker, target, skillData = {}) {
+      const layer = this.ensureItachiEffectsLayer();
+      if (!layer) return;
+      const clones = [];
+      for (let i = 0; i < 2; i += 1) {
+        const clone = document.createElement('div');
+        clone.className = 'drb-itachi-clone';
+        clone.textContent = '👥';
+        layer.appendChild(clone);
+        const data = {
+          hp: Math.ceil(attacker.maxHp * 0.2),
+          maxHp: Math.ceil(attacker.maxHp * 0.2),
+          x: attacker.x - 24 - i * 26,
+          y: attacker.y,
+          el: clone
+        };
+        clone.style.left = `${(data.x + 20) / this.W * 100}%`;
+        clone.style.top = `${(data.y + 20) / this.H * 100}%`;
+        clones.push(data);
+      }
+
+      clones.forEach((clone, idx) => {
+        clone.intervalId = setInterval(() => {
+          if (this.gameOver || target.isDead || clone.hp <= 0) {
+            clearInterval(clone.intervalId);
+            clone.el.remove();
+            return;
+          }
+          if (Math.abs((clone.x + 24) - target.cx) > 45) {
+            clone.x += clone.x < target.x ? 8 : -8;
+            clone.el.style.left = `${(clone.x + 20) / this.W * 100}%`;
+            return;
+          }
+          const cloneDamage = Math.ceil(clone.maxHp * 0.15);
+          target.receiveHit(cloneDamage, clone.x + 20, attacker, false);
+          const counter = Math.ceil(15 + Math.random() * 10);
+          clone.hp -= counter;
+          if (clone.hp <= 0) {
+            clearInterval(clone.intervalId);
+            clone.el.remove();
+          }
+        }, 420 + idx * 90);
+      });
+      this.itachiCloneActors.push(...clones);
+      this.setSkillCooldown(skillData.id, 10000);
+    }
+
+    useShurikenjutsu(attacker, target, skillData = {}) {
+      const layer = this.ensureItachiEffectsLayer();
+      if (!layer) return;
+      for (let i = 0; i < 5; i += 1) {
+        setTimeout(() => {
+          if (this.gameOver || attacker.isDead || target.isDead) return;
+          const sh = document.createElement('div');
+          sh.className = 'drb-itachi-shuriken';
+          sh.textContent = '🌟';
+          layer.appendChild(sh);
+          let x = attacker.cx;
+          let y = attacker.cy - 50;
+          let alive = true;
+          const fly = () => {
+            if (!alive || this.gameOver || target.isDead) {
+              sh.remove();
+              return;
+            }
+            const dx = target.cx - x;
+            const dy = target.cy - y;
+            const d = Math.sqrt(dx * dx + dy * dy) || 1;
+            x += (dx / d) * (7 + i * 0.4);
+            y += (dy / d) * (7 + i * 0.4);
+            sh.style.left = `${x / this.W * 100}%`;
+            sh.style.top = `${y / this.H * 100}%`;
+            if (d < 22) {
+              alive = false;
+              target.receiveHit(30, x, attacker, false);
+              sh.remove();
+              return;
+            }
+            requestAnimationFrame(fly);
+          };
+          requestAnimationFrame(fly);
+        }, i * 200);
+      }
+      this.setSkillCooldown(skillData.id, 9000);
+    }
+
     calcDamage(attacker, defender, type = 'basic') {
       const atk = attacker.combat?.atk || 10;
-      const base = type === 'jutsu' ? atk * 1.15 : atk * 0.75;
+      const now = performance.now();
+      const atkBuff = attacker.attackBuffUntil && attacker.attackBuffUntil > now ? 1.15 : 1;
+      const base = type === 'jutsu' ? atk * 1.15 * atkBuff : atk * 0.75 * atkBuff;
       const defense = defender.combat?.def || 8;
       const defenseFactor = defense / (defense + 120);
       const mitigation = Math.min(0.8, (defender.combat?.incomingMitigation || 0) + defenseFactor * 0.35);
@@ -1013,6 +1261,19 @@
           if (this.mp < mpCost) return;
           const isEquipped = Boolean(options.isEquipped);
           const skillName = options.skillName || 'Habilidad';
+          const skillData = options.skillData || null;
+          if (isEquipped && this.id === 0 && this.e.isItachiHero()) {
+            if (this.e.skillCooldownState[skillData?.id]?.remainMs > 0) return;
+            if (!this.e.useItachiSkill(this, target, skillData)) return;
+            this.mp = Math.max(0, this.mp - mpCost);
+            this.jutsuCD = 85;
+            this.flashTimer = 8;
+            this.e.beginCinematicSkill(this, skillName, null);
+            setTimeout(() => {
+              if (!this.e.gameOver) this.e.endCinematicSkill();
+            }, 500);
+            return;
+          }
           if (isEquipped) this.placeForEquippedSkill(target);
           this.mp = Math.max(0, this.mp - mpCost);
           this.jutsuCD = isEquipped ? 120 : 90;

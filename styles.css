@@ -1725,3 +1725,105 @@ html, body {
 
 .jsu-status-txt { font-size: 9px; color: rgba(168, 196, 216, 0.45); letter-spacing: 0.5px; }
 .jsu-status-msg { font-size: 9px; color: var(--jsu-accent); margin-left: auto; }
+
+.drb-itachi-effects-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 8;
+}
+
+.drb-itachi-fireball,
+.drb-itachi-burn,
+.drb-itachi-shuriken,
+.drb-itachi-clone {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.drb-itachi-fireball {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff5b8 5%, #ff9800 35%, #ff3d00 70%, rgba(255, 80, 0, 0.2) 100%);
+  box-shadow: 0 0 18px rgba(255, 90, 0, 0.9);
+}
+
+.drb-itachi-burn {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 80, 0, 0.7);
+  box-shadow: 0 0 16px rgba(255, 130, 0, 0.8);
+  animation: drbBurnPulse 0.4s infinite alternate;
+}
+
+.drb-itachi-shuriken,
+.drb-itachi-clone {
+  font-size: 20px;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+}
+
+.drb-itachi-clone {
+  opacity: 0.75;
+  filter: saturate(0.4) brightness(1.2);
+}
+
+.drb-skill-hud {
+  position: absolute;
+  left: 10px;
+  bottom: 8px;
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+
+.drb-skill-slot {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  position: relative;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.drb-skill-slot.ready {
+  border-color: rgba(0, 255, 180, 0.85);
+  box-shadow: 0 0 8px rgba(0, 255, 180, 0.6);
+}
+
+.drb-skill-emoji {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.drb-skill-cd-mask {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0;
+  background: rgba(15, 15, 15, 0.72);
+}
+
+.drb-skill-cd-text {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 10px;
+  color: #fff;
+  font-weight: 700;
+  text-shadow: 0 1px 2px #000;
+}
+
+@keyframes drbBurnPulse {
+  from { transform: translate(-50%, -50%) scale(0.95); }
+  to { transform: translate(-50%, -50%) scale(1.1); }
+}

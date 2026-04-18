@@ -246,8 +246,8 @@
       ctx.restore();
     }
 
-        drawEquippedSkillSlots(ctx) {
-      const slotSize = 35;
+    drawEquippedSkillSlots(ctx) {
+      const slotSize = 32;
       const gap = 6;
       const baseX = 10;
       const baseY = this.H - slotSize - 10;
@@ -597,7 +597,7 @@
       this.skillRollTimer += dms;
       while (this.skillRollTimer >= 1000) {
         this.skillRollTimer -= 1000;
-        this.tryAutoLaunchEquippedSkill(f0, f1, 0.25, () => this.getHeroEquippedSkills());
+        this.tryAutoLaunchEquippedSkill(f0, f1, 1, () => this.getHeroEquippedSkills());
         this.tryAutoLaunchEquippedSkill(f1, f0, 0.20, () => this.getEnemySkills());
       }
       f0.update(dt, dms, f1);
@@ -659,6 +659,7 @@
       this.drawActiveSkillLabel(ctx);
       for (const p of this.particles) p.draw(ctx);
       for (const d of this.damageNums) d.draw(ctx);
+      this.drawEquippedSkillSlots(ctx);
 
       if (this.gameOver && this.slowMo < 1) {
         ctx.save();

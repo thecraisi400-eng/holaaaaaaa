@@ -79,6 +79,8 @@
       this.shakeAmp = 0;
       this.critFlash = 0;
       this.jutsuVeil = 0;
+      this.activeSkillFx = null;
+      this.activeSkillProjectiles = 0;
       this.bgMountains = [];
       this.bgMountains2 = [];
       this.bgRocks = [];
@@ -453,6 +455,14 @@
             this.triggerShake(6, 18);
             a.dead = true;
             b.dead = true;
+            if (!a.skillFxResolved) {
+              a.skillFxResolved = true;
+              this.onSkillImpact();
+            }
+            if (!b.skillFxResolved) {
+              b.skillFxResolved = true;
+              this.onSkillImpact();
+            }
             for (const f of this.fighters) f.vx += f.cx > ex ? 4.5 : -4.5;
           }
         }
@@ -473,14 +483,6 @@
         this.shakeY = (Math.random() - 0.5) * this.shakeAmp * f;
         if (this.shakeDur <= 0) { this.shakeX = 0; this.shakeY = 0; this.shakeAmp = 0; }
       }
-      if (this.jutsuVeil > 0) {
-        this.jutsuVeil -= dt;
-        if (this.jutsuVeil <= 0) {
-          this.jutsuVeil = 0;
-          if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
-        }
-      }
-
       if (this.hitStop > 0) {
         this.hitStop -= dt;
         this.particles.forEach((p) => p.update(dt));
@@ -497,6 +499,12 @@
 
       for (const j of this.jutsus) j.update(dt);
       for (const j of this.jutsus) {
+        if (j.dead && !j.skillFxResolved) {
+          j.skillFxResolved = true;
+          this.onSkillImpact();
+        }
+      }
+      for (const j of this.jutsus) {
         if (j.dead) continue;
         for (const f of this.fighters) {
           if (f === j.owner || f.isDead || f.invincible) continue;
@@ -509,6 +517,10 @@
               this.particles.push(new this.Particle(this, j.x, j.y, Math.cos(ang) * spd, Math.sin(ang) * spd, j.color, 20, 3, 'spark'));
             }
             j.dead = true;
+            if (!j.skillFxResolved) {
+              j.skillFxResolved = true;
+              this.onSkillImpact();
+            }
           }
         }
       }
@@ -546,6 +558,7 @@
       for (const f of this.fighters) f.draw(ctx);
       for (const p of this.particles) p.draw(ctx);
       for (const d of this.damageNums) d.draw(ctx);
+      this.drawActiveSkillName(ctx);
 
       if (this.gameOver && this.slowMo < 1) {
         ctx.save();
@@ -573,6 +586,8 @@
       this.shakeAmp = 0;
       this.critFlash = 0;
       this.jutsuVeil = 0;
+      this.activeSkillFx = null;
+      this.activeSkillProjectiles = 0;
       this.completionSent = false;
       if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
       if (this.winnerScreen) this.winnerScreen.style.display = 'none';
@@ -674,6 +689,90 @@
       return { damage: dmg, crit };
     }
 
+    getDistancePercent(a, b) {
+      const maxDist = Math.max(1, this.W - NW);
+      const dist = Math.abs(a.cx - b.cx);
+      return (dist / maxDist) * 100;
+    }
+
+    normalizeSkills(skills) {
+      if (!Array.isArray(skills)) return [];
+      return skills
+        .map((skill, index) => {
+          if (skill && typeof skill === 'object') {
+            const name = String(skill.name || skill.nombre || skill.title || '').trim();
+            return {
+              id: Number.isFinite(Number(skill.id)) ? Number(skill.id) : index,
+              name: name || `Habilidad ${index + 1}`
+            };
+          }
+          const text = String(skill || '').trim();
+          if (!text) return null;
+          return { id: index, name: text };
+        })
+        .filter(Boolean);
+    }
+
+    getHeroEquippedSkills() {
+      const getter = window.JutsuSystem && typeof window.JutsuSystem.getEquippedJutsus === 'function'
+        ? window.JutsuSystem.getEquippedJutsus.bind(window.JutsuSystem)
+        : null;
+      if (!getter) return [];
+      return this.normalizeSkills(getter());
+    }
+
+    getEnemyPanelSkills() {
+      const config = this.battleContext?.missionConfig || {};
+      const list = config.enemySkills || config.enemyPanelSkills || config.statsPanelSkills || [];
+      return this.normalizeSkills(list);
+    }
+
+    onSkillCastStart(caster, skillName = 'Jutsu Genérico') {
+      this.activeSkillProjectiles += 1;
+      this.activeSkillFx = {
+        casterId: caster.id,
+        name: String(skillName || 'Jutsu').trim() || 'Jutsu'
+      };
+      this.slowMo = Math.min(this.slowMo, 0.94);
+      if (this.veil) this.veil.style.background = 'rgba(0,0,0,0.4)';
+    }
+
+    onSkillImpact() {
+      this.activeSkillProjectiles = Math.max(0, this.activeSkillProjectiles - 1);
+      if (this.activeSkillProjectiles > 0) return;
+      this.activeSkillFx = null;
+      if (!this.gameOver) this.slowMo = 1;
+      if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
+    }
+
+    drawActiveSkillName(ctx) {
+      if (!this.activeSkillFx) return;
+      const caster = this.fighters.find((f) => f.id === this.activeSkillFx.casterId && !f.isDead);
+      if (!caster) return;
+
+      const label = this.activeSkillFx.name;
+      const fontSize = 14;
+      const y = Math.max(24, caster.y - 24);
+      ctx.save();
+      ctx.font = `bold ${fontSize}px Arial Black`;
+      const textW = ctx.measureText(label).width;
+      const boxW = Math.min(this.W - 20, Math.max(110, textW + 24));
+      const boxH = 24;
+      let x = caster.cx - boxW / 2;
+      x = Math.max(8, Math.min(this.W - boxW - 8, x));
+
+      ctx.fillStyle = 'rgba(8,16,34,0.92)';
+      ctx.strokeStyle = 'rgba(251,191,36,0.95)';
+      ctx.lineWidth = 1.5;
+      ctx.fillRect(x, y - boxH, boxW, boxH);
+      ctx.strokeRect(x, y - boxH, boxW, boxH);
+      ctx.fillStyle = '#f8fafc';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, x + boxW / 2, y - boxH / 2);
+      ctx.restore();
+    }
+
     loop(ts) {
       if (!this.running) return;
       const rawDt = Math.min((ts - this.lastTs) / 16.667, 3);
@@ -769,6 +868,7 @@
         constructor(x, y, vx, vy, owner) {
           this.x = x; this.y = y; this.vx = vx; this.vy = vy; this.owner = owner;
           this.color = owner.glowColor; this.size = 9; this.life = 200; this.dead = false; this.trail = [];
+          this.skillFxResolved = false;
         }
         update(dt) {
           this.trail.unshift({ x: this.x, y: this.y });
@@ -841,6 +941,7 @@
           this.deathT = 0;
           this.deathSmoke = 0;
           this.spriteProfile = spriteProfile;
+          this.equippedSkillTickMs = 0;
         }
         get cx() { return this.x + NW / 2; }
         get cy() { return this.y + NH / 2; }
@@ -912,7 +1013,7 @@
           this.e.triggerShake(2, 6);
         }
 
-        launchJutsu(target) {
+        launchJutsu(target, skillName = 'Jutsu Genérico') {
           if (this.jutsuCD > 0) return;
           const mpCost = Math.max(2, Math.round(this.maxMp * 0.02));
           if (this.mp < mpCost) return;
@@ -924,8 +1025,7 @@
           const spd = 5;
           this.e.jutsus.push(new this.e.Jutsu(this.cx, this.cy, (dx / d) * spd, (dy / d) * spd, this));
           this.e.spawnSparks(this.cx, this.cy, 14, this.glowColor);
-          this.e.jutsuVeil = 30;
-          if (this.e.veil) this.e.veil.style.background = 'rgba(0,0,0,0.22)';
+          this.e.onSkillCastStart(this, skillName);
           this.e.triggerShake(6, 14);
           this.flashTimer = 8;
         }
@@ -1029,12 +1129,30 @@
 
           if (!enemy.isDead) {
             const dist = Math.hypot(this.cx - enemy.cx, this.cy - enemy.cy);
+            const distancePct = this.e.getDistancePercent(this, enemy);
+            this.equippedSkillTickMs += dms;
+            if (this.equippedSkillTickMs >= 1000) {
+              this.equippedSkillTickMs = 0;
+              if (this.id === 0) {
+                const equippedSkills = this.e.getHeroEquippedSkills();
+                if (equippedSkills.length > 0 && distancePct > 25 && Math.random() < 0.4) {
+                  const selected = equippedSkills[Math.floor(Math.random() * equippedSkills.length)];
+                  this.launchJutsu(enemy, selected.name);
+                }
+              } else {
+                const enemySkills = this.e.getEnemyPanelSkills();
+                if (enemySkills.length > 0 && distancePct > 35 && Math.random() < 0.35) {
+                  const selected = enemySkills[Math.floor(Math.random() * enemySkills.length)];
+                  this.launchJutsu(enemy, selected.name);
+                }
+              }
+            }
             if (dist < 50 && this.atkCD <= 0) {
               const dmgPayload = this.e.calcDamage(this, enemy, 'basic');
               enemy.receiveHit(dmgPayload.damage, this.cx, this, dmgPayload.crit);
               this.atkCD = 42;
             } else if (dist > 150 && this.jutsuCD <= 0) {
-              this.launchJutsu(enemy);
+              this.launchJutsu(enemy, 'Jutsu Genérico');
             }
           }
         }

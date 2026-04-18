@@ -5,11 +5,7 @@
     { id: 2, name: 'Ráfaga Cortante', em: '🌀', dmg: 'Corte (laceración profunda)', efecto: 'Hemorragia — daño por tiempo', buff: '+Velocidad de ataque', dur: '2s' },
     { id: 3, name: 'Prisión Hidráulica', em: '💧', dmg: 'Presión (aplastamiento acuático)', efecto: 'Asfixia — bloquea habilidades', buff: '-CD Tiempos de espera', dur: '3s' },
     { id: 4, name: 'Escudo Telúrico', em: '🪨', dmg: 'Impacto (golpe sísmico)', efecto: 'Pesadez — sin saltos', buff: 'Inmunidad a empujones', dur: '3s' },
-    { id: 5, name: 'Sello Prohibido', em: '🔮', dmg: 'Espiritual (devastación arcana)', efecto: 'Silencio — bloquea especiales', buff: '+5% Chakra pasivo', dur: '2s' },
-    { id: 6, name: 'Espejismo Mental', em: '👁', dmg: 'Mental (ruptura psíquica)', efecto: 'Confusión — controles invertidos', buff: 'Invisibilidad temporal', dur: '2s' },
-    { id: 7, name: 'Bosque Viviente', em: '🌿', dmg: 'Raíces (constricción natural)', efecto: 'Drenado de energía', buff: 'Curación constante', dur: '3s' },
-    { id: 8, name: 'Impacto Brutal', em: '💥', dmg: 'Físico masivo (golpe definitivo)', efecto: 'Aturdimiento total', buff: 'Próximo golpe crítico', dur: '2s' },
-    { id: 9, name: 'Aliento Vital', em: '🎵', dmg: 'Sónico (resonancia destructiva)', efecto: 'Sordera — -20% defensa', buff: 'Limpieza de debuffs', dur: '3s' }
+    { id: 5, name: 'Sello Prohibido', em: '🔮', dmg: 'Espiritual (devastación arcana)', efecto: 'Silencio — bloquea especiales', buff: '+5% Chakra pasivo', dur: '2s' }
   ];
 
   const UPGRADE_COSTS = { pergaminos: 15, chakra: 10 };
@@ -19,7 +15,7 @@
     root: null,
     selected: null,
     state: {
-      levels: Array(10).fill(1),
+      levels: Array(JUTSU_LIBRARY.length).fill(1),
       slots: [null, null, null],
       resources: { pergaminos: 120, chakra: 85 }
     },
@@ -280,6 +276,13 @@
       setTimeout(() => {
         el.textContent = '';
       }, 2800);
+    },
+
+    getEquippedJutsus() {
+      return this.state.slots
+        .map((id) => (id == null ? null : JUTSU_LIBRARY[id]))
+        .filter(Boolean)
+        .map((jutsu) => ({ ...jutsu }));
     }
   };
 

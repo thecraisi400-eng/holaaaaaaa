@@ -79,6 +79,9 @@
       this.shakeAmp = 0;
       this.critFlash = 0;
       this.jutsuVeil = 0;
+      this.skillRollTimer = 0;
+      this.activeSkillProjectile = null;
+      this.activeSkillLabel = null;
       this.bgMountains = [];
       this.bgMountains2 = [];
       this.bgRocks = [];
@@ -190,6 +193,71 @@
           incomingMitigation: Math.min(0.6, enemyDefRaw / (enemyDefRaw + 220))
         }
       };
+    }
+
+    getHeroEquippedSkills() {
+      if (!window.JutsuSystem || typeof window.JutsuSystem.getEquippedSkills !== 'function') return [];
+      return window.JutsuSystem.getEquippedSkills();
+    }
+
+    getEnemySkills() {
+      const skills = this.battleContext?.missionConfig?.enemySkills;
+      return Array.isArray(skills) ? skills.filter(Boolean) : [];
+    }
+
+    endCinematicSkill() {
+      this.slowMo = 1;
+      this.activeSkillProjectile = null;
+      this.activeSkillLabel = null;
+      if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
+    }
+
+    beginCinematicSkill(owner, skillName, projectile) {
+      this.slowMo = 0.05;
+      this.activeSkillProjectile = projectile;
+      this.activeSkillLabel = {
+        name: skillName || 'Habilidad',
+        owner
+      };
+      if (this.veil) this.veil.style.background = 'rgba(0,0,0,0.40)';
+    }
+
+    drawActiveSkillLabel(ctx) {
+      if (!this.activeSkillLabel || !this.activeSkillLabel.owner || this.activeSkillLabel.owner.isDead) return;
+      const owner = this.activeSkillLabel.owner;
+      const text = this.activeSkillLabel.name;
+      ctx.save();
+      ctx.font = 'bold 12px Arial Black';
+      const maxWidth = this.W * 0.84;
+      const rawWidth = ctx.measureText(text).width + 20;
+      const boxWidth = Math.min(maxWidth, rawWidth);
+      const boxHeight = 24;
+      const x = Math.max(6, Math.min(this.W - boxWidth - 6, owner.cx - boxWidth / 2));
+      const y = Math.max(6, owner.y - 34);
+      ctx.fillStyle = 'rgba(0,0,0,0.82)';
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+      ctx.lineWidth = 1.2;
+      ctx.fillRect(x, y, boxWidth, boxHeight);
+      ctx.strokeRect(x, y, boxWidth, boxHeight);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, x + boxWidth / 2, y + boxHeight / 2, boxWidth - 12);
+      ctx.restore();
+    }
+
+    tryAutoLaunchEquippedSkill(attacker, defender, chance, getSkills) {
+      if (!attacker || !defender || attacker.isDead || defender.isDead) return;
+      if (this.activeSkillProjectile) return;
+      if (attacker.jutsuCD > 0) return;
+      const skills = getSkills();
+      if (!skills.length) return;
+      if (Math.random() > chance) return;
+      const selected = skills[Math.floor(Math.random() * skills.length)];
+      attacker.launchJutsu(defender, {
+        isEquipped: true,
+        skillName: selected.name || selected
+      });
     }
 
     resolveCompletion(winnerName, forcedExit = false) {
@@ -492,6 +560,12 @@
 
       const [f0, f1] = this.fighters;
       if (!f0 || !f1) return;
+      this.skillRollTimer += dms;
+      while (this.skillRollTimer >= 1000) {
+        this.skillRollTimer -= 1000;
+        this.tryAutoLaunchEquippedSkill(f0, f1, 0.25, () => this.getHeroEquippedSkills());
+        this.tryAutoLaunchEquippedSkill(f1, f0, 0.20, () => this.getEnemySkills());
+      }
       f0.update(dt, dms, f1);
       f1.update(dt, dms, f0);
 
@@ -509,11 +583,15 @@
               this.particles.push(new this.Particle(this, j.x, j.y, Math.cos(ang) * spd, Math.sin(ang) * spd, j.color, 20, 3, 'spark'));
             }
             j.dead = true;
+            if (j.isEquipped && this.activeSkillProjectile === j) this.endCinematicSkill();
           }
         }
       }
 
       this.checkJutsuClash();
+      for (const j of this.jutsus) {
+        if (j.dead && j.isEquipped && this.activeSkillProjectile === j) this.endCinematicSkill();
+      }
       this.jutsus = this.jutsus.filter((j) => !j.dead);
       this.particles.forEach((p) => p.update(dt));
       this.particles = this.particles.filter((p) => !p.isDead());
@@ -544,6 +622,7 @@
       this.drawBG(parallaxX);
       for (const j of this.jutsus) j.draw(ctx);
       for (const f of this.fighters) f.draw(ctx);
+      this.drawActiveSkillLabel(ctx);
       for (const p of this.particles) p.draw(ctx);
       for (const d of this.damageNums) d.draw(ctx);
 
@@ -573,6 +652,9 @@
       this.shakeAmp = 0;
       this.critFlash = 0;
       this.jutsuVeil = 0;
+      this.skillRollTimer = 0;
+      this.activeSkillProjectile = null;
+      this.activeSkillLabel = null;
       this.completionSent = false;
       if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
       if (this.winnerScreen) this.winnerScreen.style.display = 'none';
@@ -766,9 +848,11 @@
 
     get Jutsu() {
       return class Jutsu {
-        constructor(x, y, vx, vy, owner) {
+        constructor(x, y, vx, vy, owner, options = {}) {
           this.x = x; this.y = y; this.vx = vx; this.vy = vy; this.owner = owner;
           this.color = owner.glowColor; this.size = 9; this.life = 200; this.dead = false; this.trail = [];
+          this.isEquipped = Boolean(options.isEquipped);
+          this.skillName = options.skillName || '';
         }
         update(dt) {
           this.trail.unshift({ x: this.x, y: this.y });
@@ -912,21 +996,39 @@
           this.e.triggerShake(2, 6);
         }
 
-        launchJutsu(target) {
+        placeForEquippedSkill(target) {
+          const distance = this.e.W * 0.60;
+          const dir = this.cx < target.cx ? -1 : 1;
+          const nx = target.x + (dir * distance);
+          this.x = Math.max(4, Math.min(this.e.W - NW - 4, nx));
+          this.y = Math.max(8, this.e.GROUND - NH - 96);
+          this.vx = 0;
+          this.vy = 0;
+          this.onGround = false;
+        }
+
+        launchJutsu(target, options = {}) {
           if (this.jutsuCD > 0) return;
           const mpCost = Math.max(2, Math.round(this.maxMp * 0.02));
           if (this.mp < mpCost) return;
+          const isEquipped = Boolean(options.isEquipped);
+          const skillName = options.skillName || 'Habilidad';
+          if (isEquipped) this.placeForEquippedSkill(target);
           this.mp = Math.max(0, this.mp - mpCost);
-          this.jutsuCD = 90;
+          this.jutsuCD = isEquipped ? 120 : 90;
           const dx = target.cx - this.cx;
           const dy = target.cy - this.cy;
           const d = Math.sqrt(dx * dx + dy * dy) || 1;
-          const spd = 5;
-          this.e.jutsus.push(new this.e.Jutsu(this.cx, this.cy, (dx / d) * spd, (dy / d) * spd, this));
+          const spd = isEquipped ? 6.2 : 5;
+          const projectile = new this.e.Jutsu(this.cx, this.cy, (dx / d) * spd, (dy / d) * spd, this, { isEquipped, skillName });
+          this.e.jutsus.push(projectile);
           this.e.spawnSparks(this.cx, this.cy, 14, this.glowColor);
-          this.e.jutsuVeil = 30;
-          if (this.e.veil) this.e.veil.style.background = 'rgba(0,0,0,0.22)';
           this.e.triggerShake(6, 14);
+          if (isEquipped) {
+            this.tX = target.x;
+            this.tY = this.e.GROUND - NH;
+            this.e.beginCinematicSkill(this, skillName, projectile);
+          }
           this.flashTimer = 8;
         }
 

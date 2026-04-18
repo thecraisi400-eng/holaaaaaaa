@@ -1725,3 +1725,111 @@ html, body {
 
 .jsu-status-txt { font-size: 9px; color: rgba(168, 196, 216, 0.45); letter-spacing: 0.5px; }
 .jsu-status-msg { font-size: 9px; color: var(--jsu-accent); margin-left: auto; }
+
+/* Overrides v2 - sistema de habilidades personalizadas */
+.jsu-top-bar {
+  height: 40px;
+  justify-content: space-between;
+}
+
+.jsu-character-scope {
+  font-size: 10px;
+  color: rgba(168, 196, 216, 0.75);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.jsu-create-bar {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  border-bottom: 1px solid var(--jsu-border);
+  background: rgba(19, 26, 38, 0.75);
+}
+
+.jsu-input {
+  flex: 1;
+  min-width: 0;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--jsu-border);
+  color: var(--jsu-text);
+  font-size: 11px;
+  padding: 6px 8px;
+  border-radius: 4px;
+}
+
+.jsu-input-icon {
+  width: 50px;
+  flex: 0 0 50px;
+  text-align: center;
+}
+
+.jsu-empty-lib {
+  grid-column: 1 / -1;
+  border: 1px dashed var(--jsu-border);
+  color: rgba(168, 196, 216, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.4;
+  padding: 14px;
+  min-height: 110px;
+}
+
+.jsu-skill-lib {
+  width: 55%;
+  align-content: flex-start;
+  grid-auto-rows: minmax(82px, auto);
+}
+
+.jsu-slot-panel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-auto-rows: minmax(96px, auto);
+  justify-items: center;
+  align-content: center;
+  gap: 8px 4px;
+  padding: 8px 4px;
+}
+
+.jsu-slot-circle {
+  width: 76px;
+  height: 76px;
+}
+
+.jsu-slot-clear {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 10px;
+  line-height: 1;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.jsu-slot-clear:hover {
+  border-color: rgba(255, 80, 80, 0.9);
+  color: #ff8080;
+}
+
+.jsu-detail-panel {
+  top: 40px;
+  left: 58%;
+}
+
+.jsu-btn-row .jsu-btn-mejorar {
+  background: rgba(255, 80, 80, 0.12);
+  border-color: rgba(255, 80, 80, 0.45);
+  color: #ff8d8d;
+}

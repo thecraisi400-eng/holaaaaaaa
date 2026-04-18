@@ -1,23 +1,33 @@
 (function () {
-  const JUTSU_LIBRARY = [
-    { id: 0, name: 'Llama Voraz', em: '🔥', dmg: 'Fuego DOT (quemadura continua)', efecto: 'Ceguera — -30% puntería', buff: '+10% Ataque físico', dur: '3s' },
-    { id: 1, name: 'Rayo Destellante', em: '⚡', dmg: 'Eléctrico (descarga masiva)', efecto: 'Parálisis — -80% velocidad', buff: '+15% Evasión', dur: '2s' },
-    { id: 2, name: 'Ráfaga Cortante', em: '🌀', dmg: 'Corte (laceración profunda)', efecto: 'Hemorragia — daño por tiempo', buff: '+Velocidad de ataque', dur: '2s' },
-    { id: 3, name: 'Prisión Hidráulica', em: '💧', dmg: 'Presión (aplastamiento acuático)', efecto: 'Asfixia — bloquea habilidades', buff: '-CD Tiempos de espera', dur: '3s' },
-    { id: 4, name: 'Escudo Telúrico', em: '🪨', dmg: 'Impacto (golpe sísmico)', efecto: 'Pesadez — sin saltos', buff: 'Inmunidad a empujones', dur: '3s' },
-    { id: 5, name: 'Sello Prohibido', em: '🔮', dmg: 'Espiritual (devastación arcana)', efecto: 'Silencio — bloquea especiales', buff: '+5% Chakra pasivo', dur: '2s' }
+  const BASE_JUTSU_LIBRARY = [
+    { id: 0, key: 'llama_voraz', name: 'Llama Voraz', em: '🔥', dmg: 'Fuego DOT (quemadura continua)', efecto: 'Ceguera — -30% puntería', buff: '+10% Ataque físico', dur: '3s', cooldownSec: 8, mpCost: 8 },
+    { id: 1, key: 'rayo_destellante', name: 'Rayo Destellante', em: '⚡', dmg: 'Eléctrico (descarga masiva)', efecto: 'Parálisis — -80% velocidad', buff: '+15% Evasión', dur: '2s', cooldownSec: 8, mpCost: 8 },
+    { id: 2, key: 'rafaga_cortante', name: 'Ráfaga Cortante', em: '🌀', dmg: 'Corte (laceración profunda)', efecto: 'Hemorragia — daño por tiempo', buff: '+Velocidad de ataque', dur: '2s', cooldownSec: 8, mpCost: 8 },
+    { id: 3, key: 'prision_hidraulica', name: 'Prisión Hidráulica', em: '💧', dmg: 'Presión (aplastamiento acuático)', efecto: 'Asfixia — bloquea habilidades', buff: '-CD Tiempos de espera', dur: '3s', cooldownSec: 8, mpCost: 8 },
+    { id: 4, key: 'escudo_telurico', name: 'Escudo Telúrico', em: '🪨', dmg: 'Impacto (golpe sísmico)', efecto: 'Pesadez — sin saltos', buff: 'Inmunidad a empujones', dur: '3s', cooldownSec: 8, mpCost: 8 },
+    { id: 5, key: 'sello_prohibido', name: 'Sello Prohibido', em: '🔮', dmg: 'Espiritual (devastación arcana)', efecto: 'Silencio — bloquea especiales', buff: '+5% Chakra pasivo', dur: '2s', cooldownSec: 8, mpCost: 8 }
   ];
 
-  const UPGRADE_COSTS = { pergaminos: 15, chakra: 10 };
+  const DEFAULT_UPGRADE_COSTS = { pergaminos: 15, chakra: 10 };
+  const ITACHI_SPECIAL_KEY = 'itachi_katon_gokakyu';
+
+  function randomBetween(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
 
   const JutsuSystem = {
     host: null,
     root: null,
     selected: null,
     state: {
-      levels: Array(JUTSU_LIBRARY.length).fill(1),
+      levels: Array(BASE_JUTSU_LIBRARY.length).fill(1),
       slots: [null, null, null],
-      resources: { pergaminos: 120, chakra: 85 }
+      resources: { pergaminos: 120, chakra: 85 },
+      itachiSkill: {
+        damage: 40,
+        mpCost: 14,
+        upgradeCost: { pergaminos: 10, chakra: 7 }
+      }
     },
 
     mount() {
@@ -43,11 +53,66 @@
       this.selected = null;
     },
 
+    isItachiSelected() {
+      return window.CharacterStatsSystem?.getActiveHero?.()?.characterId === 'itachi';
+    },
+
+    getSkillById(id) {
+      const base = BASE_JUTSU_LIBRARY[id];
+      if (!base) return null;
+      if (id !== 0 || !this.isItachiSelected()) return { ...base };
+
+      const level = this.state.levels[0] || 1;
+      const special = this.state.itachiSkill;
+      return {
+        ...base,
+        key: ITACHI_SPECIAL_KEY,
+        name: 'KATON: GŌKAKYŪ NO JUTSU',
+        dmg: `⚔ DAÑO: -${special.damage}HP`,
+        efecto: '💀 EFECTO: Quemadura al enemigo -2%HP x 4s',
+        buff: '✦ BUFF: +10% ATK por 25s',
+        dur: '⏱ RECARGA: 13s',
+        cooldownSec: 13,
+        mpCost: special.mpCost,
+        combatData: {
+          key: ITACHI_SPECIAL_KEY,
+          damage: special.damage,
+          burnPercentPerSecond: 0.02,
+          burnDurationSec: 4,
+          atkBuffPct: 0.10,
+          atkBuffDurationSec: 25,
+          mpCost: special.mpCost,
+          cooldownSec: 13,
+          fireballSize: 70,
+          darkenAlpha: 0.45,
+          slowMo: 0.15
+        },
+        upgradeCost: { ...special.upgradeCost },
+        level
+      };
+    },
+
+    getUpgradeCostForSkill(id) {
+      if (id === 0 && this.isItachiSelected()) {
+        return { ...this.state.itachiSkill.upgradeCost };
+      }
+      return { ...DEFAULT_UPGRADE_COSTS };
+    },
 
     getEquippedSkills() {
       return this.state.slots
-        .filter((id) => id != null && JUTSU_LIBRARY[id])
-        .map((id) => ({ id, name: JUTSU_LIBRARY[id].name, em: JUTSU_LIBRARY[id].em }));
+        .filter((id) => id != null)
+        .map((id) => this.getSkillById(id))
+        .filter(Boolean)
+        .map((skill) => ({
+          id: skill.id,
+          key: skill.key,
+          name: skill.name,
+          em: skill.em,
+          cooldownSec: skill.cooldownSec,
+          mpCost: skill.mpCost,
+          combatData: skill.combatData || null
+        }));
     },
 
     isMounted() {
@@ -87,7 +152,9 @@
       if (!lib) return;
       lib.innerHTML = '';
 
-      JUTSU_LIBRARY.forEach((jutsu) => {
+      BASE_JUTSU_LIBRARY.forEach((_, idx) => {
+        const jutsu = this.getSkillById(idx);
+        if (!jutsu) return;
         const lv = this.state.levels[jutsu.id];
         const cls = this.getLvlClass(lv);
         const item = document.createElement('div');
@@ -113,7 +180,7 @@
     },
 
     openDetail(id) {
-      const jutsu = JUTSU_LIBRARY[id];
+      const jutsu = this.getSkillById(id);
       if (!jutsu) return;
       const lv = this.state.levels[id];
       this.selected = id;
@@ -135,9 +202,10 @@
       this.root.querySelector('#jsuUpgradeMsg').textContent = '';
 
       const upgradeBtn = this.root.querySelector('#jsuUpgradeBtn');
+      const cost = this.getUpgradeCostForSkill(id);
       upgradeBtn.disabled = lv >= 10;
       upgradeBtn.textContent = lv < 10
-        ? `⬆ Mejorar (📜${UPGRADE_COSTS.pergaminos} 💠${UPGRADE_COSTS.chakra})`
+        ? `⬆ Mejorar (📜${cost.pergaminos} 💠${cost.chakra})`
         : '✦ Nivel Máximo';
 
       this.root.querySelector('#jsuDetailPanel').classList.add('visible');
@@ -159,18 +227,27 @@
       const lv = this.state.levels[id];
       if (lv >= 10) return;
 
+      const cost = this.getUpgradeCostForSkill(id);
       const { pergaminos, chakra } = this.state.resources;
-      if (pergaminos < UPGRADE_COSTS.pergaminos || chakra < UPGRADE_COSTS.chakra) {
+      if (pergaminos < cost.pergaminos || chakra < cost.chakra) {
         this.root.querySelector('#jsuUpgradeMsg').textContent = '¡Recursos insuficientes!';
         return;
       }
 
-      this.state.resources.pergaminos -= UPGRADE_COSTS.pergaminos;
-      this.state.resources.chakra -= UPGRADE_COSTS.chakra;
+      this.state.resources.pergaminos -= cost.pergaminos;
+      this.state.resources.chakra -= cost.chakra;
       this.state.levels[id] += 1;
 
+      if (id === 0 && this.isItachiSelected()) {
+        this.state.itachiSkill.damage += randomBetween(19, 28);
+        this.state.itachiSkill.mpCost += randomBetween(7, 11);
+        this.state.itachiSkill.upgradeCost.pergaminos += randomBetween(10, 30);
+        this.state.itachiSkill.upgradeCost.chakra += randomBetween(10, 30);
+      }
+
       this.syncResources();
-      this.setStatus(`⬆ ${JUTSU_LIBRARY[id].name} mejorado → Lv ${this.state.levels[id]}`);
+      const skill = this.getSkillById(id);
+      this.setStatus(`⬆ ${skill.name} mejorado → Lv ${this.state.levels[id]}`);
       this.openDetail(id);
       this.renderLib();
       this.renderSlots();
@@ -185,7 +262,7 @@
         this.state.slots[empty] = id;
         this.renderSlots();
         this.spawnParticles(empty);
-        this.setStatus(`⬣ ${JUTSU_LIBRARY[id].name} equipado en slot ${empty + 1}`);
+        this.setStatus(`⬣ ${this.getSkillById(id).name} equipado en slot ${empty + 1}`);
       } else {
         this.state.slots[2] = id;
         this.renderSlots();
@@ -208,7 +285,7 @@
 
       this.renderSlots();
       this.spawnParticles(slot);
-      this.setStatus(`⬣ ${JUTSU_LIBRARY[id].name} equipado`);
+      this.setStatus(`⬣ ${this.getSkillById(id).name} equipado`);
     },
 
     renderSlots() {
@@ -219,7 +296,7 @@
         const name = this.root.querySelector(`#jsuSlotName${i}`);
 
         if (id != null) {
-          const jutsu = JUTSU_LIBRARY[id];
+          const jutsu = this.getSkillById(id);
           circle.classList.remove('empty');
           circle.classList.add('has-skill');
           em.style.fontSize = '28px';

@@ -9,7 +9,7 @@
   ];
 
   const DEFAULT_UPGRADE_COSTS = { pergaminos: 15, chakra: 10 };
-  const ITACHI_SPECIAL_KEY = 'itachi_katon_gokakyu';
+  const ITACHI_SPECIAL_KEY = 'itachi_kage_bunshin';
 
   function randomBetween(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -24,8 +24,8 @@
       slots: [null, null, null],
       resources: { pergaminos: 120, chakra: 85 },
       itachiSkill: {
-        damage: 40,
-        mpCost: 14,
+        damage: 0,
+        mpCost: 17,
         upgradeCost: { pergaminos: 10, chakra: 7 }
       }
     },
@@ -67,25 +67,27 @@
       return {
         ...base,
         key: ITACHI_SPECIAL_KEY,
-        name: 'KATON: GŌKAKYŪ NO JUTSU',
-        dmg: `⚔ DAÑO: -${special.damage}HP`,
-        efecto: '💀 EFECTO: Quemadura al enemigo -2%HP x 4s',
-        buff: '✦ BUFF: +10% ATK por 25s',
-        dur: '⏱ RECARGA: 13s',
-        cooldownSec: 13,
+        name: '👥 KAGE BUNSHIN NO JUTSU',
+        dmg: '⚔ DAÑO: -',
+        efecto: '💀 EFECTO: Crea 2 Clones con 20% de Estadísticas',
+        buff: '✦ BUFF: -',
+        dur: '⏱ DURACIÓN: 20s',
+        cooldownSec: 20,
         mpCost: special.mpCost,
         combatData: {
           key: ITACHI_SPECIAL_KEY,
           damage: special.damage,
-          burnPercentPerSecond: 0.02,
-          burnDurationSec: 4,
-          atkBuffPct: 0.10,
-          atkBuffDurationSec: 25,
+          cloneCount: 2,
+          cloneStatRatio: 0.20,
+          cloneLifetimeSec: 13,
           mpCost: special.mpCost,
-          cooldownSec: 13,
-          fireballSize: 70,
+          cooldownSec: 20,
           darkenAlpha: 0.45,
-          slowMo: 0.15
+          slowMo: 0.30,
+          labelDurationSec: 1,
+          speedRestoreSec: 1,
+          autoUseChance: 0.34,
+          minReuseDelaySec: 10
         },
         upgradeCost: { ...special.upgradeCost },
         level
@@ -111,6 +113,7 @@
           em: skill.em,
           cooldownSec: skill.cooldownSec,
           mpCost: skill.mpCost,
+          autoUseChance: Number(skill.combatData?.autoUseChance ?? 1),
           combatData: skill.combatData || null
         }));
     },

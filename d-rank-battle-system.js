@@ -82,6 +82,11 @@
       this.skillRollTimer = 0;
       this.activeSkillProjectile = null;
       this.activeSkillLabel = null;
+      this.manualJutsuEnabled = false;
+      this.jutsuButtonsEnabled = true;
+      this.itachiSkillUI = null;
+      this.manualSkillState = null;
+      this.itachiSkillCooldowns = { katon: 0, bunshin: 0, shuriken: 0 };
       this.bgMountains = [];
       this.bgMountains2 = [];
       this.bgRocks = [];
@@ -244,6 +249,553 @@
       ctx.textBaseline = 'middle';
       ctx.fillText(text, x + boxWidth / 2, y + boxHeight / 2, boxWidth - 12);
       ctx.restore();
+    }
+
+    createItachiSkillUI() {
+      if (!this.wrapper) return;
+      let panel = this.wrapper.querySelector('#drb-itachi-skill-panel');
+      if (!panel) {
+        panel = document.createElement('div');
+        panel.id = 'drb-itachi-skill-panel';
+        panel.className = 'drb-itachi-skill-panel';
+        panel.innerHTML = `
+          <button class="drb-itachi-skill-btn" data-skill="katon" title="🔥 KATON: GŌKAKYŪ NO JUTSU">
+            <span class="drb-itachi-skill-em">🔥</span>
+            <span class="drb-itachi-cooldown" data-cooldown="katon"></span>
+          </button>
+          <button class="drb-itachi-skill-btn" data-skill="bunshin" title="👥 KAGE BUNSHIN NO JUTSU">
+            <span class="drb-itachi-skill-em">👥</span>
+            <span class="drb-itachi-cooldown" data-cooldown="bunshin"></span>
+          </button>
+          <button class="drb-itachi-skill-btn" data-skill="shuriken" title="🌟 SHURIKEN JUTSU">
+            <span class="drb-itachi-skill-em">🌟</span>
+            <span class="drb-itachi-cooldown" data-cooldown="shuriken"></span>
+          </button>
+        `;
+        this.wrapper.appendChild(panel);
+      }
+      this.itachiSkillUI = panel;
+      panel.querySelectorAll('.drb-itachi-skill-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          if (!this.manualJutsuEnabled || !this.jutsuButtonsEnabled) return;
+          const skill = btn.dataset.skill;
+          if (skill === 'katon') this.useKaton();
+          if (skill === 'bunshin') this.useKageBunshin();
+          if (skill === 'shuriken') this.useShurikenjutsu();
+        });
+      });
+    }
+
+    setItachiButtons(enabled) {
+      this.jutsuButtonsEnabled = enabled;
+      if (!this.itachiSkillUI) return;
+      this.itachiSkillUI.querySelectorAll('.drb-itachi-skill-btn').forEach((btn) => {
+        btn.disabled = !enabled;
+      });
+    }
+
+    setSkillCooldown(skill, ms) {
+      this.itachiSkillCooldowns[skill] = ms;
+      const el = this.itachiSkillUI?.querySelector(`[data-cooldown="${skill}"]`);
+      if (!el) return;
+      if (ms <= 0) {
+        el.style.opacity = '0';
+        el.textContent = '';
+        return;
+      }
+      const start = performance.now();
+      const total = ms;
+      el.style.opacity = '1';
+      const tick = () => {
+        const left = Math.max(0, total - (performance.now() - start));
+        this.itachiSkillCooldowns[skill] = left;
+        if (left <= 0) {
+          el.style.opacity = '0';
+          el.textContent = '';
+          return;
+        }
+        el.textContent = `${Math.ceil(left / 1000)}s`;
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }
+
+    setupManualSkillState() {
+      const engine = this;
+      const player = this.fighters[0];
+      const enemy = this.fighters[1];
+      this.manualSkillState = {
+        gameState: {
+          player: {
+            x: player?.x || 0,
+            maxHp: player?.maxHp || 100,
+            attackBuff: 0
+          },
+          enemy: {
+            x: enemy?.x || 0,
+            maxHp: enemy?.maxHp || 100,
+            burnTimer: 0,
+            burnTickTimer: 0
+          },
+          projectiles: [],
+          clones: [],
+          shurikens: [],
+          particles: [],
+          playerJumping: false,
+          playerAirY: this.GROUND,
+          isAnimating: false,
+          gameOver: false
+        },
+        CONTAINER_H: this.H,
+        GROUND_Y: this.H - this.GROUND,
+        setButtons(enabled) {
+          engine.setItachiButtons(enabled);
+        },
+        showSkillName(name, duration) {
+          if (!name) {
+            engine.activeSkillLabel = null;
+            return;
+          }
+          engine.activeSkillLabel = { owner: engine.fighters[0], name };
+          if (duration > 0) {
+            setTimeout(() => {
+              if (engine.activeSkillLabel?.name === name) engine.activeSkillLabel = null;
+            }, duration);
+          }
+        },
+        addLog(text) {
+          engine.damageNums.push(new engine.DamageNum(engine.W / 2, 36 + Math.random() * 8, text, false));
+        },
+        dealDamageToEnemy(amount, type) {
+          const target = engine.fighters[1];
+          const source = engine.fighters[0];
+          if (!target || target.isDead) return;
+          let damage = amount;
+          if (type === 'burn') damage = Math.max(1, amount);
+          const dmgPayload = engine.calcDamage(source, target, 'jutsu');
+          const applied = type === 'burn' ? damage : Math.max(1, Math.round(dmgPayload.damage * (damage / 30)));
+          target.receiveHit(applied, source.cx, source, false);
+        },
+        createParticle(x, y, color, size, life, vx, vy) {
+          engine.particles.push(new engine.Particle(engine, x, y, vx, vy, color, life / 16, Math.max(1, size * 0.35), 'spark'));
+        }
+      };
+    }
+
+    // ==================== KATON: GŌKAKYŪ NO JUTSU ====================
+    useKaton() {
+      if (!this.manualJutsuEnabled) return;
+      const { gameState, CONTAINER_H, GROUND_Y, setButtons, showSkillName, addLog, dealDamageToEnemy, createParticle } = this.manualSkillState;
+      gameState.player.x = this.fighters[0]?.x || 0;
+      gameState.enemy.x = this.fighters[1]?.x || 0;
+      gameState.enemy.maxHp = this.fighters[1]?.maxHp || 100;
+      if (gameState.isAnimating || gameState.gameOver) return;
+      if (this.itachiSkillCooldowns.katon > 0) return;
+      this.setSkillCooldown('katon', 7000);
+      gameState.isAnimating = true;
+      setButtons(false);
+
+      showSkillName('KATON: GŌKAKYŪ NO JUTSU', 1500);
+      addLog('Itachi usa Katon: Gōkakyū no Jutsu!', 'log-info');
+
+      const fireball = document.createElement('div');
+      fireball.style.cssText = `
+        position:absolute; z-index:15; pointer-events:none;
+        width:80px; height:80px; border-radius:50%;
+        background: radial-gradient(circle at 35% 35%, #fff 0%, #ffcc00 15%, #ff6600 40%, #ff2200 65%, rgba(255,0,0,0.3) 85%, transparent 100%);
+        box-shadow: 0 0 20px #ff4400, 0 0 40px #ff2200, 0 0 60px rgba(255,34,0,0.5), inset 0 0 15px rgba(255,255,255,0.3);
+      `;
+
+      const startX = gameState.player.x + 32 - 40;
+      const startY = CONTAINER_H - GROUND_Y - 32 - 40;
+      fireball.style.left = startX + 'px';
+      fireball.style.top = startY + 'px';
+      this.wrapper.appendChild(fireball);
+
+      let fbX = startX, fbY = startY;
+      let fbSpeed = 4;
+      let fbAngle = 0;
+      let fbTrailTimer = 0;
+
+      const animateFireball = (dt) => {
+        gameState.player.x = this.fighters[0]?.x || 0;
+        gameState.enemy.x = this.fighters[1]?.x || 0;
+        gameState.gameOver = this.gameOver;
+        if (gameState.gameOver) {
+          fireball.remove();
+          gameState.isAnimating = false;
+          setButtons(true);
+          return;
+        }
+
+        fbTrailTimer += dt;
+        if (fbTrailTimer > 30) {
+          fbTrailTimer = 0;
+          for (let i = 0; i < 2; i++) {
+            createParticle(
+              fbX + 20 + Math.random() * 40,
+              fbY + 20 + Math.random() * 40,
+              ['#ff4400', '#ff6600', '#ffaa00', '#ff0000'][Math.floor(Math.random() * 4)],
+              4 + Math.random() * 6,
+              300 + Math.random() * 300,
+              (Math.random() - 0.5) * 3,
+              (Math.random() - 0.5) * 3
+            );
+          }
+        }
+
+        const currentEnemyCenterX = gameState.enemy.x + 32;
+        const currentEnemyCenterY = CONTAINER_H - GROUND_Y - 32;
+        const dx = currentEnemyCenterX - (fbX + 40);
+        const dy = currentEnemyCenterY - (fbY + 40);
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist < 45) {
+          fireball.remove();
+          for (let i = 0; i < 20; i++) {
+            const angle = (Math.PI * 2 / 20) * i;
+            createParticle(
+              fbX + 40, fbY + 40,
+              ['#ff4400', '#ff6600', '#ffaa00', '#ffcc00'][Math.floor(Math.random() * 4)],
+              6 + Math.random() * 10,
+              500 + Math.random() * 500,
+              Math.cos(angle) * (2 + Math.random() * 4),
+              Math.sin(angle) * (2 + Math.random() * 4)
+            );
+          }
+
+          let damage = 40;
+          if (gameState.player.attackBuff > 0) {
+            damage = Math.floor(40 * 1.1);
+          }
+          dealDamageToEnemy(damage);
+          this.applyBurn();
+          this.applyAttackBuff();
+          setTimeout(() => {
+            gameState.isAnimating = false;
+            setButtons(true);
+          }, 500);
+          return;
+        }
+
+        fbAngle = Math.atan2(dy, dx);
+        fbX += Math.cos(fbAngle) * fbSpeed;
+        fbY += Math.sin(fbAngle) * fbSpeed;
+        fbY += Math.sin(fbAngle) * 0.5;
+
+        fireball.style.left = fbX + 'px';
+        fireball.style.top = fbY + 'px';
+
+        const travelProgress = 1 - (dist / 300);
+        const scale = 0.8 + travelProgress * 0.3;
+        fireball.style.transform = `scale(${scale})`;
+
+        requestAnimationFrame(() => animateFireball(16));
+      };
+
+      requestAnimationFrame(() => animateFireball(16));
+    }
+
+    applyBurn() {
+      const { gameState, GROUND_Y, addLog, dealDamageToEnemy } = this.manualSkillState;
+      const enemy = gameState.enemy;
+      enemy.burnTimer = 4000;
+      enemy.burnTickTimer = 0;
+
+      const burnCircle = document.createElement('div');
+      burnCircle.className = 'burn-circle';
+      burnCircle.id = 'burn-effect';
+      burnCircle.style.left = (gameState.enemy.x + 2) + 'px';
+      burnCircle.style.bottom = (GROUND_Y - 2) + 'px';
+      this.wrapper.appendChild(burnCircle);
+
+      addLog('Kaguya está en llamas! (-2% HP por 4s)', 'log-damage');
+
+      const burnInterval = setInterval(() => {
+        gameState.enemy.maxHp = this.fighters[1]?.maxHp || enemy.maxHp || 100;
+        gameState.gameOver = this.gameOver;
+        if (gameState.gameOver) {
+          clearInterval(burnInterval);
+          burnCircle?.remove();
+          return;
+        }
+        enemy.burnTimer -= 100;
+        burnCircle.style.left = ((this.fighters[1]?.x || gameState.enemy.x) + 2) + 'px';
+        if (enemy.burnTimer <= 0) {
+          clearInterval(burnInterval);
+          burnCircle?.remove();
+          addLog('El efecto de quemadura desaparece.', 'log-info');
+          return;
+        }
+        const tickDamage = Math.ceil(enemy.maxHp * 0.005);
+        dealDamageToEnemy(tickDamage, 'burn');
+      }, 100);
+    }
+
+    applyAttackBuff() {
+      const { gameState, addLog } = this.manualSkillState;
+      const player = gameState.player;
+      player.attackBuff = 5000;
+
+      const buffEl = document.createElement('div');
+      buffEl.className = 'buff-indicator';
+      buffEl.id = 'attack-buff-indicator';
+      buffEl.textContent = '⚔ ATK +10%';
+      this.wrapper.appendChild(buffEl);
+
+      addLog('Itachi gana +10% de ataque por 5s!', 'log-buff');
+
+      const buffInterval = setInterval(() => {
+        player.attackBuff -= 100;
+        if (player.attackBuff <= 0) {
+          clearInterval(buffInterval);
+          buffEl?.remove();
+          addLog('El buff de ataque desaparece.', 'log-info');
+          return;
+        }
+      }, 100);
+    }
+
+    // ==================== KAGE BUNSHIN NO JUTSU ====================
+    useKageBunshin() {
+      if (!this.manualJutsuEnabled) return;
+      const { gameState, GROUND_Y, addLog, setButtons, showSkillName, dealDamageToEnemy, createParticle } = this.manualSkillState;
+      gameState.player.x = this.fighters[0]?.x || 0;
+      if (gameState.isAnimating || gameState.gameOver) return;
+      if (this.itachiSkillCooldowns.bunshin > 0) return;
+      this.setSkillCooldown('bunshin', 10000);
+      gameState.isAnimating = true;
+      setButtons(false);
+
+      showSkillName('KAGE BUNSHIN NO JUTSU', 1000);
+      addLog('Itachi usa Kage Bunshin no Jutsu!', 'log-info');
+
+      const cloneStats = {
+        hp: Math.ceil(gameState.player.maxHp * 0.2),
+        maxHp: Math.ceil(gameState.player.maxHp * 0.2),
+        attack: Math.ceil(20 * 0.2)
+      };
+
+      for (let i = 0; i < 2; i++) {
+        const clone = document.createElement('div');
+        clone.className = 'sprite-container clone-sprite';
+        clone.style.left = (gameState.player.x - 20 - i * 30) + 'px';
+        clone.style.bottom = GROUND_Y + 'px';
+        clone.style.opacity = '0.7';
+        clone.style.filter = 'brightness(0.8) hue-rotate(20deg)';
+        clone.innerHTML = `<img src="assets/images/itachi_battle.png" alt="Clone" style="width:64px;height:64px;image-rendering:pixelated;">`;
+        this.wrapper.appendChild(clone);
+
+        const cloneObj = {
+          el: clone,
+          hp: cloneStats.hp,
+          maxHp: cloneStats.maxHp,
+          x: gameState.player.x - 20 - i * 30,
+          y: GROUND_Y,
+          speed: 2 + Math.random(),
+          attacking: false,
+          attackCooldown: 0,
+          id: i
+        };
+        gameState.clones.push(cloneObj);
+      }
+
+      const animateClones = (dt) => {
+        gameState.enemy.x = this.fighters[1]?.x || 0;
+        gameState.gameOver = this.gameOver;
+        if (gameState.gameOver) {
+          gameState.clones.forEach((c) => c.el.remove());
+          gameState.clones = [];
+          gameState.isAnimating = false;
+          setButtons(true);
+          return;
+        }
+
+        let allDead = true;
+        gameState.clones.forEach((clone, idx) => {
+          if (clone.hp <= 0) {
+            if (clone.el.parentNode) clone.el.remove();
+            return;
+          }
+          allDead = false;
+          const enemyCX = gameState.enemy.x + 32;
+          const cloneCX = clone.x + 32;
+          const dist = Math.abs(enemyCX - cloneCX);
+          if (dist > 50) {
+            if (cloneCX < enemyCX) clone.x += clone.speed;
+            else clone.x -= clone.speed;
+            clone.el.style.left = clone.x + 'px';
+          } else if (!clone.attacking) {
+            clone.attacking = true;
+            clone.attackCooldown = 800;
+            clone.el.style.filter = 'brightness(2) hue-rotate(20deg)';
+            setTimeout(() => {
+              if (clone.el.parentNode) clone.el.style.filter = 'brightness(0.8) hue-rotate(20deg)';
+            }, 150);
+
+            const cloneDmg = Math.ceil(clone.maxHp * 0.15);
+            dealDamageToEnemy(cloneDmg, 'clone');
+            addLog(`Clon ${idx + 1} ataca por ${cloneDmg}!`, 'log-damage');
+
+            setTimeout(() => {
+              if (clone.hp > 0 && !gameState.gameOver) {
+                const counterDmg = Math.ceil(15 + Math.random() * 10);
+                clone.hp -= counterDmg;
+                addLog(`Kaguya contraataca al clon ${idx + 1}: -${counterDmg}`, 'log-damage');
+
+                if (clone.hp <= 0) {
+                  for (let p = 0; p < 8; p++) {
+                    createParticle(
+                      clone.x + 32, this.H - clone.y - 32,
+                      '#aaaaff', 8, 400,
+                      (Math.random() - 0.5) * 5,
+                      -Math.random() * 4
+                    );
+                  }
+                  clone.el.remove();
+                  addLog(`Clon ${idx + 1} ha sido destruido!`, 'log-info');
+                }
+              }
+            }, 400);
+            setTimeout(() => { clone.attacking = false; }, clone.attackCooldown);
+          }
+        });
+
+        if (allDead) {
+          gameState.clones = [];
+          gameState.isAnimating = false;
+          setButtons(true);
+          return;
+        }
+        requestAnimationFrame(() => animateClones(16));
+      };
+
+      requestAnimationFrame(() => animateClones(16));
+    }
+
+    // ==================== SHURIKENJUTSU ====================
+    useShurikenjutsu() {
+      if (!this.manualJutsuEnabled) return;
+      const { gameState, CONTAINER_H, GROUND_Y, addLog, setButtons, showSkillName, createParticle, dealDamageToEnemy } = this.manualSkillState;
+      if (gameState.isAnimating || gameState.gameOver) return;
+      if (this.itachiSkillCooldowns.shuriken > 0) return;
+      this.setSkillCooldown('shuriken', 8500);
+      gameState.isAnimating = true;
+      gameState.playerJumping = true;
+      setButtons(false);
+
+      showSkillName('SHURIKENJUTSU', 1200);
+      addLog('Itachi usa Shurikenjutsu!', 'log-info');
+
+      const groundBottom = GROUND_Y;
+      const jumpHeight = CONTAINER_H * 0.7;
+      const targetBottom = groundBottom + jumpHeight;
+      let jumpProgress = 0;
+      const jumpDuration = 600;
+      const jumpStartTime = performance.now();
+
+      const animateJump = (timestamp) => {
+        const elapsed = timestamp - jumpStartTime;
+        jumpProgress = Math.min(elapsed / jumpDuration, 1);
+        const eased = 1 - Math.pow(1 - jumpProgress, 3);
+        const currentBottom = groundBottom + (targetBottom - groundBottom) * eased;
+        gameState.playerAirY = currentBottom;
+        if (jumpProgress < 1) {
+          requestAnimationFrame(animateJump);
+        } else {
+          this.throwShurikens(currentBottom, createParticle, dealDamageToEnemy, addLog, setButtons, gameState, GROUND_Y, CONTAINER_H);
+        }
+      };
+
+      requestAnimationFrame(animateJump);
+    }
+
+    throwShurikens(playerBottom, createParticle, dealDamageToEnemy, addLog, setButtons, gameState, GROUND_Y, CONTAINER_H) {
+      const shurikenCount = 5;
+      const delayBetween = 200;
+      let hitsDone = 0;
+
+      const checkShurikenDone = () => {
+        if (hitsDone < shurikenCount) return;
+        setTimeout(() => {
+          gameState.playerJumping = false;
+          gameState.playerAirY = GROUND_Y;
+          gameState.isAnimating = false;
+          setButtons(true);
+          addLog('Itachi aterriza.', 'log-info');
+        }, 500);
+      };
+
+      for (let i = 0; i < shurikenCount; i++) {
+        setTimeout(() => {
+          if (gameState.gameOver) return;
+          const shuriken = document.createElement('div');
+          shuriken.style.cssText = `
+            position:absolute; z-index:20; pointer-events:none;
+            width:20px; height:20px;
+            background: transparent;
+            filter: drop-shadow(0 0 3px #888);
+          `;
+          shuriken.innerHTML = `<svg viewBox="0 0 20 20" width="20" height="20">
+              <polygon points="10,0 12,8 20,10 12,12 10,20 8,12 0,10 8,8" fill="#ccc" stroke="#666" stroke-width="0.5"/>
+              <circle cx="10" cy="10" r="2" fill="#333"/>
+            </svg>`;
+
+          const startX = (this.fighters[0]?.x || 0) + 32 - 10;
+          const startY = CONTAINER_H - playerBottom - 20;
+          shuriken.style.left = startX + 'px';
+          shuriken.style.top = startY + 'px';
+          this.wrapper.appendChild(shuriken);
+
+          let shX = startX, shY = startY;
+          let shScale = 1.0;
+          let shRotation = 0;
+          const shSpeed = 5 + i * 0.5;
+          let shHit = false;
+
+          const animateShuriken = (dt) => {
+            if (gameState.gameOver) { shuriken.remove(); return; }
+            if (shHit) return;
+            const enemyCX = (this.fighters[1]?.x || 0) + 32;
+            const enemyCY = CONTAINER_H - GROUND_Y - 32;
+            const dx = enemyCX - (shX + 10);
+            const dy = enemyCY - (shY + 10);
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const approachProgress = 1 - (dist / 300);
+            shScale = 1.0 + Math.min(approachProgress, 1) * 0.25;
+            shuriken.style.transform = `scale(${shScale}) rotate(${shRotation}deg)`;
+
+            if (dist < 35) {
+              shHit = true;
+              shuriken.remove();
+              for (let s = 0; s < 8; s++) {
+                const angle = (Math.PI * 2 / 8) * s;
+                createParticle(
+                  shX + 10, shY + 10,
+                  '#aaa', 4, 300,
+                  Math.cos(angle) * 3,
+                  Math.sin(angle) * 3
+                );
+              }
+              dealDamageToEnemy(30);
+              hitsDone += 1;
+              checkShurikenDone();
+              return;
+            }
+
+            const angle = Math.atan2(dy, dx);
+            shX += Math.cos(angle) * shSpeed;
+            shY += Math.sin(angle) * shSpeed;
+            shRotation += 15;
+            shuriken.style.left = shX + 'px';
+            shuriken.style.top = shY + 'px';
+            shuriken.style.transform = `scale(${shScale}) rotate(${shRotation}deg)`;
+            requestAnimationFrame(() => animateShuriken(16));
+          };
+
+          requestAnimationFrame(() => animateShuriken(16));
+        }, i * delayBetween);
+      }
     }
 
     tryAutoLaunchEquippedSkill(attacker, defender, chance, getSkills) {
@@ -563,7 +1115,7 @@
       this.skillRollTimer += dms;
       while (this.skillRollTimer >= 1000) {
         this.skillRollTimer -= 1000;
-        this.tryAutoLaunchEquippedSkill(f0, f1, 0.25, () => this.getHeroEquippedSkills());
+        if (!this.manualJutsuEnabled) this.tryAutoLaunchEquippedSkill(f0, f1, 0.25, () => this.getHeroEquippedSkills());
         this.tryAutoLaunchEquippedSkill(f1, f0, 0.20, () => this.getEnemySkills());
       }
       f0.update(dt, dms, f1);
@@ -659,6 +1211,8 @@
       if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
       if (this.winnerScreen) this.winnerScreen.style.display = 'none';
       const heroCharacterId = this.battleContext?.heroSnapshot?.characterId || '';
+      this.manualJutsuEnabled = heroCharacterId === 'itachi';
+      this.itachiSkillCooldowns = { katon: 0, bunshin: 0, shuriken: 0 };
       const heroSpritePath = HERO_BATTLE_SPRITES[heroCharacterId] || '';
       const missionIndex = Number(this.battleContext?.missionConfig?.missionIndex ?? 0) + 1;
       const enemySpritePath = ENEMY_D_RANK_SPRITES[missionIndex] || '';
@@ -684,6 +1238,10 @@
       }
       this.fighters[0].tX = 120 + Math.random() * 80;
       this.fighters[1].tX = 250 + Math.random() * 80;
+      this.createItachiSkillUI();
+      if (this.itachiSkillUI) this.itachiSkillUI.style.display = this.manualJutsuEnabled ? 'flex' : 'none';
+      this.setItachiButtons(this.manualJutsuEnabled);
+      if (this.manualJutsuEnabled) this.setupManualSkillState();
     }
 
     showRoundAnnouncement() {
@@ -1135,7 +1693,7 @@
               const dmgPayload = this.e.calcDamage(this, enemy, 'basic');
               enemy.receiveHit(dmgPayload.damage, this.cx, this, dmgPayload.crit);
               this.atkCD = 42;
-            } else if (dist > 150 && this.jutsuCD <= 0) {
+            } else if (dist > 150 && this.jutsuCD <= 0 && !(this.id === 0 && this.e.manualJutsuEnabled)) {
               this.launchJutsu(enemy);
             }
           }

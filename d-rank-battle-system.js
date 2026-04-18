@@ -8,6 +8,11 @@
   const SPRITE_SIZE = 256;
   const SPRITE_FRAMES = 4;
   const SPRITE_FRAME_SIZE = SPRITE_SIZE / SPRITE_FRAMES;
+  const PLAYER_EQUIPPED_SKILL_PROC_CHANCE = 0.17;
+  const ENEMY_EQUIPPED_SKILL_PROC_CHANCE = 0.15;
+  const EQUIPPED_SKILL_CHECK_INTERVAL_MS = 1000;
+  const EQUIPPED_SKILL_SLOW_MO = 0.05;
+  const EQUIPPED_SKILL_VEIL_ALPHA = 0.4;
 
   const HERO_BATTLE_SPRITES = {
     madara: 'assets/images/madara_battle.png',
@@ -79,6 +84,7 @@
       this.shakeAmp = 0;
       this.critFlash = 0;
       this.jutsuVeil = 0;
+      this.activeEquippedSkillCast = null;
       this.bgMountains = [];
       this.bgMountains2 = [];
       this.bgRocks = [];
@@ -459,7 +465,23 @@
       }
     }
 
-    update(dt, dms) {
+    beginEquippedSkillCinematic(caster, skillName) {
+      this.activeEquippedSkillCast = {
+        casterId: caster.id,
+        casterRef: caster,
+        skillName: skillName || 'Habilidad'
+      };
+      this.slowMo = EQUIPPED_SKILL_SLOW_MO;
+      if (this.veil) this.veil.style.background = `rgba(0,0,0,${EQUIPPED_SKILL_VEIL_ALPHA})`;
+    }
+
+    endEquippedSkillCinematic() {
+      this.activeEquippedSkillCast = null;
+      if (!this.gameOver) this.slowMo = 1;
+      if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
+    }
+
+    update(dt, dms, rawMs) {
       this.frameN += 1;
       if (this.frameN % 65 === 0) {
         this.particles.push(new this.Particle(this, Math.random() * this.W, this.GROUND - 2, (Math.random() - 0.5) * 1.2, -0.3 - Math.random() * 0.5, Math.random() < 0.5 ? '#C8A870' : '#A88850', 90 + Math.random() * 60, 1.2 + Math.random(), 'dust'));
@@ -473,7 +495,7 @@
         this.shakeY = (Math.random() - 0.5) * this.shakeAmp * f;
         if (this.shakeDur <= 0) { this.shakeX = 0; this.shakeY = 0; this.shakeAmp = 0; }
       }
-      if (this.jutsuVeil > 0) {
+      if (!this.activeEquippedSkillCast && this.jutsuVeil > 0) {
         this.jutsuVeil -= dt;
         if (this.jutsuVeil <= 0) {
           this.jutsuVeil = 0;
@@ -492,8 +514,8 @@
 
       const [f0, f1] = this.fighters;
       if (!f0 || !f1) return;
-      f0.update(dt, dms, f1);
-      f1.update(dt, dms, f0);
+      f0.update(dt, dms, rawMs, f1);
+      f1.update(dt, dms, rawMs, f0);
 
       for (const j of this.jutsus) j.update(dt);
       for (const j of this.jutsus) {
@@ -509,6 +531,7 @@
               this.particles.push(new this.Particle(this, j.x, j.y, Math.cos(ang) * spd, Math.sin(ang) * spd, j.color, 20, 3, 'spark'));
             }
             j.dead = true;
+            if (j.isEquippedSkill) this.endEquippedSkillCinematic();
           }
         }
       }
@@ -546,6 +569,7 @@
       for (const f of this.fighters) f.draw(ctx);
       for (const p of this.particles) p.draw(ctx);
       for (const d of this.damageNums) d.draw(ctx);
+      this.drawSkillCastLabel(ctx);
 
       if (this.gameOver && this.slowMo < 1) {
         ctx.save();
@@ -573,6 +597,7 @@
       this.shakeAmp = 0;
       this.critFlash = 0;
       this.jutsuVeil = 0;
+      this.activeEquippedSkillCast = null;
       this.completionSent = false;
       if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
       if (this.winnerScreen) this.winnerScreen.style.display = 'none';
@@ -595,13 +620,45 @@
         this.fighters[0].maxMp = heroMaxMp;
         this.fighters[0].mp = Math.max(0, Math.min(heroMaxMp, currentMp));
         this.fighters[0].combat = this.combatAdapter.hero;
+        this.fighters[0].equippedSkills = window.JutsuSystem?.getEquippedSkills?.() || [];
         this.fighters[1].name = 'ENEMIGO D';
         this.fighters[1].maxHp = this.combatAdapter.enemy.maxHp;
         this.fighters[1].hp = this.combatAdapter.enemy.maxHp;
         this.fighters[1].combat = this.combatAdapter.enemy;
+        this.fighters[1].equippedSkills = Array.isArray(this.battleContext?.missionConfig?.enemySkills)
+          ? this.battleContext.missionConfig.enemySkills.map((name, idx) => ({ id: idx, name, em: '☠️', level: 1 }))
+          : [];
       }
       this.fighters[0].tX = 120 + Math.random() * 80;
       this.fighters[1].tX = 250 + Math.random() * 80;
+    }
+
+    drawSkillCastLabel(ctx) {
+      if (!this.activeEquippedSkillCast) return;
+      const caster = this.activeEquippedSkillCast.casterRef;
+      if (!caster || caster.isDead) return;
+      const label = String(this.activeEquippedSkillCast.skillName || '').trim();
+      if (!label) return;
+
+      const paddingX = 10;
+      const boxH = 18;
+      const textY = Math.max(14, caster.y - 26);
+      ctx.save();
+      ctx.font = 'bold 11px Arial Black';
+      const textW = Math.ceil(ctx.measureText(label).width);
+      const boxW = Math.min(this.W - 8, Math.max(86, textW + paddingX * 2));
+      const x = Math.max(4, Math.min(this.W - boxW - 4, caster.cx - boxW / 2));
+      const y = Math.max(2, textY - boxH + 4);
+      ctx.fillStyle = 'rgba(8,12,20,0.88)';
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+      ctx.lineWidth = 1;
+      ctx.fillRect(x, y, boxW, boxH);
+      ctx.strokeRect(x, y, boxW, boxH);
+      ctx.fillStyle = '#f8fafc';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, x + boxW / 2, y + boxH / 2 + 0.5);
+      ctx.restore();
     }
 
     showRoundAnnouncement() {
@@ -680,7 +737,8 @@
       this.lastTs = ts;
       const dt = rawDt * this.slowMo;
       const dms = rawDt * 16.667 * this.slowMo;
-      this.update(dt, dms);
+      const rawMs = rawDt * 16.667;
+      this.update(dt, dms, rawMs);
       const hero = this.fighters[0];
       const enemy = this.fighters[1];
       this.dispatchBattleEvent('ngs:battle-tick', {
@@ -766,16 +824,24 @@
 
     get Jutsu() {
       return class Jutsu {
-        constructor(x, y, vx, vy, owner) {
+        constructor(x, y, vx, vy, owner, options = {}) {
           this.x = x; this.y = y; this.vx = vx; this.vy = vy; this.owner = owner;
-          this.color = owner.glowColor; this.size = 9; this.life = 200; this.dead = false; this.trail = [];
+          this.color = options.color || owner.glowColor;
+          this.size = options.size || 9;
+          this.life = options.life || 200;
+          this.dead = false;
+          this.trail = [];
+          this.isEquippedSkill = Boolean(options.isEquippedSkill);
         }
         update(dt) {
           this.trail.unshift({ x: this.x, y: this.y });
           if (this.trail.length > 12) this.trail.pop();
           this.x += this.vx * dt; this.y += this.vy * dt; this.life -= dt;
           const e = this.owner.e;
-          if (this.x < -12 || this.x > e.W + 12 || this.y < -12 || this.y > e.H + 12 || this.life <= 0) this.dead = true;
+          if (this.x < -12 || this.x > e.W + 12 || this.y < -12 || this.y > e.H + 12 || this.life <= 0) {
+            this.dead = true;
+            if (this.isEquippedSkill) e.endEquippedSkillCinematic();
+          }
           if (Math.random() < 0.35) e.particles.push(new e.Particle(e, this.x, this.y, (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 1.5, this.color, 10, 2, 'spark'));
         }
         draw(ctx) {
@@ -841,6 +907,8 @@
           this.deathT = 0;
           this.deathSmoke = 0;
           this.spriteProfile = spriteProfile;
+          this.equippedSkills = [];
+          this.skillCheckTimerMs = 0;
         }
         get cx() { return this.x + NW / 2; }
         get cy() { return this.y + NH / 2; }
@@ -924,10 +992,35 @@
           const spd = 5;
           this.e.jutsus.push(new this.e.Jutsu(this.cx, this.cy, (dx / d) * spd, (dy / d) * spd, this));
           this.e.spawnSparks(this.cx, this.cy, 14, this.glowColor);
-          this.e.jutsuVeil = 30;
-          if (this.e.veil) this.e.veil.style.background = 'rgba(0,0,0,0.22)';
           this.e.triggerShake(6, 14);
           this.flashTimer = 8;
+        }
+
+        tryLaunchEquippedSkill(enemy) {
+          if (!Array.isArray(this.equippedSkills) || this.equippedSkills.length === 0) return false;
+          if (this.e.activeEquippedSkillCast || this.jutsuCD > 0 || this.e.hitStop > 0) return false;
+          const chance = this.id === 0 ? PLAYER_EQUIPPED_SKILL_PROC_CHANCE : ENEMY_EQUIPPED_SKILL_PROC_CHANCE;
+          if (Math.random() >= chance) return false;
+
+          const pool = this.equippedSkills.filter((s) => s && s.name);
+          if (!pool.length) return false;
+          const chosen = pool[Math.floor(Math.random() * pool.length)];
+          const dx = enemy.cx - this.cx;
+          const dy = enemy.cy - this.cy;
+          const d = Math.sqrt(dx * dx + dy * dy) || 1;
+          const spd = 6;
+          this.jutsuCD = 92;
+          this.flashTimer = 10;
+          this.e.beginEquippedSkillCinematic(this, chosen.name);
+          this.e.jutsus.push(new this.e.Jutsu(this.cx, this.cy, (dx / d) * spd, (dy / d) * spd, this, {
+            isEquippedSkill: true,
+            color: this.glowColor,
+            size: 11,
+            life: 220
+          }));
+          this.e.spawnSparks(this.cx, this.cy, 20, this.glowColor);
+          this.e.triggerShake(7, 16);
+          return true;
         }
 
         die() {
@@ -942,7 +1035,7 @@
           setTimeout(() => this.e.resolveCompletion(winner ? winner.name : '???', false), 700);
         }
 
-        update(dt, dms, enemy) {
+        update(dt, dms, rawMs, enemy) {
           if (this.isDead) {
             this.deathT += dt;
             this.deathSmoke = Math.min(1, this.deathT * 0.09);
@@ -994,6 +1087,12 @@
 
           this.facingRight = enemy.cx > this.cx;
           if (this.stunTimer > 0) return;
+
+          this.skillCheckTimerMs += rawMs;
+          while (this.skillCheckTimerMs >= EQUIPPED_SKILL_CHECK_INTERVAL_MS) {
+            this.skillCheckTimerMs -= EQUIPPED_SKILL_CHECK_INTERVAL_MS;
+            if (enemy && !enemy.isDead) this.tryLaunchEquippedSkill(enemy);
+          }
 
           this.dashTimer += dms;
           if (this.dashTimer >= this.dashInterval) {

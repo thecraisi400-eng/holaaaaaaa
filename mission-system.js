@@ -51,6 +51,14 @@
     battleMission: null,
     battleContext: null,
 
+    buildEnemySkills(mission) {
+      const lvl = Number(mission?.lvl || 1);
+      if (lvl <= 4) return [];
+      if (lvl <= 10) return ['Mordida Umbría'];
+      if (lvl <= 20) return ['Mordida Umbría', 'Garra Explosiva'];
+      return ['Mordida Umbría', 'Garra Explosiva', 'Aullido de Guerra'];
+    },
+
     mount() {
       if (this.isMounted()) return;
       this.host = document.getElementById('hero-system-host');
@@ -139,6 +147,7 @@
           hp: mission.hp,
           atk: mission.atk,
           def: mission.def,
+          enemySkills: this.buildEnemySkills(mission),
           xp: mission.xp,
           gold: mission.gold,
           lvl: mission.lvl,
@@ -209,6 +218,7 @@
               <span class="ms-hp">❤️ HP: ${mission.hp}</span>
               <span class="ms-atk">⚔️ ATK: ${mission.atk}</span>
               <span class="ms-def">🛡️ DEF: ${mission.def}</span>
+              <span class="ms-def">🧩 HABS: ${this.buildEnemySkills(mission).length}</span>
             </div>
           </div>
           <div class="ms-mission-lock ${!locked ? 'unlocked' : ''}">

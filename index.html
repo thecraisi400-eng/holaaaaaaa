@@ -355,13 +355,12 @@
 
 <template id="jutsuSystemTemplate">
   <div id="jutsu-system-root" class="jutsu-system-root">
-    <h2 class="jsu-sr-only">Sistema de Gestión de Jutsus — biblioteca de habilidades con drag and drop a ranuras de equipo</h2>
+    <h2 class="jsu-sr-only">Sistema de Gestión de Jutsus por personaje</h2>
 
     <div class="jsu-top-bar">
-      <div class="jsu-bar-title">⚡ Jutsu Grimoire</div>
+      <div class="jsu-bar-title">⚡ Editor de Habilidades (Script)</div>
       <div class="jsu-res-pill">
-        <div class="jsu-pill">📜 <span id="jsuPergaminos">120</span></div>
-        <div class="jsu-pill">💠 <span id="jsuChakraRes">85</span></div>
+        <div class="jsu-pill">🥷 <span id="jsuCharacterName">--</span></div>
       </div>
     </div>
 
@@ -369,7 +368,7 @@
       <div id="jsuSkillLib" class="jsu-skill-lib"></div>
       <div class="jsu-slot-panel">
         <div class="jsu-slot-wrap">
-          <div class="jsu-slot-label">Jutsu Primario</div>
+          <div class="jsu-slot-label">Habilidad equipada 1</div>
           <div class="jsu-slot-circle empty" id="jsuSlot0" data-slot="0">
             <div class="jsu-slot-aura"></div>
             <div class="jsu-particles-container" id="jsuPc0"></div>
@@ -379,7 +378,7 @@
         </div>
 
         <div class="jsu-slot-wrap">
-          <div class="jsu-slot-label">Jutsu Secundario</div>
+          <div class="jsu-slot-label">Habilidad equipada 2</div>
           <div class="jsu-slot-circle empty" id="jsuSlot1" data-slot="1">
             <div class="jsu-slot-aura"></div>
             <div class="jsu-particles-container" id="jsuPc1"></div>
@@ -389,7 +388,7 @@
         </div>
 
         <div class="jsu-slot-wrap">
-          <div class="jsu-slot-label">Jutsu Terciario</div>
+          <div class="jsu-slot-label">Habilidad equipada 3</div>
           <div class="jsu-slot-circle empty" id="jsuSlot2" data-slot="2">
             <div class="jsu-slot-aura"></div>
             <div class="jsu-particles-container" id="jsuPc2"></div>
@@ -400,28 +399,8 @@
       </div>
     </div>
 
-    <div id="jsuDetailPanel" class="jsu-detail-panel">
-      <button id="jsuDetailClose" class="jsu-dp-close">✕</button>
-      <div id="jsuDpName" class="jsu-dp-name">—</div>
-      <div class="jsu-dp-row"><span class="jsu-dp-lbl">⚔ DAÑO</span><span class="jsu-dp-val jsu-dmg" id="jsuDpDmg">—</span></div>
-      <div class="jsu-dp-row"><span class="jsu-dp-lbl">💀 EFECTO</span><span class="jsu-dp-val jsu-debuff" id="jsuDpEfecto">—</span></div>
-      <div class="jsu-dp-row"><span class="jsu-dp-lbl">✦ BUFF</span><span class="jsu-dp-val jsu-buff" id="jsuDpBuff">—</span></div>
-      <div class="jsu-dp-row"><span class="jsu-dp-lbl">⏱ DURACIÓN</span><span class="jsu-dp-val" id="jsuDpDur">—</span></div>
-      <div id="jsuDpPassive" class="jsu-dp-passive">⭐ EFECTO PASIVO DESBLOQUEADO</div>
-      <div class="jsu-dp-lvlbar">
-        <span id="jsuDpLvlNum" class="jsu-dp-lvlnum">Lv 1</span>
-        <div class="jsu-dp-progress"><div id="jsuDpBar" class="jsu-dp-bar" style="width:10%"></div></div>
-        <span class="jsu-dp-maxlvl">/ Sennin</span>
-      </div>
-      <div id="jsuUpgradeMsg" class="jsu-upgrade-msg"></div>
-      <div class="jsu-btn-row">
-        <button class="jsu-btn-mejorar" id="jsuUpgradeBtn">⬆ Mejorar</button>
-        <button class="jsu-btn-equipar" id="jsuEquipBtn">⬣ Equipar</button>
-      </div>
-    </div>
-
     <div class="jsu-status-bar">
-      <span class="jsu-status-txt">DRAG → SLOTS · CLICK → DETALLE</span>
+      <span class="jsu-status-txt">CLICK en slot izquierdo para equipar · CLICK en círculo derecho para quitar</span>
       <span id="jsuStatusMsg" class="jsu-status-msg"></span>
     </div>
   </div>

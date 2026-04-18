@@ -1,24 +1,68 @@
 (function () {
-  const JUTSU_LIBRARY = [
-    { id: 0, name: 'Llama Voraz', em: '🔥', dmg: 'Fuego DOT (quemadura continua)', efecto: 'Ceguera — -30% puntería', buff: '+10% Ataque físico', dur: '3s' },
-    { id: 1, name: 'Rayo Destellante', em: '⚡', dmg: 'Eléctrico (descarga masiva)', efecto: 'Parálisis — -80% velocidad', buff: '+15% Evasión', dur: '2s' },
-    { id: 2, name: 'Ráfaga Cortante', em: '🌀', dmg: 'Corte (laceración profunda)', efecto: 'Hemorragia — daño por tiempo', buff: '+Velocidad de ataque', dur: '2s' },
-    { id: 3, name: 'Prisión Hidráulica', em: '💧', dmg: 'Presión (aplastamiento acuático)', efecto: 'Asfixia — bloquea habilidades', buff: '-CD Tiempos de espera', dur: '3s' },
-    { id: 4, name: 'Escudo Telúrico', em: '🪨', dmg: 'Impacto (golpe sísmico)', efecto: 'Pesadez — sin saltos', buff: 'Inmunidad a empujones', dur: '3s' },
-    { id: 5, name: 'Sello Prohibido', em: '🔮', dmg: 'Espiritual (devastación arcana)', efecto: 'Silencio — bloquea especiales', buff: '+5% Chakra pasivo', dur: '2s' }
+  const SLOT_COUNT = 6;
+  const SAVE_KEY = 'ngs_rpg_save_data';
+  const JUTSU_SAVE_KEY = 'ngs_jutsu_slots_by_character_v2';
+  const DEFAULT_CHARACTER = 'global';
+  const EMPTY_SLOTS = Array(SLOT_COUNT).fill(null);
+
+  const CHARACTER_IDS = [
+    'asura', 'hagoromo', 'hashirama', 'indra', 'itachi', 'itama',
+    'kaguya', 'karin', 'kushina', 'madara', 'nagato', 'naruto',
+    'obito', 'sasuke', 'tobirama', 'tsunade'
   ];
 
-  const UPGRADE_COSTS = { pergaminos: 15, chakra: 10 };
+  function getEmptyCharacterState() {
+    return {
+      slots: [...EMPTY_SLOTS],
+      skills: [],
+      nextSkillId: 1
+    };
+  }
+
+  function sanitizeCharacterState(rawCharacterState) {
+    const base = getEmptyCharacterState();
+    if (!rawCharacterState || typeof rawCharacterState !== 'object') {
+      return base;
+    }
+
+    if (Array.isArray(rawCharacterState.skills)) {
+      base.skills = rawCharacterState.skills
+        .filter((skill) => skill && typeof skill === 'object' && typeof skill.id === 'string' && skill.id.trim() !== '')
+        .map((skill) => ({
+          id: skill.id,
+          name: String(skill.name || '').trim(),
+          em: String(skill.em || '✦').trim() || '✦'
+        }))
+        .filter((skill) => skill.name !== '');
+    }
+
+    if (Array.isArray(rawCharacterState.slots)) {
+      for (let i = 0; i < SLOT_COUNT; i += 1) {
+        const value = rawCharacterState.slots[i];
+        base.slots[i] = typeof value === 'string' ? value : null;
+      }
+    }
+
+    const maxNumericId = base.skills.reduce((maxId, skill) => {
+      const suffix = Number(skill.id.replace(/^s/, ''));
+      if (Number.isNaN(suffix)) return maxId;
+      return Math.max(maxId, suffix);
+    }, 0);
+
+    const nextSkillId = Number(rawCharacterState.nextSkillId);
+    base.nextSkillId = Number.isFinite(nextSkillId)
+      ? Math.max(nextSkillId, maxNumericId + 1)
+      : maxNumericId + 1;
+
+    return base;
+  }
 
   const JutsuSystem = {
     host: null,
     root: null,
-    selected: null,
-    state: {
-      levels: Array(JUTSU_LIBRARY.length).fill(1),
-      slots: [null, null, null],
-      resources: { pergaminos: 120, chakra: 85 }
-    },
+    selectedSkillId: null,
+    activeCharacterId: DEFAULT_CHARACTER,
+    stateByCharacter: {},
 
     mount() {
       if (this.isMounted()) return;
@@ -30,28 +74,103 @@
       this.host.innerHTML = '';
       this.host.appendChild(tpl.content.cloneNode(true));
       this.root = this.host.querySelector('#jutsu-system-root');
+
+      this.restoreState();
+      this.syncCharacterFromStorage();
       this.bindEvents();
+      this.renderCharacterTitle();
       this.renderLib();
       this.renderSlots();
-      this.syncResources();
     },
 
     unmount() {
       if (!this.host) return;
       this.host.innerHTML = '';
       this.root = null;
-      this.selected = null;
-    },
-
-
-    getEquippedSkills() {
-      return this.state.slots
-        .filter((id) => id != null && JUTSU_LIBRARY[id])
-        .map((id) => ({ id, name: JUTSU_LIBRARY[id].name, em: JUTSU_LIBRARY[id].em }));
+      this.selectedSkillId = null;
     },
 
     isMounted() {
       return Boolean(this.host && this.root && this.host.contains(this.root));
+    },
+
+    getCharacterState(characterId = this.activeCharacterId) {
+      const id = characterId || DEFAULT_CHARACTER;
+      if (!this.stateByCharacter[id]) {
+        this.stateByCharacter[id] = getEmptyCharacterState();
+      }
+      return this.stateByCharacter[id];
+    },
+
+    getActiveSkills() {
+      return this.getCharacterState().skills;
+    },
+
+    getSkillById(skillId) {
+      if (!skillId) return null;
+      return this.getActiveSkills().find((skill) => skill.id === skillId) || null;
+    },
+
+    getEquippedSkills() {
+      const state = this.getCharacterState();
+      return state.slots
+        .map((skillId, index) => ({ skill: this.getSkillById(skillId), slot: index + 1 }))
+        .filter((entry) => entry.skill)
+        .map((entry) => ({ id: entry.skill.id, name: entry.skill.name, em: entry.skill.em, slot: entry.slot }));
+    },
+
+    restoreState() {
+      try {
+        const raw = localStorage.getItem(JUTSU_SAVE_KEY);
+        const parsed = raw ? JSON.parse(raw) : {};
+        const sanitized = {};
+
+        CHARACTER_IDS.forEach((characterId) => {
+          sanitized[characterId] = sanitizeCharacterState(parsed?.[characterId]);
+        });
+
+        if (parsed?.[DEFAULT_CHARACTER]) {
+          sanitized[DEFAULT_CHARACTER] = sanitizeCharacterState(parsed[DEFAULT_CHARACTER]);
+        }
+
+        this.stateByCharacter = sanitized;
+      } catch (_error) {
+        this.stateByCharacter = {};
+      }
+    },
+
+    persistState() {
+      localStorage.setItem(JUTSU_SAVE_KEY, JSON.stringify(this.stateByCharacter));
+    },
+
+    syncCharacterFromStorage() {
+      try {
+        const raw = localStorage.getItem(SAVE_KEY);
+        const save = raw ? JSON.parse(raw) : null;
+        const characterId = save?.characterId;
+        if (characterId && CHARACTER_IDS.includes(characterId)) {
+          this.activeCharacterId = characterId;
+        }
+      } catch (_error) {
+        this.activeCharacterId = DEFAULT_CHARACTER;
+      }
+      this.getCharacterState(this.activeCharacterId);
+    },
+
+    setActiveCharacter(characterId) {
+      const nextCharacter = CHARACTER_IDS.includes(characterId) ? characterId : DEFAULT_CHARACTER;
+      if (this.activeCharacterId === nextCharacter) return;
+
+      this.activeCharacterId = nextCharacter;
+      this.selectedSkillId = null;
+      this.getCharacterState(nextCharacter);
+
+      if (!this.isMounted()) return;
+      this.closeDetail();
+      this.renderCharacterTitle();
+      this.renderLib();
+      this.renderSlots();
+      this.setStatus(`Sistema de habilidades cargado para ${nextCharacter.toUpperCase()}`);
     },
 
     bindEvents() {
@@ -60,8 +179,8 @@
         slotEl.addEventListener('drop', (ev) => {
           ev.preventDefault();
           const slot = Number(slotEl.dataset.slot);
-          const id = Number(ev.dataTransfer?.getData('jutsuId'));
-          if (Number.isNaN(slot) || Number.isNaN(id)) return;
+          const id = String(ev.dataTransfer?.getData('jutsuId') || '').trim();
+          if (Number.isNaN(slot) || !id) return;
           this.equipInSlot(slot, id);
         });
       });
@@ -69,17 +188,35 @@
       const closeBtn = this.root.querySelector('#jsuDetailClose');
       if (closeBtn) closeBtn.addEventListener('click', () => this.closeDetail());
 
-      const upgradeBtn = this.root.querySelector('#jsuUpgradeBtn');
-      if (upgradeBtn) upgradeBtn.addEventListener('click', () => this.upgradeSkill());
-
       const equipBtn = this.root.querySelector('#jsuEquipBtn');
       if (equipBtn) equipBtn.addEventListener('click', () => this.equipFromDetail());
+
+      const removeBtn = this.root.querySelector('#jsuRemoveBtn');
+      if (removeBtn) removeBtn.addEventListener('click', () => this.removeFromSlot());
+
+      const addSkillBtn = this.root.querySelector('#jsuAddSkillBtn');
+      if (addSkillBtn) addSkillBtn.addEventListener('click', () => this.addSkillFromForm());
+
+      const skillNameInput = this.root.querySelector('#jsuNewSkillName');
+      if (skillNameInput) {
+        skillNameInput.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            this.addSkillFromForm();
+          }
+        });
+      }
+
+      window.addEventListener('ngs:game-entered', (event) => {
+        const nextCharacterId = event?.detail?.saveData?.characterId;
+        this.setActiveCharacter(nextCharacterId);
+      });
     },
 
-    getLvlClass(lv) {
-      if (lv >= 10) return 'lv-sennin';
-      if (lv >= 6) return 'lv-silver';
-      return '';
+    renderCharacterTitle() {
+      const title = this.root.querySelector('#jsuCharacterScope');
+      if (!title) return;
+      title.textContent = `Personaje activo: ${this.activeCharacterId}`;
     },
 
     renderLib() {
@@ -87,18 +224,24 @@
       if (!lib) return;
       lib.innerHTML = '';
 
-      JUTSU_LIBRARY.forEach((jutsu) => {
-        const lv = this.state.levels[jutsu.id];
-        const cls = this.getLvlClass(lv);
+      const skills = this.getActiveSkills();
+      if (!skills.length) {
+        const empty = document.createElement('div');
+        empty.className = 'jsu-empty-lib';
+        empty.textContent = 'Sin habilidades aún. Agrega habilidades personalizadas para este personaje.';
+        lib.appendChild(empty);
+        return;
+      }
+
+      skills.forEach((jutsu) => {
         const item = document.createElement('div');
-        item.className = `jsu-skill-icon ${cls}`.trim();
+        item.className = 'jsu-skill-icon';
         item.draggable = true;
         item.dataset.id = String(jutsu.id);
         item.innerHTML = `
-          <span class="jsu-skill-lvl">${lv >= 10 ? '✦' : lv}</span>
+          <span class="jsu-skill-lvl">${jutsu.id}</span>
           <span class="jsu-skill-em">${jutsu.em}</span>
           <span class="jsu-skill-name">${jutsu.name}</span>
-          ${lv >= 10 ? '<span class="jsu-passive-tag">SENNIN</span>' : ''}
         `;
 
         item.addEventListener('dragstart', (ev) => {
@@ -112,135 +255,152 @@
       });
     },
 
-    openDetail(id) {
-      const jutsu = JUTSU_LIBRARY[id];
-      if (!jutsu) return;
-      const lv = this.state.levels[id];
-      this.selected = id;
+    addSkillFromForm() {
+      const nameInput = this.root.querySelector('#jsuNewSkillName');
+      const iconInput = this.root.querySelector('#jsuNewSkillIcon');
 
-      const name = this.root.querySelector('#jsuDpName');
-      name.textContent = `${jutsu.em} ${jutsu.name}`;
-      name.classList.toggle('gold', lv >= 10);
+      const skillName = String(nameInput?.value || '').trim();
+      const skillIcon = String(iconInput?.value || '').trim() || '✦';
 
-      this.root.querySelector('#jsuDpDmg').textContent = jutsu.dmg;
-      this.root.querySelector('#jsuDpEfecto').textContent = jutsu.efecto;
-      this.root.querySelector('#jsuDpBuff').textContent = jutsu.buff;
-      this.root.querySelector('#jsuDpDur').textContent = jutsu.dur;
+      if (!skillName) {
+        this.setStatus('Escribe un nombre para la habilidad antes de crearla.');
+        return;
+      }
 
-      const passive = this.root.querySelector('#jsuDpPassive');
-      passive.style.display = lv >= 10 ? 'block' : 'none';
+      const state = this.getCharacterState();
+      const skillId = `s${state.nextSkillId}`;
+      state.nextSkillId += 1;
+      state.skills.push({ id: skillId, name: skillName, em: skillIcon });
+      this.persistState();
+      this.renderLib();
+      this.setStatus(`Habilidad "${skillName}" agregada a ${this.activeCharacterId}.`);
 
-      this.root.querySelector('#jsuDpLvlNum').textContent = `Lv ${lv >= 10 ? 'MAX' : lv}`;
-      this.root.querySelector('#jsuDpBar').style.width = `${Math.min((lv / 10) * 100, 100)}%`;
-      this.root.querySelector('#jsuUpgradeMsg').textContent = '';
+      nameInput.value = '';
+      if (iconInput) iconInput.value = '';
+    },
 
-      const upgradeBtn = this.root.querySelector('#jsuUpgradeBtn');
-      upgradeBtn.disabled = lv >= 10;
-      upgradeBtn.textContent = lv < 10
-        ? `⬆ Mejorar (📜${UPGRADE_COSTS.pergaminos} 💠${UPGRADE_COSTS.chakra})`
-        : '✦ Nivel Máximo';
+    openDetail(skillId) {
+      const skill = this.getSkillById(skillId);
+      if (!skill) return;
+      this.selectedSkillId = skillId;
+
+      this.root.querySelector('#jsuDpName').textContent = `${skill.em} ${skill.name}`;
+      this.root.querySelector('#jsuDpId').textContent = skill.id;
+
+      const state = this.getCharacterState();
+      const equippedIn = state.slots.findIndex((slotSkillId) => slotSkillId === skill.id);
+      this.root.querySelector('#jsuDpEquipState').textContent = equippedIn >= 0
+        ? `Equipada en slot${equippedIn + 1}`
+        : 'No equipada';
+
+      const removeBtn = this.root.querySelector('#jsuRemoveBtn');
+      if (removeBtn) removeBtn.disabled = equippedIn < 0;
 
       this.root.querySelector('#jsuDetailPanel').classList.add('visible');
     },
 
     closeDetail() {
       this.root.querySelector('#jsuDetailPanel').classList.remove('visible');
-      this.selected = null;
+      this.selectedSkillId = null;
     },
 
-    syncResources() {
-      this.root.querySelector('#jsuPergaminos').textContent = String(this.state.resources.pergaminos);
-      this.root.querySelector('#jsuChakraRes').textContent = String(this.state.resources.chakra);
-    },
+    removeFromSlot() {
+      if (!this.selectedSkillId) return;
+      const state = this.getCharacterState();
+      const slotIndex = state.slots.findIndex((slotSkillId) => slotSkillId === this.selectedSkillId);
+      if (slotIndex < 0) return;
 
-    upgradeSkill() {
-      if (this.selected == null) return;
-      const id = this.selected;
-      const lv = this.state.levels[id];
-      if (lv >= 10) return;
-
-      const { pergaminos, chakra } = this.state.resources;
-      if (pergaminos < UPGRADE_COSTS.pergaminos || chakra < UPGRADE_COSTS.chakra) {
-        this.root.querySelector('#jsuUpgradeMsg').textContent = '¡Recursos insuficientes!';
-        return;
-      }
-
-      this.state.resources.pergaminos -= UPGRADE_COSTS.pergaminos;
-      this.state.resources.chakra -= UPGRADE_COSTS.chakra;
-      this.state.levels[id] += 1;
-
-      this.syncResources();
-      this.setStatus(`⬆ ${JUTSU_LIBRARY[id].name} mejorado → Lv ${this.state.levels[id]}`);
-      this.openDetail(id);
-      this.renderLib();
+      state.slots[slotIndex] = null;
+      this.persistState();
       this.renderSlots();
+      this.openDetail(this.selectedSkillId);
+      this.setStatus(`Habilidad removida de slot${slotIndex + 1}.`);
     },
 
     equipFromDetail() {
-      if (this.selected == null) return;
-      const id = this.selected;
-      const empty = this.state.slots.indexOf(null);
+      if (!this.selectedSkillId) return;
+      const state = this.getCharacterState();
+      const empty = state.slots.indexOf(null);
 
       if (empty >= 0) {
-        this.state.slots[empty] = id;
-        this.renderSlots();
+        state.slots[empty] = this.selectedSkillId;
         this.spawnParticles(empty);
-        this.setStatus(`⬣ ${JUTSU_LIBRARY[id].name} equipado en slot ${empty + 1}`);
+        this.setStatus(`Habilidad equipada en slot${empty + 1}.`);
       } else {
-        this.state.slots[2] = id;
-        this.renderSlots();
-        this.shakeSlot(2);
-        this.spawnParticles(2);
-        this.setStatus('⬣ Reemplazado en Jutsu Terciario');
+        state.slots[SLOT_COUNT - 1] = this.selectedSkillId;
+        this.shakeSlot(SLOT_COUNT - 1);
+        this.spawnParticles(SLOT_COUNT - 1);
+        this.setStatus(`Todos los slots ocupados. Reemplazo automático en slot${SLOT_COUNT}.`);
       }
 
-      this.closeDetail();
+      this.persistState();
+      this.renderSlots();
+      this.openDetail(this.selectedSkillId);
     },
 
-    equipInSlot(slot, id) {
-      const allFull = this.state.slots.every((s) => s !== null);
-      if (allFull && slot !== 2) {
-        this.shakeSlot(2);
-        this.state.slots[2] = id;
-      } else {
-        this.state.slots[slot] = id;
-      }
+    equipInSlot(slot, skillId) {
+      const state = this.getCharacterState();
+      const skill = this.getSkillById(skillId);
+      if (!skill || slot < 0 || slot >= SLOT_COUNT) return;
 
+      state.slots[slot] = skillId;
+      this.persistState();
       this.renderSlots();
       this.spawnParticles(slot);
-      this.setStatus(`⬣ ${JUTSU_LIBRARY[id].name} equipado`);
+      this.setStatus(`${skill.name} equipada en slot${slot + 1}.`);
+    },
+
+    clearSlot(slot) {
+      const state = this.getCharacterState();
+      if (slot < 0 || slot >= SLOT_COUNT) return;
+      state.slots[slot] = null;
+      this.persistState();
+      this.renderSlots();
+      this.setStatus(`slot${slot + 1} vacío.`);
     },
 
     renderSlots() {
-      for (let i = 0; i < 3; i += 1) {
-        const id = this.state.slots[i];
+      const state = this.getCharacterState();
+
+      for (let i = 0; i < SLOT_COUNT; i += 1) {
+        const skillId = state.slots[i];
+        const skill = this.getSkillById(skillId);
         const circle = this.root.querySelector(`#jsuSlot${i}`);
         const em = this.root.querySelector(`#jsuSlotEm${i}`);
         const name = this.root.querySelector(`#jsuSlotName${i}`);
+        const clearBtn = this.root.querySelector(`#jsuSlotClear${i}`);
 
-        if (id != null) {
-          const jutsu = JUTSU_LIBRARY[id];
+        if (!circle || !em || !name || !clearBtn) continue;
+
+        if (skill) {
           circle.classList.remove('empty');
           circle.classList.add('has-skill');
-          em.style.fontSize = '28px';
+          em.style.fontSize = '26px';
           em.style.opacity = '1';
-          em.textContent = jutsu.em;
-          name.textContent = jutsu.name;
-          circle.onclick = () => this.openDetail(id);
+          em.textContent = skill.em;
+          name.textContent = skill.name;
+          circle.onclick = () => this.openDetail(skill.id);
+          clearBtn.style.display = 'inline-flex';
+          clearBtn.onclick = (event) => {
+            event.stopPropagation();
+            this.clearSlot(i);
+          };
         } else {
           circle.classList.add('empty');
           circle.classList.remove('has-skill', 'shake');
-          em.style.fontSize = '20px';
-          em.style.opacity = '0.25';
-          em.textContent = '✦';
+          em.style.fontSize = '14px';
+          em.style.opacity = '0.5';
+          em.textContent = `slot${i + 1}`;
           name.textContent = '';
           circle.onclick = null;
+          clearBtn.style.display = 'none';
         }
       }
     },
 
     shakeSlot(slot) {
       const el = this.root.querySelector(`#jsuSlot${slot}`);
+      if (!el) return;
       el.classList.add('shake');
       setTimeout(() => el.classList.remove('shake'), 450);
     },
@@ -279,9 +439,12 @@
 
     setStatus(msg) {
       const el = this.root.querySelector('#jsuStatusMsg');
+      if (!el) return;
       el.textContent = msg;
       setTimeout(() => {
-        el.textContent = '';
+        if (el.textContent === msg) {
+          el.textContent = '';
+        }
       }, 2800);
     }
   };

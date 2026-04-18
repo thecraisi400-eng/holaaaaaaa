@@ -750,6 +750,48 @@ html, body {
   display: block;
 }
 
+.drb-itachi-skill-slots {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  z-index: 12;
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.drb-itachi-skill-slot {
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: rgba(5, 10, 20, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  color: #fff;
+  font-size: 16px;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.35);
+}
+
+.drb-itachi-skill-slot > span {
+  position: relative;
+  z-index: 2;
+}
+
+.drb-itachi-cooldown {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.58);
+  z-index: 1;
+  transform-origin: bottom;
+  transform: scaleY(0);
+  transition: transform 0.08s linear;
+}
+
 .drb-veil {
   position: absolute;
   inset: 0;

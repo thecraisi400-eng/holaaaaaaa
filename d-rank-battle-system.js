@@ -44,6 +44,7 @@
       this.canvas = root.querySelector('#drb-canvas');
       this.ctx = this.canvas ? this.canvas.getContext('2d') : null;
       this.veil = root.querySelector('#drb-veil');
+      this.itachiSlotsEl = root.querySelector('#drb-itachi-skill-slots');
       this.roundAnnouncementEl = root.querySelector('#drb-round-announcement');
       this.winnerScreen = root.querySelector('#drb-winner-screen');
       this.winNameEl = root.querySelector('#drb-win-name');
@@ -88,6 +89,7 @@
       this.bgClouds = [];
       this.lastTs = 0;
       this.spriteCache = new Map();
+      this.itachiSkillState = null;
 
       this.boundLoop = this.loop.bind(this);
       this.bindUI();
@@ -205,6 +207,107 @@
       return Array.isArray(skills) ? skills.filter(Boolean) : [];
     }
 
+    isItachiBattle() {
+      return this.battleContext?.heroSnapshot?.characterId === 'itachi';
+    }
+
+    getItachiSkillDefinitions() {
+      return {
+        katon: { id: 0, key: 'katon', emoji: '🔥', names: ['KATON: GŌKAKYŪ NO JUTSU', 'Katon: Gōkakyū no Jutsu'], cooldown: 13 },
+        kageBunshin: { id: 1, key: 'kageBunshin', emoji: '👥', names: ['KAGE BUNSHIN NO JUTSU', 'Kage Bunshin no Jutsu'], cooldown: 10 },
+        shuriken: { id: 2, key: 'shuriken', emoji: '🌟', names: ['SHURIKEN JUTSU', 'Shurikenjutsu'], cooldown: 15 }
+      };
+    }
+
+    setupItachiSkillSlots() {
+      if (!this.itachiSlotsEl) return;
+      this.itachiSlotsEl.innerHTML = '';
+      for (let i = 0; i < 3; i += 1) {
+        const slot = document.createElement('div');
+        slot.className = 'drb-itachi-skill-slot';
+        slot.innerHTML = '<div class="drb-itachi-cooldown"></div><span></span>';
+        this.itachiSlotsEl.appendChild(slot);
+      }
+      this.updateItachiSkillSlots();
+    }
+
+    updateItachiSkillSlots() {
+      if (!this.itachiSlotsEl) return;
+      const equipped = this.getHeroEquippedSkills();
+      const slots = this.itachiSlotsEl.querySelectorAll('.drb-itachi-skill-slot');
+      const defs = this.getItachiSkillDefinitions();
+      const byName = Object.values(defs);
+      for (let i = 0; i < slots.length; i += 1) {
+        const skill = equipped[i];
+        const span = slots[i].querySelector('span');
+        const cd = slots[i].querySelector('.drb-itachi-cooldown');
+        if (!skill) {
+          span.textContent = '';
+          cd.style.transform = 'scaleY(0)';
+          continue;
+        }
+        const def = byName.find((d) => d.names.includes(skill.name) || d.emoji === skill.em || d.id === skill.id);
+        span.textContent = skill.em || def?.emoji || '';
+        const currentCd = def && this.itachiSkillState?.cooldowns ? (this.itachiSkillState.cooldowns[def.key] || 0) : 0;
+        const maxCd = def?.cooldown || 1;
+        cd.style.transform = `scaleY(${Math.min(1, currentCd / maxCd)})`;
+      }
+    }
+
+    triggerItachiAutoSkill(attacker, defender, selectedSkill) {
+      if (!this.itachiSkillState || !attacker || !defender) return false;
+      const defs = this.getItachiSkillDefinitions();
+      let picked = null;
+      for (const def of Object.values(defs)) {
+        if (def.names.includes(selectedSkill?.name) || def.emoji === selectedSkill?.em || def.id === selectedSkill?.id) {
+          picked = def;
+          break;
+        }
+      }
+      if (!picked) return false;
+      if ((this.itachiSkillState.cooldowns[picked.key] || 0) > 0) return false;
+
+      if (picked.key === 'katon') {
+        this.itachiSkillState.cooldowns.katon = 13;
+        this.itachiSkillState.attackBuffTimer = 5;
+        const p = { type: 'fireball', x: attacker.cx, y: attacker.cy - 20, size: 40, target: defender, life: 5, speed: 220, dead: false };
+        this.itachiSkillState.projectiles.push(p);
+      } else if (picked.key === 'kageBunshin') {
+        this.itachiSkillState.cooldowns.kageBunshin = 10;
+        for (let i = 0; i < 2; i += 1) {
+          this.itachiSkillState.clones.push({
+            x: attacker.x + (i === 0 ? -22 : 22),
+            y: attacker.y,
+            hp: Math.max(1, Math.round(attacker.maxHp * 0.2)),
+            maxHp: Math.max(1, Math.round(attacker.maxHp * 0.2)),
+            damage: Math.max(1, Math.round((attacker.combat?.atk || 10) * 0.2)),
+            duration: 7,
+            atkCd: 0
+          });
+        }
+      } else if (picked.key === 'shuriken') {
+        this.itachiSkillState.cooldowns.shuriken = 15;
+        attacker.y = this.H * 0.3;
+        attacker.onGround = false;
+        this.itachiSkillState.pendingReturn = 2.5;
+        for (let i = 0; i < 5; i += 1) {
+          this.itachiSkillState.projectiles.push({
+            type: 'shuriken',
+            x: attacker.cx + 10,
+            y: attacker.cy - 30 + ((i - 2) * 12),
+            size: 12,
+            baseSize: 12,
+            maxSize: 15.6,
+            target: defender,
+            delay: 0.3 + i * 0.25,
+            speed: 250,
+            dead: false
+          });
+        }
+      }
+      return true;
+    }
+
     endCinematicSkill() {
       this.slowMo = 1;
       this.activeSkillProjectile = null;
@@ -254,6 +357,7 @@
       if (!skills.length) return;
       if (Math.random() > chance) return;
       const selected = skills[Math.floor(Math.random() * skills.length)];
+      if (this.isItachiBattle() && attacker.id === 0 && this.triggerItachiAutoSkill(attacker, defender, selected)) return;
       attacker.launchJutsu(defender, {
         isEquipped: true,
         skillName: selected.name || selected
@@ -568,6 +672,7 @@
       }
       f0.update(dt, dms, f1);
       f1.update(dt, dms, f0);
+      this.updateItachiSystems(dt, f0, f1);
 
       for (const j of this.jutsus) j.update(dt);
       for (const j of this.jutsus) {
@@ -620,6 +725,50 @@
       const avgX = this.fighters.reduce((s, f) => s + f.cx, 0) / this.fighters.length;
       const parallaxX = (avgX - this.W / 2) * 0.10;
       this.drawBG(parallaxX);
+      if (this.itachiSkillState?.burnTimer > 0) {
+        const target = this.fighters[1];
+        if (target && !target.isDead) {
+          ctx.save();
+          ctx.globalAlpha = 0.35;
+          ctx.fillStyle = '#ff0000';
+          ctx.beginPath();
+          ctx.arc(target.cx, target.cy, Math.max(20, NH * 0.5), 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+      if (this.itachiSkillState) {
+        for (const projectile of this.itachiSkillState.projectiles) {
+          if (projectile.type === 'fireball') {
+            ctx.save();
+            ctx.fillStyle = '#ff3300';
+            ctx.beginPath();
+            ctx.arc(projectile.x, projectile.y, projectile.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          } else if (projectile.type === 'shuriken' && projectile.delay <= 0) {
+            ctx.save();
+            ctx.translate(projectile.x, projectile.y);
+            ctx.fillStyle = '#999';
+            ctx.beginPath();
+            for (let i = 0; i < 8; i += 1) {
+              const angle = (i * Math.PI / 4) - Math.PI / 2;
+              const radius = i % 2 === 0 ? projectile.size : projectile.size * 0.35;
+              ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+          }
+        }
+        for (const clone of this.itachiSkillState.clones) {
+          ctx.save();
+          ctx.globalAlpha = 0.5;
+          ctx.fillStyle = '#6666ff';
+          ctx.fillRect(clone.x, clone.y, NW * 0.9, NH * 0.9);
+          ctx.restore();
+        }
+      }
       for (const j of this.jutsus) j.draw(ctx);
       for (const f of this.fighters) f.draw(ctx);
       this.drawActiveSkillLabel(ctx);
@@ -684,6 +833,16 @@
       }
       this.fighters[0].tX = 120 + Math.random() * 80;
       this.fighters[1].tX = 250 + Math.random() * 80;
+      this.itachiSkillState = this.isItachiBattle() ? {
+        cooldowns: { katon: 0, kageBunshin: 0, shuriken: 0 },
+        burnTimer: 0,
+        burnTickTimer: 0,
+        attackBuffTimer: 0,
+        pendingReturn: 0,
+        projectiles: [],
+        clones: []
+      } : null;
+      this.setupItachiSkillSlots();
     }
 
     showRoundAnnouncement() {
@@ -754,6 +913,86 @@
       const crit = Math.random() < (attacker.combat?.critChance || 0.1);
       if (crit) dmg *= attacker.combat?.critMult || 1.5;
       return { damage: dmg, crit };
+    }
+
+    updateItachiSystems(dt, hero, enemy) {
+      if (!this.itachiSkillState || !hero || !enemy) {
+        this.updateItachiSkillSlots();
+        return;
+      }
+      const s = this.itachiSkillState;
+      s.cooldowns.katon = Math.max(0, s.cooldowns.katon - dt);
+      s.cooldowns.kageBunshin = Math.max(0, s.cooldowns.kageBunshin - dt);
+      s.cooldowns.shuriken = Math.max(0, s.cooldowns.shuriken - dt);
+      s.attackBuffTimer = Math.max(0, s.attackBuffTimer - dt);
+      s.burnTimer = Math.max(0, s.burnTimer - dt);
+      s.burnTickTimer -= dt;
+
+      if (s.burnTimer > 0 && s.burnTickTimer <= 0) {
+        s.burnTickTimer = 1;
+        const burnDamage = Math.max(1, enemy.maxHp * 0.02);
+        enemy.receiveHit(burnDamage, hero.cx, hero, false);
+      }
+
+      if (s.pendingReturn > 0) {
+        s.pendingReturn -= dt;
+        if (s.pendingReturn <= 0) {
+          hero.tY = this.GROUND - NH;
+        }
+      }
+
+      for (const projectile of s.projectiles) {
+        if (projectile.dead) continue;
+        if (projectile.type === 'fireball') {
+          projectile.life -= dt;
+          if (projectile.life <= 0) { projectile.dead = true; continue; }
+          const dx = enemy.cx - projectile.x;
+          const dy = enemy.cy - projectile.y;
+          const dist = Math.hypot(dx, dy) || 1;
+          projectile.x += (dx / dist) * projectile.speed * dt;
+          projectile.y += (dy / dist) * projectile.speed * dt;
+          if (dist < 15) {
+            const attackMult = s.attackBuffTimer > 0 ? 1.1 : 1.0;
+            enemy.receiveHit(40 * attackMult, projectile.x, hero, false);
+            s.burnTimer = 4;
+            s.burnTickTimer = 1;
+            projectile.dead = true;
+          }
+        } else if (projectile.type === 'shuriken') {
+          projectile.delay -= dt;
+          if (projectile.delay > 0) continue;
+          const dx = enemy.cx - projectile.x;
+          const dy = enemy.cy - projectile.y;
+          const dist = Math.hypot(dx, dy) || 1;
+          const approachFactor = Math.max(0, 1 - dist / 300);
+          projectile.size = projectile.baseSize + (projectile.maxSize - projectile.baseSize) * approachFactor;
+          projectile.x += (dx / dist) * projectile.speed * dt;
+          projectile.y += (dy / dist) * projectile.speed * dt;
+          if (dist < projectile.size + 5) {
+            enemy.receiveHit(6, projectile.x, hero, false);
+            projectile.dead = true;
+          }
+        }
+      }
+      s.projectiles = s.projectiles.filter((p) => !p.dead);
+
+      for (const clone of s.clones) {
+        clone.duration -= dt;
+        clone.atkCd = Math.max(0, clone.atkCd - dt);
+        if (clone.duration <= 0 || clone.hp <= 0) {
+          clone.dead = true;
+          continue;
+        }
+        const dx = enemy.cx - (clone.x + NW / 2);
+        if (Math.abs(dx) > 35) {
+          clone.x += Math.sign(dx) * 120 * dt;
+        } else if (clone.atkCd <= 0) {
+          enemy.receiveHit(clone.damage, clone.x, hero, false);
+          clone.atkCd = 1;
+        }
+      }
+      s.clones = s.clones.filter((c) => !c.dead);
+      this.updateItachiSkillSlots();
     }
 
     loop(ts) {

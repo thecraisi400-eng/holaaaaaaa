@@ -246,6 +246,40 @@
       ctx.restore();
     }
 
+    drawEquippedSkillSlots(ctx) {
+      const slotSize = 35;
+      const gap = 6;
+      const baseX = 10;
+      const baseY = this.H - slotSize - 10;
+      const equipped = this.getHeroEquippedSkills().slice(0, 3);
+
+      for (let i = 0; i < 3; i += 1) {
+        const slotX = baseX + i * (slotSize + gap);
+        const slotY = baseY;
+        const skill = equipped[i] || null;
+
+        ctx.save();
+        ctx.fillStyle = skill ? 'rgba(12,20,36,0.90)' : 'rgba(0,0,0,0.45)';
+        ctx.strokeStyle = skill ? 'rgba(120,190,255,0.95)' : 'rgba(180,180,180,0.60)';
+        ctx.lineWidth = 1.4;
+        ctx.fillRect(slotX, slotY, slotSize, slotSize);
+        ctx.strokeRect(slotX, slotY, slotSize, slotSize);
+
+        if (skill) {
+          ctx.fillStyle = '#FFFFFF';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = 'bold 18px Arial';
+          ctx.fillText(skill.em || '✦', slotX + slotSize / 2, slotY + slotSize / 2 + 1);
+        } else {
+          ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(slotX + 8, slotY + 8, slotSize - 16, slotSize - 16);
+        }
+        ctx.restore();
+      }
+    }
+
     tryAutoLaunchEquippedSkill(attacker, defender, chance, getSkills) {
       if (!attacker || !defender || attacker.isDead || defender.isDead) return;
       if (this.activeSkillProjectile) return;
@@ -623,6 +657,7 @@
       for (const j of this.jutsus) j.draw(ctx);
       for (const f of this.fighters) f.draw(ctx);
       this.drawActiveSkillLabel(ctx);
+      this.drawEquippedSkillSlots(ctx);
       for (const p of this.particles) p.draw(ctx);
       for (const d of this.damageNums) d.draw(ctx);
 

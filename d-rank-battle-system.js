@@ -69,6 +69,7 @@
       this.damageNums = [];
       this.jutsus = [];
       this.fighters = [];
+      this.clones = [];
       this.hitStop = 0;
       this.slowMo = 1;
       this.frameN = 0;
@@ -83,6 +84,7 @@
       this.activeSkillProjectile = null;
       this.activeSkillLabel = null;
       this.activeSkillOwner = null;
+      this.activeSkillTimeout = 0;
       this.bgMountains = [];
       this.bgMountains2 = [];
       this.bgRocks = [];
@@ -212,6 +214,7 @@
       this.activeSkillProjectile = null;
       this.activeSkillLabel = null;
       this.activeSkillOwner = null;
+      this.activeSkillTimeout = 0;
       if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
     }
 
@@ -220,9 +223,11 @@
       this.activeSkillProjectile = projectile;
       this.activeSkillOwner = owner;
       if (owner) owner.lockedBySkill = true;
+      this.activeSkillTimeout = Math.max(0, Math.round((Number(cinematicConfig.durationSec ?? 0)) * 60));
       this.activeSkillLabel = {
         name: skillName || 'Habilidad',
-        owner
+        owner,
+        ttl: Math.max(1, Math.round((Number(cinematicConfig.labelDurationSec ?? 1)) * 60))
       };
       const darkness = Math.max(0, Math.min(0.9, Number(cinematicConfig.darkenAlpha ?? 0.45)));
       if (this.veil) this.veil.style.background = `rgba(0,0,0,${darkness})`;
@@ -303,10 +308,14 @@
       if (!attacker || !defender || attacker.isDead || defender.isDead) return;
       if (this.activeSkillProjectile) return;
       if (attacker.equippedSkillCD > 0) return;
+      if (attacker.equippedSkillRollLock > 0) return;
       const skills = getSkills();
       if (!skills.length) return;
-      if (Math.random() > chance) return;
       const selected = skills[Math.floor(Math.random() * skills.length)];
+      const autoChance = Number.isFinite(Number(selected?.autoUseChance))
+        ? Number(selected.autoUseChance)
+        : chance;
+      if (Math.random() > autoChance) return;
       attacker.launchJutsu(defender, {
         isEquipped: true,
         skillName: selected.name || selected,
@@ -376,6 +385,47 @@
           4 + Math.random() * 4 + (i % 3) * 1.5,
           'smoke'
         ));
+      }
+    }
+
+    summonItachiClones(caster, skillData = {}) {
+      if (!caster || caster.isDead) return;
+      const cloneCount = Math.max(1, Number(skillData?.cloneCount ?? 2));
+      const ratio = Math.max(0.05, Math.min(1, Number(skillData?.cloneStatRatio ?? 0.20)));
+      const lifeFrames = Math.max(60, Math.round((Number(skillData?.cloneLifetimeSec ?? 13)) * 60));
+      const enemy = this.fighters[1];
+      for (let i = 0; i < cloneCount; i += 1) {
+        const offset = i === 0 ? -48 : 48;
+        const spawnX = Math.max(8, Math.min(this.W - NW - 8, caster.x + offset));
+        const clone = new this.Fighter(this, spawnX, 0, caster.spriteProfile);
+        clone.isClone = true;
+        clone.name = 'CLON';
+        clone.color = caster.color;
+        clone.glowColor = '#D9F7FF';
+        clone.skinColor = caster.skinColor;
+        clone.facingRight = caster.facingRight;
+        clone.cloneLifetime = lifeFrames;
+        clone.combat = {
+          ...(caster.combat || {}),
+          maxHp: Math.max(1, Math.round(caster.maxHp * ratio)),
+          maxMp: Math.max(0, Math.round(caster.maxMp * ratio)),
+          atk: Math.max(1, (caster.combat?.atk || 8) * ratio + Number(skillData?.damage || 0) * 0.2),
+          def: Math.max(1, (caster.combat?.def || 8) * ratio),
+          critChance: Math.min(0.5, (caster.combat?.critChance || 0.08) * ratio),
+          evadeChance: Math.min(0.45, (caster.combat?.evadeChance || 0.06) * ratio),
+          critMult: Math.max(1.1, caster.combat?.critMult || 1.4),
+          incomingMitigation: Math.min(0.55, (caster.combat?.incomingMitigation || 0.12) * ratio)
+        };
+        clone.maxHp = clone.combat.maxHp;
+        clone.hp = clone.maxHp;
+        clone.maxMp = clone.combat.maxMp;
+        clone.mp = clone.maxMp;
+        clone.tX = Math.max(16, Math.min(this.W - NW - 16, spawnX + (Math.random() - 0.5) * 90));
+        clone.tY = this.GROUND - NH - (Math.random() < 0.45 ? (35 + Math.random() * 80) : 0);
+        clone.y = this.GROUND - NH;
+        clone.targetOverride = enemy || null;
+        this.spawnSmoke(clone.cx, clone.cy, 14);
+        this.clones.push(clone);
       }
     }
 
@@ -612,6 +662,14 @@
           if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
         }
       }
+      if (this.activeSkillTimeout > 0) {
+        this.activeSkillTimeout -= dt;
+        if (this.activeSkillTimeout <= 0) this.endCinematicSkill();
+      }
+      if (this.activeSkillLabel) {
+        this.activeSkillLabel.ttl -= dt;
+        if (this.activeSkillLabel.ttl <= 0) this.activeSkillLabel = null;
+      }
 
       if (this.hitStop > 0) {
         this.hitStop -= dt;
@@ -624,6 +682,11 @@
 
       const [f0, f1] = this.fighters;
       if (!f0 || !f1) return;
+      const availableTargetsForEnemy = [f0, ...this.clones].filter((f) => f && !f.isDead);
+      const enemyTarget = availableTargetsForEnemy.reduce((best, candidate) => {
+        if (!best) return candidate;
+        return Math.abs(candidate.cx - f1.cx) < Math.abs(best.cx - f1.cx) ? candidate : best;
+      }, null) || f0;
       this.skillRollTimer += dms;
       while (this.skillRollTimer >= 1000) {
         this.skillRollTimer -= 1000;
@@ -631,12 +694,13 @@
         this.tryAutoLaunchEquippedSkill(f1, f0, 0.20, () => this.getEnemySkills());
       }
       f0.update(dt, dms, f1);
-      f1.update(dt, dms, f0);
+      f1.update(dt, dms, enemyTarget);
+      for (const clone of this.clones) clone.update(dt, dms, f1);
 
       for (const j of this.jutsus) j.update(dt);
       for (const j of this.jutsus) {
         if (j.dead) continue;
-        for (const f of this.fighters) {
+        for (const f of [...this.fighters, ...this.clones]) {
           if (f === j.owner || f.isDead || f.invincible) continue;
           if (Math.hypot(j.x - f.cx, j.y - f.cy) < j.size + NW / 2) {
             const dmgPayload = this.calcDamage(j.owner, f, 'jutsu');
@@ -660,6 +724,7 @@
         if (j.dead && j.isEquipped && this.activeSkillProjectile === j) this.endCinematicSkill();
       }
       this.jutsus = this.jutsus.filter((j) => !j.dead);
+      this.clones = this.clones.filter((clone) => !clone.isDead);
       this.particles.forEach((p) => p.update(dt));
       this.particles = this.particles.filter((p) => !p.isDead());
       this.damageNums.forEach((d) => d.update(dt));
@@ -689,6 +754,7 @@
       this.drawBG(parallaxX);
       for (const j of this.jutsus) j.draw(ctx);
       for (const f of this.fighters) f.draw(ctx);
+      for (const clone of this.clones) clone.draw(ctx);
       this.drawActiveSkillLabel(ctx);
       for (const p of this.particles) p.draw(ctx);
       for (const d of this.damageNums) d.draw(ctx);
@@ -724,6 +790,8 @@
       this.activeSkillProjectile = null;
       this.activeSkillLabel = null;
       this.activeSkillOwner = null;
+      this.activeSkillTimeout = 0;
+      this.clones = [];
       this.completionSent = false;
       if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
       if (this.winnerScreen) this.winnerScreen.style.display = 'none';
@@ -997,6 +1065,7 @@
           this.jutsuCD = 0;
           this.equippedSkillCD = 0;
           this.equippedSkillCDMax = 0;
+          this.equippedSkillRollLock = 0;
           this.lockedBySkill = false;
           this.atkBuffTimer = 0;
           this.atkBuffPct = 0;
@@ -1019,6 +1088,9 @@
           this.deathT = 0;
           this.deathSmoke = 0;
           this.spriteProfile = spriteProfile;
+          this.isClone = false;
+          this.cloneLifetime = 0;
+          this.targetOverride = null;
         }
         get cx() { return this.x + NW / 2; }
         get cy() { return this.y + NH / 2; }
@@ -1114,17 +1186,34 @@
           const skillName = options.skillName || 'Habilidad';
           if (isEquipped) this.placeForEquippedSkill(target);
           this.mp = Math.max(0, this.mp - mpCost);
+          const isItachiCloneSkill = isEquipped && skillData?.key === 'itachi_kage_bunshin';
           if (isEquipped) {
             const cooldownSec = Math.max(1, Number(skillData?.cooldownSec ?? 13));
             this.equippedSkillCDMax = cooldownSec * 60;
             this.equippedSkillCD = this.equippedSkillCDMax;
+            this.equippedSkillRollLock = Math.max(
+              this.equippedSkillRollLock,
+              Math.round((Number(skillData?.minReuseDelaySec ?? 0)) * 60)
+            );
           } else {
             this.jutsuCD = 90;
+          }
+          if (isItachiCloneSkill) {
+            this.e.summonItachiClones(this, skillData);
+            this.e.spawnSmoke(this.cx, this.cy, 20);
+            this.e.beginCinematicSkill(this, skillName, null, {
+              slowMo: Number(skillData?.slowMo ?? 0.30),
+              darkenAlpha: Number(skillData?.darkenAlpha ?? 0.45),
+              durationSec: Number(skillData?.speedRestoreSec ?? 1),
+              labelDurationSec: Number(skillData?.labelDurationSec ?? 1)
+            });
+            this.flashTimer = 8;
+            return;
           }
           const dx = target.cx - this.cx;
           const dy = target.cy - this.cy;
           const d = Math.sqrt(dx * dx + dy * dy) || 1;
-          const isItachiKaton = isEquipped && skillData?.key === 'itachi_katon_gokakyu';
+          const isItachiKaton = false;
           const spd = isItachiKaton ? 5.2 : (isEquipped ? 6.2 : 5);
           const projectile = new this.e.Jutsu(this.cx, this.cy, (dx / d) * spd, (dy / d) * spd, this, {
             isEquipped,
@@ -1162,6 +1251,11 @@
         }
 
         die() {
+          if (this.isClone) {
+            this.isDead = true;
+            this.e.spawnSmoke(this.cx, this.cy, 20);
+            return;
+          }
           this.isDead = true;
           this.e.slowMo = 0.16;
           this.e.gameOver = true;
@@ -1187,6 +1281,7 @@
           if (this.atkCD > 0) this.atkCD -= dt;
           if (this.jutsuCD > 0) this.jutsuCD -= dt;
           if (this.equippedSkillCD > 0) this.equippedSkillCD -= dt;
+          if (this.equippedSkillRollLock > 0) this.equippedSkillRollLock -= dt;
           if (this.atkBuffTimer > 0) {
             this.atkBuffTimer -= dt;
             if (this.atkBuffTimer <= 0) this.atkBuffPct = 0;
@@ -1227,6 +1322,14 @@
             this.vy = 0;
             return;
           }
+          if (this.isClone && this.cloneLifetime > 0) {
+            this.cloneLifetime -= dt;
+            if (this.cloneLifetime <= 0) {
+              this.isDead = true;
+              this.e.spawnSmoke(this.cx, this.cy, 20);
+              return;
+            }
+          }
 
           if (!this.onGround) this.vy += G * dt;
           this.x += this.vx * dt;
@@ -1246,7 +1349,9 @@
             if (this.onGround) { this.vy = -9; this.onGround = false; }
           }
 
-          this.facingRight = enemy.cx > this.cx;
+          const currentEnemy = this.targetOverride && !this.targetOverride.isDead ? this.targetOverride : enemy;
+          if (!currentEnemy || currentEnemy.isDead) return;
+          this.facingRight = currentEnemy.cx > this.cx;
           if (this.stunTimer > 0) return;
 
           this.dashTimer += dms;
@@ -1281,15 +1386,15 @@
           for (const t of this.trail) t.a -= 0.04 * dt;
           this.trail = this.trail.filter((t) => t.a > 0);
 
-          if (!enemy.isDead) {
-            const dist = Math.hypot(this.cx - enemy.cx, this.cy - enemy.cy);
+          if (!currentEnemy.isDead) {
+            const dist = Math.hypot(this.cx - currentEnemy.cx, this.cy - currentEnemy.cy);
             if (dist < 50 && this.atkCD <= 0) {
-              const dmgPayload = this.e.calcDamage(this, enemy, 'basic');
+              const dmgPayload = this.e.calcDamage(this, currentEnemy, 'basic');
               if (this.atkBuffPct > 0) dmgPayload.damage *= 1 + this.atkBuffPct;
-              enemy.receiveHit(dmgPayload.damage, this.cx, this, dmgPayload.crit);
+              currentEnemy.receiveHit(dmgPayload.damage, this.cx, this, dmgPayload.crit);
               this.atkCD = 42;
             } else if (dist > 150 && this.jutsuCD <= 0) {
-              this.launchJutsu(enemy);
+              this.launchJutsu(currentEnemy);
             }
           }
         }

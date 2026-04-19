@@ -175,6 +175,34 @@
       mpAddMax: 11
     }
   };
+  CHARACTER_SKILL_BOOK.itachi.slots[5].skill = {
+    id: 'itachi-susanoo',
+    name: '🛡️ SUSANOO',
+    em: '🛡️',
+    level: 1,
+    baseDamage: 24,
+    damagePerLevel: 0,
+    baseMpCost: 35,
+    mpCostPerLevel: 0,
+    baseDuration: 225,
+    durationPerLevel: 0,
+    atkBuffPercent: 0.25,
+    defBuffPercent: 0.90,
+    transformDurationSeconds: 30,
+    cooldownSeconds: 225,
+    aiUseChance: 0.35,
+    effect: '-',
+    buff: 'ATK +25% · DEF +90%',
+    upgradeCost: { scrolls: 14, crystals: 12 },
+    upgradeRules: {
+      resourceAddMin: 10,
+      resourceAddMax: 35,
+      damageAddPercentMin: 1,
+      damageAddPercentMax: 3,
+      mpAddMin: 7,
+      mpAddMax: 11
+    }
+  };
 
   const deepClone = (value) => JSON.parse(JSON.stringify(value));
   const DEFAULT_UPGRADE_COST = { scrolls: 5, crystals: 3 };
@@ -218,11 +246,19 @@
     if (rules) {
       const minDamageAdd = Math.max(0, toNumber(rules.damageAddMin, 0));
       const maxDamageAdd = Math.max(minDamageAdd, toNumber(rules.damageAddMax, minDamageAdd));
+      const minDamagePercent = Math.max(0, toNumber(rules.damageAddPercentMin, 0));
+      const maxDamagePercent = Math.max(minDamagePercent, toNumber(rules.damageAddPercentMax, minDamagePercent));
       const minMpAdd = Math.max(0, toNumber(rules.mpAddMin, 0));
       const maxMpAdd = Math.max(minMpAdd, toNumber(rules.mpAddMax, minMpAdd));
-      next.damage = minDamageAdd === maxDamageAdd
-        ? `${current.damage + minDamageAdd}`
-        : `${current.damage + minDamageAdd} ~ ${current.damage + maxDamageAdd}`;
+      if (maxDamagePercent > 0) {
+        const dmgMin = Math.round(current.damage * (1 + (minDamagePercent / 100)));
+        const dmgMax = Math.round(current.damage * (1 + (maxDamagePercent / 100)));
+        next.damage = dmgMin === dmgMax ? `${dmgMin}` : `${dmgMin} ~ ${dmgMax}`;
+      } else {
+        next.damage = minDamageAdd === maxDamageAdd
+          ? `${current.damage + minDamageAdd}`
+          : `${current.damage + minDamageAdd} ~ ${current.damage + maxDamageAdd}`;
+      }
       next.mpCost = minMpAdd === maxMpAdd
         ? `${current.mpCost + minMpAdd}`
         : `${current.mpCost + minMpAdd} ~ ${current.mpCost + maxMpAdd}`;
@@ -354,7 +390,10 @@
             enemyStopSeconds: toNumber(skill.enemyStopSeconds, 0),
             selfHpPercentCost: toNumber(skill.selfHpPercentCost, 0),
             amaterasuSlowMo: toNumber(skill.amaterasuSlowMo, 0.30),
-            amaterasuDarkness: toNumber(skill.amaterasuDarkness, 0.45)
+            amaterasuDarkness: toNumber(skill.amaterasuDarkness, 0.45),
+            defBuffPercent: toNumber(skill.defBuffPercent, 0),
+            transformDurationSeconds: toNumber(skill.transformDurationSeconds, 0),
+            aiUseChance: toNumber(skill.aiUseChance, 0)
           };
         });
     },
@@ -514,7 +553,9 @@
         const r = skill.upgradeRules;
         const addScrolls = randomInt(r.resourceAddMin, r.resourceAddMax);
         const addCrystals = randomInt(r.resourceAddMin, r.resourceAddMax);
-        const addDamage = randomInt(r.damageAddMin, r.damageAddMax);
+        const addDamage = (r.damageAddPercentMin != null || r.damageAddPercentMax != null)
+          ? Math.max(1, Math.round(toNumber(skill.baseDamage, 0) * (randomInt(r.damageAddPercentMin, r.damageAddPercentMax) / 100)))
+          : randomInt(r.damageAddMin, r.damageAddMax);
         const addMpCost = randomInt(r.mpAddMin, r.mpAddMax);
         skill.baseDamage = toNumber(skill.baseDamage, 0) + addDamage;
         skill.baseMpCost = toNumber(skill.baseMpCost, 0) + addMpCost;

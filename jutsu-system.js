@@ -41,6 +41,25 @@
     tsunade: createEmptyCharacterConfig('tsunade')
   };
 
+  CHARACTER_SKILL_BOOK.itachi.slots[0].skill = {
+    id: 'itachi_gokakyu',
+    name: '🔥 KATON: GŌKAKYŪ NO JUTSU',
+    em: '🔥',
+    level: 1,
+    cooldownSeconds: 13,
+    mpCost: 14,
+    damage: 40,
+    burn: { percentPerSecond: 0.02, durationSeconds: 4 },
+    buff: { atkPercent: 0.10, durationSeconds: 25 },
+    upgrade: {
+      firstLevelCost: { scrolls: 10, crystals: 7 },
+      costGrowthRange: { min: 10, max: 30 },
+      damageGrowthRange: { min: 19, max: 28 },
+      mpGrowthRange: { min: 7, max: 11 }
+    },
+    nextUpgradeCost: { scrolls: 10, crystals: 7 }
+  };
+
   const deepClone = (value) => JSON.parse(JSON.stringify(value));
 
   const JutsuSystem = {
@@ -123,7 +142,50 @@
       if (!current) return [];
       return current.equipped
         .filter((skill) => skill && typeof skill === 'object')
-        .map((skill) => ({ id: skill.id, name: skill.name, em: skill.em }));
+        .map((skill) => deepClone(skill));
+    },
+
+    getSkillById(skillId) {
+      if (!skillId) return null;
+      const current = this.getActiveCharacterConfig();
+      if (!current) return null;
+      for (const slot of current.slots) {
+        if (slot?.skill?.id === skillId) return slot.skill;
+      }
+      return null;
+    },
+
+    upgradeSkill(skillId) {
+      const skill = this.getSkillById(skillId);
+      if (!skill || !skill.upgrade) return null;
+
+      const rollInRange = (range) => {
+        const min = Number(range?.min || 0);
+        const max = Number(range?.max || min);
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+      };
+
+      const currentCost = {
+        scrolls: Number(skill.nextUpgradeCost?.scrolls || 10),
+        crystals: Number(skill.nextUpgradeCost?.crystals || 7)
+      };
+
+      skill.level = Number(skill.level || 1) + 1;
+      skill.damage = Number(skill.damage || 0) + rollInRange(skill.upgrade.damageGrowthRange);
+      skill.mpCost = Number(skill.mpCost || 0) + rollInRange(skill.upgrade.mpGrowthRange);
+      skill.nextUpgradeCost = {
+        scrolls: currentCost.scrolls + rollInRange(skill.upgrade.costGrowthRange),
+        crystals: currentCost.crystals + rollInRange(skill.upgrade.costGrowthRange)
+      };
+
+      return {
+        skillId: skill.id,
+        level: skill.level,
+        damage: skill.damage,
+        mpCost: skill.mpCost,
+        consumed: currentCost,
+        nextUpgradeCost: deepClone(skill.nextUpgradeCost)
+      };
     },
 
     equipFromLeftSlot(leftSlotIndex) {

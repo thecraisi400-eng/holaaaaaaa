@@ -1402,7 +1402,7 @@ html, body {
 }
 
 .jsu-top-bar {
-  height: 34px;
+  height: 38px;
   background: var(--jsu-panel);
   border-bottom: 1px solid var(--jsu-border);
   display: flex;
@@ -1414,7 +1414,7 @@ html, body {
 
 .jsu-bar-title {
   font-family: 'Noto Serif JP', serif;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--jsu-accent);
   letter-spacing: 2px;
   text-transform: uppercase;
@@ -1597,3 +1597,111 @@ html, body {
 
 .jsu-status-txt { font-size: 9px; color: rgba(168, 196, 216, 0.45); letter-spacing: 0.5px; }
 .jsu-status-msg { font-size: 9px; color: var(--jsu-accent); margin-left: auto; }
+
+.jsu-skill-modal {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 8, 14, 0.68);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  z-index: 20;
+}
+
+.jsu-skill-modal.is-open { display: flex; }
+
+.jsu-skill-card {
+  width: min(560px, 100%);
+  min-height: 310px;
+  background: rgba(10, 18, 29, 0.92);
+  border: 1px solid var(--jsu-border);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.jsu-skill-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  border: 1px solid var(--jsu-border);
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--jsu-silver);
+  cursor: pointer;
+}
+
+.jsu-modal-top {
+  flex: 0 0 60%;
+  padding: 16px 14px 8px;
+}
+
+.jsu-modal-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.jsu-modal-skill-icon { font-size: 30px; color: var(--jsu-accent); }
+.jsu-modal-skill-name { font-size: 17px; color: #f3f8ff; font-weight: 700; }
+.jsu-modal-skill-slot { font-size: 10px; color: rgba(168, 196, 216, 0.7); text-transform: uppercase; letter-spacing: 1px; }
+
+.jsu-modal-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.jsu-modal-columns h4 {
+  margin: 0 0 5px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--jsu-gold);
+}
+
+.jsu-modal-stats {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--jsu-text);
+}
+
+.jsu-modal-stats li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.jsu-modal-stats span { color: #f8fbff; font-weight: 700; text-align: right; }
+
+.jsu-modal-divider { border-top: 1px solid var(--jsu-border); }
+
+.jsu-modal-bottom {
+  flex: 1;
+  min-height: 40%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 14px;
+}
+
+.jsu-modal-action {
+  border: 1px solid var(--jsu-border);
+  min-height: 48px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #f4fbff;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.jsu-upgrade-btn { color: var(--jsu-gold); }
+.jsu-equip-btn { color: var(--jsu-accent); }
+.jsu-modal-action:disabled { opacity: 0.45; cursor: not-allowed; }

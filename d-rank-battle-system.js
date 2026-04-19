@@ -219,7 +219,10 @@
     }
 
     endCinematicSkill() {
-      if (this.activeSkillLabel?.owner) this.activeSkillLabel.owner.skillLock = null;
+      if (this.activeSkillLabel?.owner) {
+        this.activeSkillLabel.owner.skillLock = null;
+        this.activeSkillLabel.owner.tY = this.GROUND - NH;
+      }
       this.slowMo = 1;
       this.activeSkillProjectile = null;
       this.activeSkillLabel = null;
@@ -321,6 +324,7 @@
     tryAutoLaunchEquippedSkill(attacker, defender, chance, getSkills) {
       if (!attacker || !defender || attacker.isDead || defender.isDead) return;
       if (this.activeSkillProjectile) return;
+      if (attacker.skillAiLockFrames > 0) return;
       const skills = getSkills();
       if (!skills.length) return;
       if (Math.random() > chance) return;
@@ -582,6 +586,22 @@
           const b = this.jutsus[j];
           if (a.owner === b.owner || a.dead || b.dead) continue;
           if (Math.hypot(a.x - b.x, a.y - b.y) < a.size + b.size + 6) {
+            if (a.isShuriken && a.ownerTeam !== b.ownerTeam) {
+              a.dead = true;
+              b.dead = true;
+              if (a.group) a.group.aliveCount = Math.max(0, a.group.aliveCount - 1);
+              a.groupCounted = true;
+              this.spawnSparks((a.x + b.x) / 2, (a.y + b.y) / 2, 12, '#cbd5e1');
+              continue;
+            }
+            if (b.isShuriken && b.ownerTeam !== a.ownerTeam) {
+              b.dead = true;
+              a.dead = true;
+              if (b.group) b.group.aliveCount = Math.max(0, b.group.aliveCount - 1);
+              b.groupCounted = true;
+              this.spawnSparks((a.x + b.x) / 2, (a.y + b.y) / 2, 12, '#cbd5e1');
+              continue;
+            }
             if (a.piercesGenericProjectiles && b.isGenericProjectile) {
               b.dead = true;
               continue;
@@ -661,6 +681,22 @@
         for (const f of this.getAllCombatants()) {
           if (f === j.owner || f.team === j.ownerTeam || f.isDead || f.invincible) continue;
           if (Math.hypot(j.x - f.cx, j.y - f.cy) < j.size + NW / 2) {
+            if (j.isShuriken) {
+              if (!j.group?.damageApplied) {
+                f.receiveHit(Number(j.skillData?.damage || 30), j.x, j.owner, false);
+                j.group.damageApplied = true;
+                if (j.isEquipped) this.endCinematicSkill();
+              }
+              for (let i = 0; i < 10; i += 1) {
+                const ang = Math.random() * Math.PI * 2;
+                const spd = 2 + Math.random() * 4;
+                this.particles.push(new this.Particle(this, j.x, j.y, Math.cos(ang) * spd, Math.sin(ang) * spd, '#cbd5e1', 18, 2.6, 'spark'));
+              }
+              if (j.group) j.group.aliveCount = Math.max(0, j.group.aliveCount - 1);
+              j.groupCounted = true;
+              j.dead = true;
+              continue;
+            }
             const isItachiKaton = j.skillData?.id === 'itachi-katon-gokakyu';
             if (isItachiKaton) {
               f.receiveHit(Number(j.skillData?.damage || 40), j.x, j.owner, false);
@@ -682,6 +718,10 @@
       }
 
       this.checkJutsuClash();
+      if (this.activeSkillProjectile?.type === 'shuriken-group') {
+        const group = this.activeSkillProjectile.group;
+        if (!group || group.damageApplied || group.aliveCount <= 0) this.endCinematicSkill();
+      }
       for (const j of this.jutsus) {
         if (j.dead && j.isEquipped && this.activeSkillProjectile === j) this.endCinematicSkill();
       }
@@ -963,6 +1003,11 @@
           this.homing = this.skillData?.id === 'itachi-katon-gokakyu';
           this.piercesGenericProjectiles = this.homing;
           this.isGenericProjectile = !this.isEquipped;
+          this.isShuriken = Boolean(options.isShuriken);
+          this.group = options.group || null;
+          this.baseSize = this.size;
+          this.maxGrow = this.isShuriken ? 1.25 : 1;
+          this.groupCounted = false;
         }
         update(dt) {
           this.trail.unshift({ x: this.x, y: this.y });
@@ -975,13 +1020,45 @@
             const steer = 0.18;
             this.vx += (((dx / d) * spd) - this.vx) * steer;
             this.vy += (((dy / d) * spd) - this.vy) * steer;
+            if (this.isShuriken) {
+              const targetSize = this.baseSize * this.maxGrow;
+              this.size += (targetSize - this.size) * 0.07 * dt;
+            }
           }
           this.x += this.vx * dt; this.y += this.vy * dt; this.life -= dt;
           const e = this.owner.e;
           if (this.x < -12 || this.x > e.W + 12 || this.y < -12 || this.y > e.H + 12 || this.life <= 0) this.dead = true;
+          if (this.dead && this.isShuriken && this.group && !this.groupCounted) {
+            this.group.aliveCount = Math.max(0, this.group.aliveCount - 1);
+            this.groupCounted = true;
+          }
           if (Math.random() < 0.35) e.particles.push(new e.Particle(e, this.x, this.y, (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 1.5, this.color, 10, 2, 'spark'));
         }
         draw(ctx) {
+          if (this.isShuriken) {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.rotate(Math.atan2(this.vy, this.vx) + Math.PI / 4);
+            ctx.globalAlpha = 0.95;
+            const s = this.size * 2.2;
+            ctx.fillStyle = '#dbeafe';
+            ctx.beginPath();
+            ctx.moveTo(0, -s);
+            ctx.lineTo(s * 0.22, -s * 0.22);
+            ctx.lineTo(s, 0);
+            ctx.lineTo(s * 0.22, s * 0.22);
+            ctx.lineTo(0, s);
+            ctx.lineTo(-s * 0.22, s * 0.22);
+            ctx.lineTo(-s, 0);
+            ctx.lineTo(-s * 0.22, -s * 0.22);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+            ctx.restore();
+            return;
+          }
           for (let i = 0; i < this.trail.length; i += 1) {
             const t = this.trail[i];
             const r = this.size * (1 - i / this.trail.length) * 0.9;
@@ -1052,6 +1129,7 @@
           this.skillLock = null;
           this.burn = null;
           this.atkBuff = null;
+          this.skillAiLockFrames = 0;
         }
         get cx() { return this.x + NW / 2; }
         get cy() { return this.y + NH / 2; }
@@ -1147,7 +1225,7 @@
           const dir = this.cx < target.cx ? -1 : 1;
           const nx = target.x + (dir * distance);
           const lockedX = Math.max(4, Math.min(this.e.W - NW - 4, nx));
-          const lockedY = Math.max(8, this.e.GROUND - NH - 145);
+          const lockedY = Math.max(8, this.e.H * 0.18);
           this.x = lockedX;
           this.y = lockedY;
           this.vx = 0;
@@ -1207,12 +1285,46 @@
           const isEquipped = Boolean(options.isEquipped);
           const skillName = options.skillName || 'Habilidad';
           if (isEquipped && skillData?.id && this.getSkillCooldown(skillData.id) > 0) return;
+          if (isEquipped) {
+            const aiRetrySeconds = Math.max(10, Math.round(skillData?.aiRetryDelaySeconds || 10));
+            this.skillAiLockFrames = Math.max(this.skillAiLockFrames, aiRetrySeconds * 60);
+          }
           if (skillData?.id === 'itachi-kage-bunshin') {
             this.mp = Math.max(0, this.mp - mpCost);
             this.jutsuCD = 110;
             this.skillCooldowns[skillData.id] = Math.max(1, Math.round((skillData.cooldownSeconds || 20) * 60));
             this.spawnKageBunshin(skillData, target, skillName);
             this.flashTimer = 8;
+            return;
+          }
+          if (skillData?.id === 'itachi-shurikenjutsu') {
+            this.placeForEquippedSkill(target);
+            this.mp = Math.max(0, this.mp - mpCost);
+            this.jutsuCD = 120;
+            this.skillCooldowns[skillData.id] = Math.max(1, Math.round((skillData.cooldownSeconds || 14) * 60));
+            const shurikenGroup = { owner: this, skillData, aliveCount: 0, damageApplied: false };
+            for (let i = 0; i < 5; i += 1) {
+              const spread = (Math.random() - 0.5) * 0.35;
+              const projectile = new this.e.Jutsu(this.cx, this.cy, Math.cos(spread) * 5.3, Math.sin(spread) * 0.6, this, {
+                isEquipped: true,
+                skillName,
+                skillData,
+                target,
+                isShuriken: true,
+                group: shurikenGroup
+              });
+              projectile.color = '#cbd5e1';
+              projectile.size = 8;
+              projectile.baseSize = 8;
+              projectile.homing = true;
+              projectile.life = 250;
+              projectile.isGenericProjectile = false;
+              shurikenGroup.aliveCount += 1;
+              this.e.jutsus.push(projectile);
+            }
+            this.e.beginCinematicSkill(this, skillName, { type: 'shuriken-group', group: shurikenGroup });
+            this.e.spawnSparks(this.cx, this.cy, 14, '#e2e8f0');
+            this.flashTimer = 10;
             return;
           }
           if (isEquipped) this.placeForEquippedSkill(target);
@@ -1278,6 +1390,7 @@
           if (this.stunTimer > 0) this.stunTimer -= dt;
           if (this.atkCD > 0) this.atkCD -= dt;
           if (this.jutsuCD > 0) this.jutsuCD -= dt;
+          if (this.skillAiLockFrames > 0) this.skillAiLockFrames -= dt;
           if (this.invTimer > 0) {
             this.invTimer -= dt;
             if (this.invTimer <= 0) this.invincible = false;

@@ -40,10 +40,44 @@
     tobirama: createEmptyCharacterConfig('tobirama'),
     tsunade: createEmptyCharacterConfig('tsunade')
   };
+  CHARACTER_SKILL_BOOK.itachi.slots[0].skill = {
+    id: 'itachi-katon-gokakyu',
+    name: '🔥 KATON: GŌKAKYŪ NO JUTSU',
+    em: '🔥',
+    level: 1,
+    baseDamage: 40,
+    damagePerLevel: 0,
+    baseMpCost: 14,
+    mpCostPerLevel: 0,
+    baseDuration: 13,
+    durationPerLevel: 0,
+    burnPercent: 0.02,
+    burnSeconds: 4,
+    atkBuffPercent: 0.10,
+    atkBuffSeconds: 25,
+    cooldownSeconds: 13,
+    effect: 'Quemadura -2% HP por 4s',
+    buff: '+10% ATK por 25s',
+    upgradeCost: { scrolls: 15, crystals: 9 },
+    upgradeRules: {
+      resourceAddMin: 10,
+      resourceAddMax: 35,
+      damageAddMin: 19,
+      damageAddMax: 28,
+      mpAddMin: 7,
+      mpAddMax: 11
+    }
+  };
 
   const deepClone = (value) => JSON.parse(JSON.stringify(value));
   const DEFAULT_UPGRADE_COST = { scrolls: 5, crystals: 3 };
   const toNumber = (value, fallback = 0) => (Number.isFinite(Number(value)) ? Number(value) : fallback);
+  const randomInt = (min, max) => {
+    const safeMin = Math.ceil(toNumber(min, 0));
+    const safeMax = Math.floor(toNumber(max, safeMin));
+    if (safeMax <= safeMin) return safeMin;
+    return Math.floor(Math.random() * (safeMax - safeMin + 1)) + safeMin;
+  };
 
   function buildSkillStats(skill) {
     const level = Math.max(1, toNumber(skill.level, 1));
@@ -171,7 +205,22 @@
       if (!current) return [];
       return current.equipped
         .filter((skill) => skill && typeof skill === 'object')
-        .map((skill) => ({ id: skill.id, name: skill.name, em: skill.em }));
+        .map((skill) => {
+          const stats = buildSkillStats(skill);
+          return {
+            id: skill.id,
+            name: skill.name,
+            em: skill.em,
+            damage: stats.current.damage,
+            mpCost: stats.current.mpCost,
+            duration: stats.current.duration,
+            cooldownSeconds: toNumber(skill.cooldownSeconds, stats.current.duration || 13),
+            burnPercent: toNumber(skill.burnPercent, 0),
+            burnSeconds: toNumber(skill.burnSeconds, 0),
+            atkBuffPercent: toNumber(skill.atkBuffPercent, 0),
+            atkBuffSeconds: toNumber(skill.atkBuffSeconds, 0)
+          };
+        });
     },
 
     openSkillModal(leftSlotIndex) {
@@ -325,6 +374,18 @@
       this.state.resources.scrolls -= neededScrolls;
       this.state.resources.crystals -= neededCrystals;
       skill.level = Math.max(1, toNumber(skill.level, 1) + 1);
+      if (skill.upgradeRules) {
+        const r = skill.upgradeRules;
+        const addScrolls = randomInt(r.resourceAddMin, r.resourceAddMax);
+        const addCrystals = randomInt(r.resourceAddMin, r.resourceAddMax);
+        const addDamage = randomInt(r.damageAddMin, r.damageAddMax);
+        const addMpCost = randomInt(r.mpAddMin, r.mpAddMax);
+        skill.baseDamage = toNumber(skill.baseDamage, 0) + addDamage;
+        skill.baseMpCost = toNumber(skill.baseMpCost, 0) + addMpCost;
+        if (!skill.upgradeCost) skill.upgradeCost = { ...DEFAULT_UPGRADE_COST };
+        skill.upgradeCost.scrolls = toNumber(skill.upgradeCost.scrolls, 0) + addScrolls;
+        skill.upgradeCost.crystals = toNumber(skill.upgradeCost.crystals, 0) + addCrystals;
+      }
 
       this.renderResources();
       this.renderSkillModal();

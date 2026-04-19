@@ -85,6 +85,7 @@
       this.activeSkillLabel = null;
       this.activeSkillTracker = null;
       this.activeSkillFxTimer = 0;
+      this.tsukuyomiState = null;
       this.bgMountains = [];
       this.bgMountains2 = [];
       this.bgRocks = [];
@@ -227,6 +228,134 @@
       this.activeSkillTracker = null;
       this.activeSkillFxTimer = 0;
       if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
+    }
+
+    clearEnemyProjectilesForTsukuyomi(caster) {
+      if (!caster) return;
+      for (const projectile of this.jutsus) {
+        if (!projectile || projectile.dead) continue;
+        if (projectile.owner?.team === caster.team) continue;
+        projectile.resolveReason = 'tsukuyomi-priority';
+        projectile.dead = true;
+      }
+    }
+
+    beginTsukuyomi(caster, target, skillData = {}, skillName = '🌙 TSUKUYOMI') {
+      if (!caster || !target || caster.isDead || target.isDead) return;
+      const stunFrames = Math.max(1, Math.round((Number(skillData.stunSeconds) || 4) * 60));
+      const enemyLockFrames = Math.max(stunFrames, Math.round(((Number(skillData.enemyLockSeconds) || 5) * 60) + stunFrames));
+      const totalCooldownFrames = Math.max(1, Math.round((Number(skillData.cooldownSeconds) || 16) * 60));
+      caster.placeForTsukuyomi(target, 0.60);
+      target.placeForTsukuyomi(caster, 0.60);
+      caster.stunTimer = Math.max(caster.stunTimer, stunFrames);
+      target.stunTimer = Math.max(target.stunTimer, enemyLockFrames);
+      this.slowMo = Math.max(0.05, Number(skillData.globalSlowMo) || 0.30);
+      this.activeSkillProjectile = null;
+      this.activeSkillFxTimer = 0;
+      this.activeSkillLabel = { name: skillName, owner: caster };
+      this.activeSkillTracker = { owner: caster, pendingHits: 1 };
+      if (this.veil) this.veil.style.background = skillData.veilColor || 'rgba(120,0,0,0.45)';
+      this.clearEnemyProjectilesForTsukuyomi(caster);
+      this.tsukuyomiState = {
+        caster,
+        target,
+        skillName,
+        damage: Math.max(0, Number(skillData.damage) || 100),
+        selfHpPenaltyPercent: Math.max(0, Number(skillData.selfHpPenaltyPercent) || 0.05),
+        stage: 'red',
+        timer: stunFrames,
+        yellowTimer: Math.max(1, Math.round((Number(skillData.enemyLockSeconds) || 5) * 60)),
+        totalCooldownFrames
+      };
+    }
+
+    updateTsukuyomiState(dt) {
+      const state = this.tsukuyomiState;
+      if (!state) return;
+      const { caster, target } = state;
+      if (!caster || !target || caster.isDead || target.isDead) {
+        this.tsukuyomiState = null;
+        this.endCinematicSkill();
+        return;
+      }
+      this.clearEnemyProjectilesForTsukuyomi(caster);
+      state.timer -= dt;
+      if (state.stage === 'red') {
+        if (state.timer > 0 && Math.random() < 0.65) {
+          const angle = Math.random() * Math.PI * 2;
+          const radius = 12 + Math.random() * 25;
+          const x = ((caster.cx + target.cx) / 2) + (Math.cos(angle) * radius);
+          const y = ((caster.cy + target.cy) / 2) + (Math.sin(angle) * radius);
+          this.particles.push(new this.Particle(this, x, y, (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 3, '#ff2d2d', 24, 2.4, 'spark'));
+        }
+        if (state.timer <= 0) {
+          const dmg = state.damage;
+          target.hp = Math.max(0, target.hp - dmg);
+          this.damageNums.push(new this.DamageNum(target.cx, target.y - 10, dmg, true));
+          const selfPenalty = Math.max(1, caster.maxHp * state.selfHpPenaltyPercent);
+          caster.hp = Math.max(0, caster.hp - selfPenalty);
+          this.damageNums.push(new this.DamageNum(caster.cx, caster.y - 16, selfPenalty, false));
+          if (caster.hp <= 0 && !caster.isDead) caster.die();
+          if (target.hp <= 0 && !target.isDead) target.die();
+          if (caster.skillCooldowns && state.totalCooldownFrames > 0) {
+            caster.skillCooldowns['itachi-tsukuyomi'] = Math.max(caster.getSkillCooldown('itachi-tsukuyomi'), state.totalCooldownFrames);
+          }
+          state.stage = 'yellow';
+          state.timer = state.yellowTimer;
+          caster.skillLock = null;
+          this.slowMo = 1;
+          if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
+          this.activeSkillLabel = null;
+          this.activeSkillTracker = null;
+          this.triggerShake(5, 16);
+        }
+      } else if (state.stage === 'yellow') {
+        target.stunTimer = Math.max(target.stunTimer, 2);
+        if (state.timer > 0 && Math.random() < 0.50) {
+          const angle = Math.random() * Math.PI * 2;
+          const radius = 10 + Math.random() * 24;
+          const x = target.cx + (Math.cos(angle) * radius);
+          const y = target.cy + (Math.sin(angle) * radius);
+          this.particles.push(new this.Particle(this, x, y, (Math.random() - 0.5) * 2.4, -1 - Math.random() * 1.6, '#ff3030', 18, 2.1, 'spark'));
+        }
+        if (state.timer <= 0) {
+          target.skillLock = null;
+          this.tsukuyomiState = null;
+        }
+      }
+    }
+
+    drawTsukuyomiState(ctx) {
+      const state = this.tsukuyomiState;
+      if (!state) return;
+      const { caster, target, stage } = state;
+      if (!caster || !target || caster.isDead || target.isDead) return;
+      if (stage === 'red') {
+        const midX = (caster.cx + target.cx) / 2;
+        const midY = (caster.cy + target.cy) / 2;
+        const radius = 37.5;
+        ctx.save();
+        ctx.globalAlpha = 0.45;
+        ctx.fillStyle = '#bb1010';
+        ctx.beginPath();
+        ctx.arc(midX, midY, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        return;
+      }
+      if (stage === 'yellow') {
+        const radius = 35;
+        ctx.save();
+        ctx.globalAlpha = 0.44;
+        ctx.fillStyle = '#ffd400';
+        ctx.strokeStyle = '#ffee7a';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(target.cx, target.cy, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
     }
 
     beginCinematicSkill(owner, skillName, projectile) {
@@ -657,6 +786,7 @@
         this.activeSkillFxTimer -= dt;
         if (this.activeSkillFxTimer <= 0 && !this.activeSkillProjectile) this.endCinematicSkill();
       }
+      this.updateTsukuyomiState(dt);
 
       if (this.hitStop > 0) {
         this.hitStop -= dt;
@@ -742,6 +872,7 @@
       const avgX = this.fighters.reduce((s, f) => s + f.cx, 0) / this.fighters.length;
       const parallaxX = (avgX - this.W / 2) * 0.10;
       this.drawBG(parallaxX);
+      this.drawTsukuyomiState(ctx);
       for (const j of this.jutsus) j.draw(ctx);
       for (const f of this.fighters) f.draw(ctx);
       for (const summon of this.summons) summon.draw(ctx);
@@ -784,6 +915,7 @@
       this.activeSkillLabel = null;
       this.activeSkillTracker = null;
       this.activeSkillFxTimer = 0;
+      this.tsukuyomiState = null;
       this.completionSent = false;
       if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
       if (this.winnerScreen) this.winnerScreen.style.display = 'none';
@@ -1238,6 +1370,22 @@
           this.skillLock = { x: lockedX, y: lockedY };
         }
 
+        placeForTsukuyomi(target, distanceRatio = 0.60) {
+          const ratio = Math.max(0.2, Math.min(0.9, Number(distanceRatio) || 0.60));
+          const distance = this.e.W * ratio;
+          const midpointX = this.e.W / 2;
+          const thisOnLeft = this.team <= target.team;
+          const myCenter = midpointX + (thisOnLeft ? -distance / 2 : distance / 2);
+          const lockX = Math.max(4, Math.min(this.e.W - NW - 4, myCenter - (NW / 2)));
+          const lockY = this.e.GROUND - NH;
+          this.x = lockX;
+          this.y = lockY;
+          this.vx = 0;
+          this.vy = 0;
+          this.onGround = true;
+          this.skillLock = { x: lockX, y: lockY };
+        }
+
         launchShurikenProjectile(target, skillData, skillName, startDelay = 0) {
           if (!target || target.isDead) return;
           const projectile = new this.e.Jutsu(this.cx, this.cy, 0, 0, this, {
@@ -1368,6 +1516,14 @@
             this.skillCooldowns[skillData.id] = Math.max(1, Math.round((skillData.cooldownSeconds || 14) * 60));
             this.beginShurikenJutsu(skillData, target, skillName);
             this.flashTimer = 10;
+            return;
+          }
+          if (skillData?.id === 'itachi-tsukuyomi') {
+            this.mp = Math.max(0, this.mp - mpCost);
+            this.jutsuCD = 125;
+            this.skillCooldowns[skillData.id] = Math.max(1, Math.round((skillData.cooldownSeconds || 16) * 60));
+            this.e.beginTsukuyomi(this, target, skillData, skillName);
+            this.flashTimer = 14;
             return;
           }
           if (isEquipped) this.placeForEquippedSkill(target);

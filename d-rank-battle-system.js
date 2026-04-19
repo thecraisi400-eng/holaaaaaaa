@@ -85,6 +85,7 @@
       this.activeSkillLabel = null;
       this.activeSkillTracker = null;
       this.activeSkillFxTimer = 0;
+      this.tsukuyomiState = null;
       this.bgMountains = [];
       this.bgMountains2 = [];
       this.bgRocks = [];
@@ -227,6 +228,88 @@
       this.activeSkillTracker = null;
       this.activeSkillFxTimer = 0;
       if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
+    }
+
+    beginTsukuyomiSkill(owner, target, skillData, skillName) {
+      if (!owner || !target || owner.isDead || target.isDead) return;
+      const separation = this.W * 0.60;
+      const halfGap = separation / 2;
+      const centerX = this.W / 2;
+      const ownerX = Math.max(4, Math.min(this.W - NW - 4, centerX - halfGap - (NW / 2)));
+      const targetX = Math.max(4, Math.min(this.W - NW - 4, centerX + halfGap - (NW / 2)));
+      const lockY = this.GROUND - NH;
+      const ritualFrames = Math.max(1, Math.round((Number(skillData?.ritualSeconds) || 3) * 60));
+      const enemyStopFrames = Math.max(1, Math.round((Number(skillData?.enemyStopSeconds) || 4) * 60));
+
+      this.activeSkillProjectile = null;
+      this.activeSkillLabel = { name: skillName || '🌙 TSUKUYOMI', owner };
+      this.activeSkillTracker = null;
+      this.activeSkillFxTimer = 0;
+      this.slowMo = 0.30;
+      if (this.veil) this.veil.style.background = 'rgba(120,0,0,0.45)';
+
+      owner.tsukuyomiLock = { x: ownerX, y: lockY };
+      target.tsukuyomiLock = { x: targetX, y: lockY };
+      owner.tsukuyomiAura = { color: 'rgba(200,20,20,0.45)', particleColor: '#ff4d4d', size: 37.5 };
+      target.tsukuyomiAura = { color: 'rgba(200,20,20,0.45)', particleColor: '#ff4d4d', size: 37.5 };
+      owner.stunTimer = Math.max(owner.stunTimer, ritualFrames);
+      target.stunTimer = Math.max(target.stunTimer, ritualFrames);
+
+      this.tsukuyomiState = {
+        owner,
+        target,
+        skillData: skillData || {},
+        ritualFrames,
+        enemyStopFrames,
+        phase: 'ritual'
+      };
+    }
+
+    updateTsukuyomiState(dt) {
+      if (!this.tsukuyomiState) return;
+      const state = this.tsukuyomiState;
+      const owner = state.owner;
+      const target = state.target;
+      if (!owner || !target || owner.isDead || target.isDead) {
+        if (owner) { owner.tsukuyomiLock = null; owner.tsukuyomiAura = null; }
+        if (target) { target.tsukuyomiLock = null; target.tsukuyomiAura = null; }
+        this.tsukuyomiState = null;
+        this.endCinematicSkill();
+        return;
+      }
+
+      this.jutsus.forEach((j) => {
+        if (j?.owner && j.owner.team !== owner.team) {
+          j.resolveReason = 'tsukuyomi-priority';
+          j.dead = true;
+        }
+      });
+
+      if (state.phase === 'ritual') {
+        state.ritualFrames -= dt;
+        if (state.ritualFrames <= 0) {
+          const selfHpCost = Math.max(0, Number(state.skillData?.selfHpPercentCost) || 0.05);
+          const selfDamage = owner.maxHp * selfHpCost;
+          owner.hp = Math.max(1, owner.hp - selfDamage);
+          this.damageNums.push(new this.DamageNum(owner.cx, owner.y - 12, `-${Math.round(selfHpCost * 100)}% HP`, false));
+
+          const impactDamage = Math.max(1, Number(state.skillData?.damage) || 100);
+          target.receiveHit(impactDamage, owner.cx, owner, true);
+          owner.tsukuyomiLock = null;
+          owner.tsukuyomiAura = null;
+          target.tsukuyomiAura = { color: 'rgba(255,230,0,0.50)', particleColor: '#ff2020', size: 37.5, strokeColor: '#ffe066' };
+          target.stunTimer = Math.max(target.stunTimer, state.enemyStopFrames);
+          state.phase = 'enemy-stun';
+          this.endCinematicSkill();
+        }
+      } else if (state.phase === 'enemy-stun') {
+        state.enemyStopFrames -= dt;
+        if (state.enemyStopFrames <= 0) {
+          target.tsukuyomiLock = null;
+          target.tsukuyomiAura = null;
+          this.tsukuyomiState = null;
+        }
+      }
     }
 
     beginCinematicSkill(owner, skillName, projectile) {
@@ -657,6 +740,7 @@
         this.activeSkillFxTimer -= dt;
         if (this.activeSkillFxTimer <= 0 && !this.activeSkillProjectile) this.endCinematicSkill();
       }
+      this.updateTsukuyomiState(dt);
 
       if (this.hitStop > 0) {
         this.hitStop -= dt;
@@ -784,6 +868,7 @@
       this.activeSkillLabel = null;
       this.activeSkillTracker = null;
       this.activeSkillFxTimer = 0;
+      this.tsukuyomiState = null;
       this.completionSent = false;
       if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
       if (this.winnerScreen) this.winnerScreen.style.display = 'none';
@@ -1133,6 +1218,8 @@
           this.shurikenSkillState = null;
           this.burn = null;
           this.atkBuff = null;
+          this.tsukuyomiLock = null;
+          this.tsukuyomiAura = null;
         }
         get cx() { return this.x + NW / 2; }
         get cy() { return this.y + NH / 2; }
@@ -1370,6 +1457,14 @@
             this.flashTimer = 10;
             return;
           }
+          if (skillData?.id === 'itachi-tsukuyomi') {
+            this.mp = Math.max(0, this.mp - mpCost);
+            this.jutsuCD = 120;
+            this.skillCooldowns[skillData.id] = Math.max(1, Math.round((skillData.cooldownSeconds || 16) * 60));
+            this.e.beginTsukuyomiSkill(this, target, skillData, skillName);
+            this.flashTimer = 10;
+            return;
+          }
           if (isEquipped) this.placeForEquippedSkill(target);
           this.mp = Math.max(0, this.mp - mpCost);
           this.jutsuCD = isEquipped ? 120 : 90;
@@ -1485,6 +1580,14 @@
             this.y = this.skillLock.y;
             this.vx = 0;
             this.vy = 0;
+            return;
+          }
+          if (this.tsukuyomiLock) {
+            this.x = this.tsukuyomiLock.x;
+            this.y = this.tsukuyomiLock.y;
+            this.vx = 0;
+            this.vy = 0;
+            this.onGround = true;
             return;
           }
 
@@ -1698,7 +1801,46 @@
         }
 
         drawStatusEffects(ctx) {
-          if (this.isDead || !this.burn) return;
+          if (this.isDead) return;
+          if (this.tsukuyomiAura) {
+            const aura = this.tsukuyomiAura;
+            const cx = this.cx;
+            const cy = this.cy;
+            const radius = Math.max(10, Number(aura.size) || 37.5);
+            ctx.save();
+            ctx.globalAlpha = 0.9;
+            ctx.fillStyle = aura.color || 'rgba(200,20,20,0.45)';
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.lineWidth = 1.3;
+            ctx.strokeStyle = aura.strokeColor || 'rgba(255,80,80,0.95)';
+            ctx.stroke();
+            for (let i = 0; i < 9; i += 1) {
+              const ang = Math.random() * Math.PI * 2;
+              const dist = Math.random() * radius;
+              const px = cx + Math.cos(ang) * dist;
+              const py = cy + Math.sin(ang) * dist;
+              const s = 1 + Math.random() * 3;
+              ctx.fillStyle = aura.particleColor || '#ff4d4d';
+              if (i % 3 === 0) {
+                ctx.fillRect(px - s * 0.5, py - s * 0.5, s, s);
+              } else if (i % 3 === 1) {
+                ctx.beginPath();
+                ctx.moveTo(px, py - s);
+                ctx.lineTo(px + s, py + s);
+                ctx.lineTo(px - s, py + s);
+                ctx.closePath();
+                ctx.fill();
+              } else {
+                ctx.beginPath();
+                ctx.arc(px, py, s * 0.5, 0, Math.PI * 2);
+                ctx.fill();
+              }
+            }
+            ctx.restore();
+          }
+          if (!this.burn) return;
           const cx = this.cx;
           const cy = this.cy;
           ctx.save();

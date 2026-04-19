@@ -121,6 +121,33 @@
       mpAddMax: 11
     }
   };
+  CHARACTER_SKILL_BOOK.itachi.slots[3].skill = {
+    id: 'itachi-tsukuyomi',
+    name: '🌙 TSUKUYOMI',
+    em: '🌙',
+    level: 1,
+    baseDamage: 100,
+    damagePerLevel: 0,
+    baseMpCost: 20,
+    mpCostPerLevel: 0,
+    baseDuration: 16,
+    durationPerLevel: 0,
+    cooldownSeconds: 16,
+    ritualSeconds: 3,
+    enemyStopSeconds: 4,
+    selfHpPercentCost: 0.05,
+    effect: 'Detiene al enemigo 4s',
+    buff: 'Daña al jugador -5% HP',
+    upgradeCost: { scrolls: 14, crystals: 12 },
+    upgradeRules: {
+      resourceAddMin: 10,
+      resourceAddMax: 35,
+      damageAddMin: 19,
+      damageAddMax: 28,
+      mpAddMin: 7,
+      mpAddMax: 11
+    }
+  };
 
   const deepClone = (value) => JSON.parse(JSON.stringify(value));
   const DEFAULT_UPGRADE_COST = { scrolls: 5, crystals: 3 };
@@ -295,7 +322,10 @@
             cloneLifetimeSeconds: toNumber(skill.cloneLifetimeSeconds, 0),
             cloneCount: toNumber(skill.cloneCount, 0),
             cloneStatMultiplier: toNumber(skill.cloneStatMultiplier, 0),
-            aiRetryDelaySeconds: toNumber(skill.aiRetryDelaySeconds, 0)
+            aiRetryDelaySeconds: toNumber(skill.aiRetryDelaySeconds, 0),
+            ritualSeconds: toNumber(skill.ritualSeconds, 0),
+            enemyStopSeconds: toNumber(skill.enemyStopSeconds, 0),
+            selfHpPercentCost: toNumber(skill.selfHpPercentCost, 0)
           };
         });
     },

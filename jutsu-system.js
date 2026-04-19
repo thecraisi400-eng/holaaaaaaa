@@ -148,6 +148,33 @@
       mpAddMax: 11
     }
   };
+  CHARACTER_SKILL_BOOK.itachi.slots[4].skill = {
+    id: 'itachi-amaterasu',
+    name: '🌙 AMATERASU',
+    em: '🌙',
+    level: 1,
+    baseDamage: 50,
+    damagePerLevel: 0,
+    baseMpCost: 15,
+    mpCostPerLevel: 0,
+    baseDuration: 11,
+    durationPerLevel: 0,
+    cooldownSeconds: 11,
+    burnPercent: 0.15,
+    burnSeconds: 3,
+    selfHpPercentCost: 0.03,
+    effect: 'Quemadura -15% HP por 3s',
+    buff: 'Daña al jugador -3% HP',
+    upgradeCost: { scrolls: 14, crystals: 12 },
+    upgradeRules: {
+      resourceAddMin: 10,
+      resourceAddMax: 35,
+      damageAddMin: 19,
+      damageAddMax: 28,
+      mpAddMin: 7,
+      mpAddMax: 11
+    }
+  };
 
   const deepClone = (value) => JSON.parse(JSON.stringify(value));
   const DEFAULT_UPGRADE_COST = { scrolls: 5, crystals: 3 };
@@ -325,7 +352,9 @@
             aiRetryDelaySeconds: toNumber(skill.aiRetryDelaySeconds, 0),
             ritualSeconds: toNumber(skill.ritualSeconds, 0),
             enemyStopSeconds: toNumber(skill.enemyStopSeconds, 0),
-            selfHpPercentCost: toNumber(skill.selfHpPercentCost, 0)
+            selfHpPercentCost: toNumber(skill.selfHpPercentCost, 0),
+            amaterasuSlowMo: toNumber(skill.amaterasuSlowMo, 0.30),
+            amaterasuDarkness: toNumber(skill.amaterasuDarkness, 0.45)
           };
         });
     },

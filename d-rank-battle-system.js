@@ -84,6 +84,7 @@
       this.activeSkillProjectile = null;
       this.activeSkillLabel = null;
       this.activeSkillFxTimer = 0;
+      this.shurikenVolleys = new Map();
       this.bgMountains = [];
       this.bgMountains2 = [];
       this.bgRocks = [];
@@ -216,6 +217,30 @@
       if (!enemies.length) return null;
       enemies.sort((a, b) => Math.hypot(attacker.cx - a.cx, attacker.cy - a.cy) - Math.hypot(attacker.cx - b.cx, attacker.cy - b.cy));
       return enemies[0];
+    }
+
+    onShurikenVolleyProjectileDestroyed(projectile, hitEnemy = false) {
+      if (!projectile?.volleyId) return;
+      const volley = this.shurikenVolleys.get(projectile.volleyId);
+      if (!volley || volley.resolved) return;
+      if (hitEnemy) {
+        volley.hitCount += 1;
+      }
+      const alive = this.jutsus.filter((j) => !j.dead && j.volleyId === projectile.volleyId).length;
+      if (volley.hitCount >= volley.requiredHits) {
+        const dmg = Number(volley.skillData?.damage || 30);
+        const target = volley.target;
+        if (target && !target.isDead) target.receiveHit(dmg, projectile.x, volley.owner, false);
+        volley.resolved = true;
+        this.shurikenVolleys.delete(projectile.volleyId);
+        this.endCinematicSkill();
+        return;
+      }
+      if (alive <= 0) {
+        volley.resolved = true;
+        this.shurikenVolleys.delete(projectile.volleyId);
+        this.endCinematicSkill();
+      }
     }
 
     endCinematicSkill() {
@@ -582,6 +607,7 @@
           const b = this.jutsus[j];
           if (a.owner === b.owner || a.dead || b.dead) continue;
           if (Math.hypot(a.x - b.x, a.y - b.y) < a.size + b.size + 6) {
+            const shurikenInvolved = Boolean(a.isItachiShuriken || b.isItachiShuriken);
             if (a.piercesGenericProjectiles && b.isGenericProjectile) {
               b.dead = true;
               continue;
@@ -602,6 +628,10 @@
             this.triggerShake(6, 18);
             a.dead = true;
             b.dead = true;
+            if (shurikenInvolved) {
+              if (a.isItachiShuriken) this.onShurikenVolleyProjectileDestroyed(a, false);
+              if (b.isItachiShuriken) this.onShurikenVolleyProjectileDestroyed(b, false);
+            }
             for (const f of this.fighters) f.vx += f.cx > ex ? 4.5 : -4.5;
           }
         }
@@ -662,6 +692,7 @@
           if (f === j.owner || f.team === j.ownerTeam || f.isDead || f.invincible) continue;
           if (Math.hypot(j.x - f.cx, j.y - f.cy) < j.size + NW / 2) {
             const isItachiKaton = j.skillData?.id === 'itachi-katon-gokakyu';
+            const isItachiShuriken = j.skillData?.id === 'itachi-shurikenjutsu';
             if (isItachiKaton) {
               f.receiveHit(Number(j.skillData?.damage || 40), j.x, j.owner, false);
               f.applyBurn(0.02, 4, j.owner);
@@ -676,6 +707,7 @@
               this.particles.push(new this.Particle(this, j.x, j.y, Math.cos(ang) * spd, Math.sin(ang) * spd, j.color, 20, 3, 'spark'));
             }
             j.dead = true;
+            if (isItachiShuriken) this.onShurikenVolleyProjectileDestroyed(j, true);
             if (j.isEquipped && this.activeSkillProjectile === j) this.endCinematicSkill();
           }
         }
@@ -683,6 +715,7 @@
 
       this.checkJutsuClash();
       for (const j of this.jutsus) {
+        if (j.dead && j.isItachiShuriken) this.onShurikenVolleyProjectileDestroyed(j, false);
         if (j.dead && j.isEquipped && this.activeSkillProjectile === j) this.endCinematicSkill();
       }
       this.jutsus = this.jutsus.filter((j) => !j.dead);
@@ -755,6 +788,7 @@
       this.activeSkillProjectile = null;
       this.activeSkillLabel = null;
       this.activeSkillFxTimer = 0;
+      this.shurikenVolleys.clear();
       this.completionSent = false;
       if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
       if (this.winnerScreen) this.winnerScreen.style.display = 'none';
@@ -954,15 +988,25 @@
           this.x = x; this.y = y; this.vx = vx; this.vy = vy; this.owner = owner;
           this.ownerTeam = owner?.team ?? 0;
           this.skillData = options.skillData || null;
-          this.color = this.skillData?.id === 'itachi-katon-gokakyu' ? '#ff2a2a' : owner.glowColor;
-          this.size = this.skillData?.id === 'itachi-katon-gokakyu' ? 35 : 9;
+          this.isItachiKaton = this.skillData?.id === 'itachi-katon-gokakyu';
+          this.isItachiShuriken = this.skillData?.id === 'itachi-shurikenjutsu';
+          this.color = this.isItachiKaton ? '#ff2a2a' : (this.isItachiShuriken ? '#dbeafe' : owner.glowColor);
+          this.baseSize = this.isItachiShuriken ? 8 : (this.isItachiKaton ? 35 : 9);
+          this.size = this.baseSize;
+          this.maxSize = this.isItachiShuriken ? this.baseSize * 1.25 : this.baseSize;
           this.life = 200; this.dead = false; this.trail = [];
           this.isEquipped = Boolean(options.isEquipped);
           this.skillName = options.skillName || '';
           this.target = options.target || null;
-          this.homing = this.skillData?.id === 'itachi-katon-gokakyu';
+          this.homing = this.isItachiKaton || this.isItachiShuriken;
           this.piercesGenericProjectiles = this.homing;
           this.isGenericProjectile = !this.isEquipped;
+          this.volleyId = options.volleyId || null;
+          this.volleyIndex = Number.isFinite(options.volleyIndex) ? options.volleyIndex : 0;
+          if (this.isItachiShuriken) {
+            this.piercesGenericProjectiles = false;
+            this.life = 280;
+          }
         }
         update(dt) {
           this.trail.unshift({ x: this.x, y: this.y });
@@ -971,10 +1015,13 @@
             const dx = this.target.cx - this.x;
             const dy = this.target.cy - this.y;
             const d = Math.sqrt(dx * dx + dy * dy) || 1;
-            const spd = 5.6;
-            const steer = 0.18;
+            const spd = this.isItachiShuriken ? 6.4 : 5.6;
+            const steer = this.isItachiShuriken ? 0.22 : 0.18;
             this.vx += (((dx / d) * spd) - this.vx) * steer;
             this.vy += (((dy / d) * spd) - this.vy) * steer;
+          }
+          if (this.isItachiShuriken) {
+            this.size = Math.min(this.maxSize, this.size + (this.maxSize - this.baseSize) * 0.03 * dt);
           }
           this.x += this.vx * dt; this.y += this.vy * dt; this.life -= dt;
           const e = this.owner.e;
@@ -1049,6 +1096,7 @@
           this.deathSmoke = 0;
           this.spriteProfile = spriteProfile;
           this.skillCooldowns = {};
+          this.skillRetryDelays = {};
           this.skillLock = null;
           this.burn = null;
           this.atkBuff = null;
@@ -1056,9 +1104,10 @@
         get cx() { return this.x + NW / 2; }
         get cy() { return this.y + NH / 2; }
         getSkillCooldown(skillId) { return Math.max(0, this.skillCooldowns?.[skillId] || 0); }
+        getSkillRetryDelay(skillId) { return Math.max(0, this.skillRetryDelays?.[skillId] || 0); }
         canUseSkill(skillData = null) {
           if (!skillData?.id) return this.jutsuCD <= 0;
-          return this.getSkillCooldown(skillData.id) <= 0;
+          return this.getSkillCooldown(skillData.id) <= 0 && this.getSkillRetryDelay(skillData.id) <= 0;
         }
         applyBurn(percentPerSecond, durationSeconds, source) {
           this.burn = {
@@ -1142,12 +1191,15 @@
           this.e.triggerShake(2, 6);
         }
 
-        placeForEquippedSkill(target) {
+        placeForEquippedSkill(target, skillData = null) {
           const distance = this.e.W * 0.70;
           const dir = this.cx < target.cx ? -1 : 1;
           const nx = target.x + (dir * distance);
           const lockedX = Math.max(4, Math.min(this.e.W - NW - 4, nx));
-          const lockedY = Math.max(8, this.e.GROUND - NH - 145);
+          const isShuriken = skillData?.id === 'itachi-shurikenjutsu';
+          const lockedY = isShuriken
+            ? Math.max(4, Math.min(this.e.GROUND - NH - 20, this.e.H * 0.18))
+            : Math.max(8, this.e.GROUND - NH - 145);
           this.x = lockedX;
           this.y = lockedY;
           this.vx = 0;
@@ -1193,6 +1245,34 @@
           this.e.beginTimedSkillFx(this, skillName, 500, 0.30, 0.45);
         }
 
+        spawnShurikenVolley(skillData, target, skillName) {
+          if (!target) return;
+          const volleyId = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+          this.e.shurikenVolleys.set(volleyId, {
+            owner: this,
+            target,
+            requiredHits: 3,
+            hitCount: 0,
+            resolved: false,
+            skillData
+          });
+          for (let i = 0; i < 3; i += 1) {
+            const offsetY = -18 + (i * 16);
+            const projectile = new this.e.Jutsu(this.cx, this.cy + offsetY, 0, 0, this, {
+              isEquipped: true,
+              skillName,
+              skillData,
+              target,
+              volleyId,
+              volleyIndex: i
+            });
+            this.e.jutsus.push(projectile);
+          }
+          this.e.spawnSparks(this.cx, this.cy, 12, '#dbeafe');
+          this.e.triggerShake(5, 12);
+          this.e.beginTimedSkillFx(this, skillName, 20000, 0.25, 0.45);
+        }
+
         vanishClone() {
           if (!this.isClone || this.isDead) return;
           this.e.spawnSmoke(this.cx, this.cy, 18);
@@ -1206,20 +1286,32 @@
           if (this.mp < mpCost) return;
           const isEquipped = Boolean(options.isEquipped);
           const skillName = options.skillName || 'Habilidad';
-          if (isEquipped && skillData?.id && this.getSkillCooldown(skillData.id) > 0) return;
+          if (isEquipped && skillData?.id && (this.getSkillCooldown(skillData.id) > 0 || this.getSkillRetryDelay(skillData.id) > 0)) return;
           if (skillData?.id === 'itachi-kage-bunshin') {
             this.mp = Math.max(0, this.mp - mpCost);
             this.jutsuCD = 110;
             this.skillCooldowns[skillData.id] = Math.max(1, Math.round((skillData.cooldownSeconds || 20) * 60));
+            this.skillRetryDelays[skillData.id] = Math.max(1, Math.round((skillData.aiRetryDelaySeconds || 10) * 60));
             this.spawnKageBunshin(skillData, target, skillName);
             this.flashTimer = 8;
             return;
           }
-          if (isEquipped) this.placeForEquippedSkill(target);
+          if (skillData?.id === 'itachi-shurikenjutsu') {
+            this.mp = Math.max(0, this.mp - mpCost);
+            this.jutsuCD = 120;
+            this.skillCooldowns[skillData.id] = Math.max(1, Math.round((skillData.cooldownSeconds || 14) * 60));
+            this.skillRetryDelays[skillData.id] = Math.max(1, Math.round((skillData.aiRetryDelaySeconds || 10) * 60));
+            this.placeForEquippedSkill(target, skillData);
+            this.spawnShurikenVolley(skillData, target, skillName);
+            this.flashTimer = 8;
+            return;
+          }
+          if (isEquipped) this.placeForEquippedSkill(target, skillData);
           this.mp = Math.max(0, this.mp - mpCost);
           this.jutsuCD = isEquipped ? 120 : 90;
           if (isEquipped && skillData?.id) {
             this.skillCooldowns[skillData.id] = Math.max(1, Math.round((skillData.cooldownSeconds || 13) * 60));
+            this.skillRetryDelays[skillData.id] = Math.max(1, Math.round((skillData.aiRetryDelaySeconds || 10) * 60));
           }
           const dx = target.cx - this.cx;
           const dy = target.cy - this.cy;
@@ -1293,6 +1385,9 @@
           if (this.shieldTime > 0) this.shieldTime = Math.max(0, this.shieldTime - dms);
           Object.keys(this.skillCooldowns).forEach((skillId) => {
             this.skillCooldowns[skillId] = Math.max(0, this.skillCooldowns[skillId] - dt);
+          });
+          Object.keys(this.skillRetryDelays).forEach((skillId) => {
+            this.skillRetryDelays[skillId] = Math.max(0, this.skillRetryDelays[skillId] - dt);
           });
           if (this.burn) {
             this.burn.tickTimer -= dt;

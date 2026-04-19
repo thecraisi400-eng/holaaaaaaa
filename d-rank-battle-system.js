@@ -68,6 +68,7 @@
       this.particles = [];
       this.damageNums = [];
       this.jutsus = [];
+      this.summons = [];
       this.fighters = [];
       this.hitStop = 0;
       this.slowMo = 1;
@@ -82,6 +83,7 @@
       this.skillRollTimer = 0;
       this.activeSkillProjectile = null;
       this.activeSkillLabel = null;
+      this.activeSkillFxTimer = 0;
       this.bgMountains = [];
       this.bgMountains2 = [];
       this.bgRocks = [];
@@ -205,11 +207,23 @@
       return Array.isArray(skills) ? skills.filter(Boolean) : [];
     }
 
+    getAllCombatants() {
+      return [...this.fighters, ...this.summons].filter((unit) => unit && !unit.isDead);
+    }
+
+    pickTargetFor(attacker) {
+      const enemies = this.getAllCombatants().filter((unit) => unit.team !== attacker.team);
+      if (!enemies.length) return null;
+      enemies.sort((a, b) => Math.hypot(attacker.cx - a.cx, attacker.cy - a.cy) - Math.hypot(attacker.cx - b.cx, attacker.cy - b.cy));
+      return enemies[0];
+    }
+
     endCinematicSkill() {
       if (this.activeSkillLabel?.owner) this.activeSkillLabel.owner.skillLock = null;
       this.slowMo = 1;
       this.activeSkillProjectile = null;
       this.activeSkillLabel = null;
+      this.activeSkillFxTimer = 0;
       if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
     }
 
@@ -220,7 +234,19 @@
         name: skillName || 'Habilidad',
         owner
       };
+      this.activeSkillFxTimer = 0;
       if (this.veil) this.veil.style.background = 'rgba(0,0,0,0.45)';
+    }
+
+    beginTimedSkillFx(owner, skillName, durationMs = 1000, slowMo = 0.30, darkness = 0.45) {
+      this.slowMo = Math.max(0.05, Number(slowMo) || 0.30);
+      this.activeSkillProjectile = null;
+      this.activeSkillLabel = {
+        name: skillName || 'Habilidad',
+        owner
+      };
+      this.activeSkillFxTimer = Math.max(1, Math.round((durationMs / 1000) * 60));
+      if (this.veil) this.veil.style.background = `rgba(0,0,0,${Math.max(0, Math.min(0.75, darkness))})`;
     }
 
     drawActiveSkillLabel(ctx) {
@@ -603,6 +629,10 @@
           if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
         }
       }
+      if (this.activeSkillFxTimer > 0) {
+        this.activeSkillFxTimer -= dt;
+        if (this.activeSkillFxTimer <= 0 && !this.activeSkillProjectile) this.endCinematicSkill();
+      }
 
       if (this.hitStop > 0) {
         this.hitStop -= dt;
@@ -621,14 +651,15 @@
         this.tryAutoLaunchEquippedSkill(f0, f1, 0.35, () => this.getHeroEquippedSkills());
         this.tryAutoLaunchEquippedSkill(f1, f0, 0.20, () => this.getEnemySkills());
       }
-      f0.update(dt, dms, f1);
-      f1.update(dt, dms, f0);
+      f0.update(dt, dms, this.pickTargetFor(f0));
+      f1.update(dt, dms, this.pickTargetFor(f1));
+      for (const summon of this.summons) summon.update(dt, dms, this.pickTargetFor(summon));
 
       for (const j of this.jutsus) j.update(dt);
       for (const j of this.jutsus) {
         if (j.dead) continue;
-        for (const f of this.fighters) {
-          if (f === j.owner || f.isDead || f.invincible) continue;
+        for (const f of this.getAllCombatants()) {
+          if (f === j.owner || f.team === j.ownerTeam || f.isDead || f.invincible) continue;
           if (Math.hypot(j.x - f.cx, j.y - f.cy) < j.size + NW / 2) {
             const isItachiKaton = j.skillData?.id === 'itachi-katon-gokakyu';
             if (isItachiKaton) {
@@ -655,6 +686,7 @@
         if (j.dead && j.isEquipped && this.activeSkillProjectile === j) this.endCinematicSkill();
       }
       this.jutsus = this.jutsus.filter((j) => !j.dead);
+      this.summons = this.summons.filter((s) => !s.isDead);
       this.particles.forEach((p) => p.update(dt));
       this.particles = this.particles.filter((p) => !p.isDead());
       this.damageNums.forEach((d) => d.update(dt));
@@ -684,7 +716,9 @@
       this.drawBG(parallaxX);
       for (const j of this.jutsus) j.draw(ctx);
       for (const f of this.fighters) f.draw(ctx);
+      for (const summon of this.summons) summon.draw(ctx);
       for (const f of this.fighters) f.drawStatusEffects(ctx);
+      for (const summon of this.summons) summon.drawStatusEffects(ctx);
       this.drawActiveSkillLabel(ctx);
       for (const p of this.particles) p.draw(ctx);
       for (const d of this.damageNums) d.draw(ctx);
@@ -706,6 +740,7 @@
       this.particles = [];
       this.damageNums = [];
       this.jutsus = [];
+      this.summons = [];
       this.hitStop = 0;
       this.slowMo = 1;
       this.frameN = 0;
@@ -719,6 +754,7 @@
       this.skillRollTimer = 0;
       this.activeSkillProjectile = null;
       this.activeSkillLabel = null;
+      this.activeSkillFxTimer = 0;
       this.completionSent = false;
       if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
       if (this.winnerScreen) this.winnerScreen.style.display = 'none';
@@ -916,6 +952,7 @@
       return class Jutsu {
         constructor(x, y, vx, vy, owner, options = {}) {
           this.x = x; this.y = y; this.vx = vx; this.vy = vy; this.owner = owner;
+          this.ownerTeam = owner?.team ?? 0;
           this.skillData = options.skillData || null;
           this.color = this.skillData?.id === 'itachi-katon-gokakyu' ? '#ff2a2a' : owner.glowColor;
           this.size = this.skillData?.id === 'itachi-katon-gokakyu' ? 35 : 9;
@@ -965,16 +1002,20 @@
 
     get Fighter() {
       return class Fighter {
-        constructor(engine, x, id, spriteProfile = null) {
+        constructor(engine, x, id, spriteProfile = null, options = {}) {
           this.e = engine;
           this.id = id;
+          this.team = Number.isFinite(options.team) ? options.team : (id === 1 ? 1 : 0);
+          this.isClone = Boolean(options.isClone);
+          this.cloneOwner = options.cloneOwner || null;
+          this.cloneLifetime = Math.max(0, Math.round((options.cloneLifetimeSeconds || 0) * 60));
           this.x = x;
           this.y = this.e.GROUND - NH;
           this.vx = 0;
           this.vy = 0;
           this.onGround = true;
           this.facingRight = id === 0;
-          this.name = id === 0 ? 'UZUMAKI' : 'UCHIHA';
+          this.name = options.name || (id === 0 ? 'UZUMAKI' : 'UCHIHA');
           this.color = id === 0 ? '#E8A030' : '#6855CC';
           this.glowColor = id === 0 ? '#FF8C00' : '#9932CC';
           this.skinColor = id === 0 ? '#F5C09A' : '#D8C8E8';
@@ -1115,6 +1156,49 @@
           this.skillLock = { x: lockedX, y: lockedY };
         }
 
+        spawnKageBunshin(skillData, target, skillName) {
+          const spritePath = 'assets/images/itachi_battle.png';
+          const spriteProfile = this.e.buildSpriteProfile(spritePath);
+          const cloneCount = Math.max(1, Math.round(skillData?.cloneCount || 2));
+          const statScale = Math.max(0.05, Number(skillData?.cloneStatMultiplier || 0.20));
+          const lifetimeSeconds = Math.max(1, Number(skillData?.cloneLifetimeSeconds || 13));
+          const offsetStep = 30;
+          for (let i = 0; i < cloneCount; i += 1) {
+            const side = i % 2 === 0 ? -1 : 1;
+            const offset = offsetStep + (Math.floor(i / 2) * 16);
+            const spawnX = Math.max(4, Math.min(this.e.W - NW - 4, this.x + side * offset));
+            const clone = new this.e.Fighter(this.e, spawnX, 100 + i, spriteProfile, {
+              name: 'ITACHI CLON',
+              team: this.team,
+              isClone: true,
+              cloneOwner: this,
+              cloneLifetimeSeconds: lifetimeSeconds
+            });
+            clone.maxHp = Math.max(1, this.hp * statScale);
+            clone.hp = clone.maxHp;
+            clone.maxMp = Math.max(0, this.mp * statScale);
+            clone.mp = clone.maxMp;
+            clone.combat = {
+              ...(this.combat || {}),
+              atk: Math.max(1, (this.combat?.atk || 10) * statScale),
+              def: Math.max(1, (this.combat?.def || 8) * statScale),
+              maxHp: clone.maxHp,
+              maxMp: clone.maxMp
+            };
+            clone.tX = target ? target.x : clone.x + (Math.random() - 0.5) * 90;
+            clone.tY = this.e.GROUND - NH;
+            this.e.spawnSmoke(clone.cx, clone.cy, 14);
+            this.e.summons.push(clone);
+          }
+          this.e.beginTimedSkillFx(this, skillName, 1000, 0.30, 0.45);
+        }
+
+        vanishClone() {
+          if (!this.isClone || this.isDead) return;
+          this.e.spawnSmoke(this.cx, this.cy, 18);
+          this.isDead = true;
+        }
+
         launchJutsu(target, options = {}) {
           if (this.jutsuCD > 0) return;
           const skillData = options.skillData || null;
@@ -1123,6 +1207,14 @@
           const isEquipped = Boolean(options.isEquipped);
           const skillName = options.skillName || 'Habilidad';
           if (isEquipped && skillData?.id && this.getSkillCooldown(skillData.id) > 0) return;
+          if (skillData?.id === 'itachi-kage-bunshin') {
+            this.mp = Math.max(0, this.mp - mpCost);
+            this.jutsuCD = 110;
+            this.skillCooldowns[skillData.id] = Math.max(1, Math.round((skillData.cooldownSeconds || 20) * 60));
+            this.spawnKageBunshin(skillData, target, skillName);
+            this.flashTimer = 8;
+            return;
+          }
           if (isEquipped) this.placeForEquippedSkill(target);
           this.mp = Math.max(0, this.mp - mpCost);
           this.jutsuCD = isEquipped ? 120 : 90;
@@ -1151,6 +1243,10 @@
         }
 
         die() {
+          if (this.isClone) {
+            this.vanishClone();
+            return;
+          }
           this.isDead = true;
           this.e.slowMo = 0.16;
           this.e.gameOver = true;
@@ -1168,6 +1264,13 @@
             this.deathSmoke = Math.min(1, this.deathT * 0.09);
             if (this.deathT % 6 < 1) this.e.spawnSmoke(this.cx + (Math.random() - 0.5) * NW, this.cy + (Math.random() - 0.5) * NH, 3);
             return;
+          }
+          if (this.isClone && this.cloneLifetime > 0) {
+            this.cloneLifetime -= dt;
+            if (this.cloneLifetime <= 0) {
+              this.vanishClone();
+              return;
+            }
           }
           if (this.e.hitStop > 0) return;
 
@@ -1238,6 +1341,7 @@
             if (this.onGround) { this.vy = -9; this.onGround = false; }
           }
 
+          if (!enemy || enemy.isDead) return;
           this.facingRight = enemy.cx > this.cx;
           if (this.stunTimer > 0) return;
 

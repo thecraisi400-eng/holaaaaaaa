@@ -86,6 +86,7 @@
       this.activeSkillTracker = null;
       this.activeSkillFxTimer = 0;
       this.tsukuyomiState = null;
+      this.amaterasuState = null;
       this.bgMountains = [];
       this.bgMountains2 = [];
       this.bgRocks = [];
@@ -230,6 +231,40 @@
       if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
     }
 
+    beginAmaterasuSkill(owner, target, skillData, skillName) {
+      if (!owner || !target || owner.isDead || target.isDead) return;
+      const separation = this.W * 0.60;
+      const fromLeft = owner.cx < target.cx;
+      const desiredX = target.x + (fromLeft ? -separation : separation);
+      const lockedX = Math.max(4, Math.min(this.W - NW - 4, desiredX));
+      const jumpY = Math.max(6, this.GROUND - NH - (this.H * 0.24));
+      owner.x = lockedX;
+      owner.y = jumpY;
+      owner.vx = 0;
+      owner.vy = 0;
+      owner.onGround = false;
+      owner.skillLock = { x: lockedX, y: jumpY };
+
+      const projectile = new this.Jutsu(owner.cx, owner.cy, 0, 0, owner, {
+        isEquipped: true,
+        skillName: skillName || '🌙 AMATERASU',
+        skillData: skillData || {},
+        target
+      });
+      this.jutsus.push(projectile);
+
+      this.slowMo = Math.max(0.05, Number(skillData?.amaterasuSlowMo) || 0.30);
+      this.activeSkillProjectile = projectile;
+      this.activeSkillLabel = { name: skillName || '🌙 AMATERASU', owner };
+      this.activeSkillTracker = { owner, pendingHits: 1 };
+      this.activeSkillFxTimer = 0;
+      if (this.veil) this.veil.style.background = `rgba(0,0,0,${Math.max(0, Math.min(0.75, Number(skillData?.amaterasuDarkness) || 0.45))})`;
+
+      this.amaterasuState = { owner, target, projectile };
+      owner.applySelfCurse(Number(skillData?.selfHpPercentCost) || 0.03, Number(skillData?.duration) || 11);
+      this.spawnSmoke(owner.cx, owner.cy + (NH * 0.35), 20);
+    }
+
     beginTsukuyomiSkill(owner, target, skillData, skillName) {
       if (!owner || !target || owner.isDead || target.isDead) return;
       const separation = this.W * 0.60;
@@ -310,6 +345,21 @@
           this.tsukuyomiState = null;
         }
       }
+    }
+
+    updateAmaterasuState() {
+      if (!this.amaterasuState) return;
+      const { owner, target, projectile } = this.amaterasuState;
+      if (!owner || owner.isDead || !target || target.isDead || !projectile || projectile.dead) {
+        if (owner) owner.skillLock = null;
+        this.amaterasuState = null;
+        return;
+      }
+      this.jutsus.forEach((j) => {
+        if (!j || j.dead || j.ownerTeam === owner.team) return;
+        j.resolveReason = 'amaterasu-priority';
+        j.dead = true;
+      });
     }
 
     beginCinematicSkill(owner, skillName, projectile) {
@@ -741,6 +791,7 @@
         if (this.activeSkillFxTimer <= 0 && !this.activeSkillProjectile) this.endCinematicSkill();
       }
       this.updateTsukuyomiState(dt);
+      this.updateAmaterasuState();
 
       if (this.hitStop > 0) {
         this.hitStop -= dt;
@@ -771,7 +822,21 @@
           if (Math.hypot(j.x - f.cx, j.y - f.cy) < j.size + NW / 2) {
             const isItachiKaton = j.skillData?.id === 'itachi-katon-gokakyu';
             const isItachiShurikenjutsu = j.skillData?.id === 'itachi-shurikenjutsu';
+            const isItachiAmaterasu = j.skillData?.id === 'itachi-amaterasu';
             if (isItachiShurikenjutsu) {
+              j.resolveReason = 'enemy-hit';
+            } else if (isItachiAmaterasu) {
+              const baseDamage = Number(j.skillData?.damage || 50);
+              f.receiveHit(baseDamage, j.x, j.owner, true);
+              f.applyAmaterasuBurn(Number(j.skillData?.burnPercent) || 0.15, Number(j.skillData?.burnSeconds) || 3, j.owner);
+              this.spawnSmoke(f.cx, f.cy + (NH * 0.35), 24);
+              for (let p = 0; p < 46; p += 1) {
+                const ang = Math.random() * Math.PI * 2;
+                const spd = 1.2 + Math.random() * 5.2;
+                this.particles.push(new this.Particle(this, j.x, j.y, Math.cos(ang) * spd, Math.sin(ang) * spd - 0.35, '#050505', 28 + Math.random() * 20, 2 + Math.random() * 3.4, 'spark'));
+              }
+              if (j.owner) j.owner.skillLock = null;
+              this.amaterasuState = null;
               j.resolveReason = 'enemy-hit';
             } else if (isItachiKaton) {
               f.receiveHit(Number(j.skillData?.damage || 40), j.x, j.owner, false);
@@ -869,6 +934,7 @@
       this.activeSkillTracker = null;
       this.activeSkillFxTimer = 0;
       this.tsukuyomiState = null;
+      this.amaterasuState = null;
       this.completionSent = false;
       if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
       if (this.winnerScreen) this.winnerScreen.style.display = 'none';
@@ -1075,7 +1141,9 @@
           this.skillName = options.skillName || '';
           this.target = options.target || null;
           this.isShurikenjutsu = this.skillData?.id === 'itachi-shurikenjutsu';
+          this.isAmaterasu = this.skillData?.id === 'itachi-amaterasu';
           this.homing = this.skillData?.id === 'itachi-katon-gokakyu' || this.isShurikenjutsu;
+          if (this.isAmaterasu) this.homing = true;
           this.piercesGenericProjectiles = this.homing;
           this.isGenericProjectile = !this.isEquipped;
           this.rotation = Math.random() * Math.PI * 2;
@@ -1087,6 +1155,13 @@
             this.color = '#d6dce6';
             this.vx = 0;
             this.vy = 0;
+          }
+          if (this.isAmaterasu) {
+            this.size = 32.5;
+            this.color = '#070707';
+            this.vx = 0;
+            this.vy = 0;
+            this.life = 240;
           }
         }
         update(dt) {
@@ -1112,14 +1187,52 @@
             this.growth = Math.min(this.maxGrowth, this.growth + 0.007 * dt);
           }
           if (this.isShurikenjutsu) this.rotation += 0.23 * dt;
+          if (this.isAmaterasu) this.rotation += 0.05 * dt;
           const e = this.owner.e;
           if (this.x < -12 || this.x > e.W + 12 || this.y < -12 || this.y > e.H + 12 || this.life <= 0) {
             this.resolveReason = this.resolveReason || 'expired';
             this.dead = true;
           }
-          if (Math.random() < 0.35) e.particles.push(new e.Particle(e, this.x, this.y, (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 1.5, this.color, 10, 2, 'spark'));
+          if (this.isAmaterasu) {
+            if (Math.random() < 0.92) {
+              const ang = Math.random() * Math.PI * 2;
+              const speed = 0.6 + Math.random() * 2.4;
+              const inner = Math.random() * this.size * 0.35;
+              const ox = Math.cos(ang) * inner;
+              const oy = Math.sin(ang) * inner;
+              e.particles.push(new e.Particle(e, this.x + ox, this.y + oy, Math.cos(ang) * speed, Math.sin(ang) * speed - 0.18, '#090909', 22 + Math.random() * 14, 2 + Math.random() * 2.4, 'spark'));
+              e.particles.push(new e.Particle(e, this.x + (Math.random() - 0.5) * this.size, this.y + this.size * 0.5, (Math.random() - 0.5) * 0.8, -0.25 - Math.random() * 0.3, '#262626', 46 + Math.random() * 24, 2 + Math.random() * 2.2, 'dust'));
+            }
+          } else if (Math.random() < 0.35) {
+            e.particles.push(new e.Particle(e, this.x, this.y, (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 1.5, this.color, 10, 2, 'spark'));
+          }
         }
         draw(ctx) {
+          if (this.isAmaterasu) {
+            for (let i = 0; i < this.trail.length; i += 1) {
+              const t = this.trail[i];
+              const r = this.size * (1 - i / this.trail.length) * 1.1;
+              if (r <= 0) continue;
+              ctx.save();
+              ctx.globalAlpha = (1 - i / this.trail.length) * 0.38;
+              ctx.fillStyle = '#090909';
+              ctx.beginPath();
+              ctx.ellipse(t.x, t.y, r * 1.05, r * 0.85, this.rotation + (i * 0.2), 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            }
+            const flame = ctx.createRadialGradient(this.x, this.y, this.size * 0.25, this.x, this.y, this.size * 1.55);
+            flame.addColorStop(0, 'rgba(10,10,10,0.98)');
+            flame.addColorStop(0.45, 'rgba(0,0,0,0.92)');
+            flame.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.save();
+            ctx.fillStyle = flame;
+            ctx.beginPath();
+            ctx.ellipse(this.x, this.y, this.size * 1.35, this.size * 1.05, this.rotation * 0.7, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+            return;
+          }
           if (this.isShurikenjutsu) {
             const size = this.size * this.growth;
             ctx.save();
@@ -1217,6 +1330,8 @@
           this.skillLock = null;
           this.shurikenSkillState = null;
           this.burn = null;
+          this.amaterasuBurn = null;
+          this.selfCurse = null;
           this.atkBuff = null;
           this.tsukuyomiLock = null;
           this.tsukuyomiAura = null;
@@ -1240,6 +1355,22 @@
           this.atkBuff = {
             percent: Math.max(0, Number(percent) || 0),
             timer: Math.max(1, Math.round((durationSeconds || 1) * 60))
+          };
+        }
+        applyAmaterasuBurn(percentPerSecond, durationSeconds, source) {
+          this.amaterasuBurn = {
+            percentPerSecond: Math.max(0, Number(percentPerSecond) || 0),
+            ticksLeft: Math.max(1, Math.round(durationSeconds || 3)),
+            tickTimer: 60,
+            source,
+            radius: 37.5
+          };
+        }
+        applySelfCurse(percentPerSecond, durationSeconds) {
+          this.selfCurse = {
+            percentPerSecond: Math.max(0, Number(percentPerSecond) || 0),
+            ticksLeft: Math.max(1, Math.round(durationSeconds || 11)),
+            tickTimer: 60
           };
         }
 
@@ -1465,6 +1596,14 @@
             this.flashTimer = 10;
             return;
           }
+          if (skillData?.id === 'itachi-amaterasu') {
+            this.mp = Math.max(0, this.mp - mpCost);
+            this.jutsuCD = 120;
+            this.skillCooldowns[skillData.id] = Math.max(1, Math.round((skillData.cooldownSeconds || 11) * 60));
+            this.e.beginAmaterasuSkill(this, target, skillData, skillName);
+            this.flashTimer = 12;
+            return;
+          }
           if (isEquipped) this.placeForEquippedSkill(target);
           this.mp = Math.max(0, this.mp - mpCost);
           this.jutsuCD = isEquipped ? 120 : 90;
@@ -1557,6 +1696,29 @@
               this.burn.tickTimer = 60;
               if (this.hp <= 0 && !this.isDead) this.die();
               if (this.burn.ticksLeft <= 0) this.burn = null;
+            }
+          }
+          if (this.amaterasuBurn) {
+            this.amaterasuBurn.tickTimer -= dt;
+            if (this.amaterasuBurn.tickTimer <= 0) {
+              const dotDamage = Math.max(1, this.maxHp * this.amaterasuBurn.percentPerSecond);
+              this.hp = Math.max(0, this.hp - dotDamage);
+              this.e.damageNums.push(new this.e.DamageNum(this.cx, this.y - 17, `-${Math.round(this.amaterasuBurn.percentPerSecond * 100)}% HP`, false));
+              this.amaterasuBurn.ticksLeft -= 1;
+              this.amaterasuBurn.tickTimer = 60;
+              if (this.hp <= 0 && !this.isDead) this.die();
+              if (this.amaterasuBurn.ticksLeft <= 0) this.amaterasuBurn = null;
+            }
+          }
+          if (this.selfCurse) {
+            this.selfCurse.tickTimer -= dt;
+            if (this.selfCurse.tickTimer <= 0) {
+              const selfDamage = Math.max(1, this.maxHp * this.selfCurse.percentPerSecond);
+              this.hp = Math.max(1, this.hp - selfDamage);
+              this.e.damageNums.push(new this.e.DamageNum(this.cx, this.y - 14, `-${Math.round(this.selfCurse.percentPerSecond * 100)}% HP`, false));
+              this.selfCurse.ticksLeft -= 1;
+              this.selfCurse.tickTimer = 60;
+              if (this.selfCurse.ticksLeft <= 0) this.selfCurse = null;
             }
           }
           if (this.atkBuff) {
@@ -1837,6 +1999,32 @@
                 ctx.arc(px, py, s * 0.5, 0, Math.PI * 2);
                 ctx.fill();
               }
+            }
+            ctx.restore();
+          }
+          if (this.amaterasuBurn) {
+            const cx = this.cx;
+            const cy = this.cy;
+            const radius = this.amaterasuBurn.radius || 37.5;
+            ctx.save();
+            ctx.globalAlpha = 0.9;
+            ctx.fillStyle = 'rgba(0,0,0,0.78)';
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(25,25,25,0.98)';
+            ctx.lineWidth = 1.4;
+            ctx.stroke();
+            for (let i = 0; i < 16; i += 1) {
+              const ang = Math.random() * Math.PI * 2;
+              const dist = radius * (0.2 + Math.random() * 1.1);
+              const px = cx + Math.cos(ang) * dist;
+              const py = cy + Math.sin(ang) * dist;
+              const s = 2.2 + Math.random() * 4.2;
+              ctx.fillStyle = '#080808';
+              ctx.beginPath();
+              ctx.arc(px, py, s, 0, Math.PI * 2);
+              ctx.fill();
             }
             ctx.restore();
           }

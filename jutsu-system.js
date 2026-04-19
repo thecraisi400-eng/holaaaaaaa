@@ -175,6 +175,39 @@
       mpAddMax: 11
     }
   };
+  CHARACTER_SKILL_BOOK.itachi.slots[5].skill = {
+    id: 'itachi-susanoo',
+    name: '🛡️ SUSANOO',
+    em: '🛡️',
+    level: 1,
+    baseDamage: 0,
+    damagePerLevel: 0,
+    baseMpCost: 35,
+    mpCostPerLevel: 0,
+    baseDuration: 30,
+    durationPerLevel: 0,
+    cooldownSeconds: 225,
+    atkBuffPercent: 0.25,
+    atkBuffSeconds: 30,
+    defenseMultiplier: 0.10,
+    projectileScaleBonus: 0.25,
+    transformDurationSeconds: 30,
+    transformScale: 1.85,
+    useChancePercent: 35,
+    effect: '-',
+    buff: 'ATK +25% · DEF +90%',
+    displayDamage: '-',
+    upgradeCost: { scrolls: 14, crystals: 12 },
+    upgradeRules: {
+      resourceAddMin: 10,
+      resourceAddMax: 35,
+      damageAddMin: 1,
+      damageAddMax: 3,
+      damageAddMode: 'percent',
+      mpAddMin: 7,
+      mpAddMax: 11
+    }
+  };
 
   const deepClone = (value) => JSON.parse(JSON.stringify(value));
   const DEFAULT_UPGRADE_COST = { scrolls: 5, crystals: 3 };
@@ -220,9 +253,15 @@
       const maxDamageAdd = Math.max(minDamageAdd, toNumber(rules.damageAddMax, minDamageAdd));
       const minMpAdd = Math.max(0, toNumber(rules.mpAddMin, 0));
       const maxMpAdd = Math.max(minMpAdd, toNumber(rules.mpAddMax, minMpAdd));
-      next.damage = minDamageAdd === maxDamageAdd
-        ? `${current.damage + minDamageAdd}`
-        : `${current.damage + minDamageAdd} ~ ${current.damage + maxDamageAdd}`;
+      if (rules.damageAddMode === 'percent') {
+        next.damage = minDamageAdd === maxDamageAdd
+          ? `+${minDamageAdd}%`
+          : `+${minDamageAdd}% ~ +${maxDamageAdd}%`;
+      } else {
+        next.damage = minDamageAdd === maxDamageAdd
+          ? `${current.damage + minDamageAdd}`
+          : `${current.damage + minDamageAdd} ~ ${current.damage + maxDamageAdd}`;
+      }
       next.mpCost = minMpAdd === maxMpAdd
         ? `${current.mpCost + minMpAdd}`
         : `${current.mpCost + minMpAdd} ~ ${current.mpCost + maxMpAdd}`;
@@ -470,13 +509,13 @@
       this.root.querySelector('#jsuModalSkillName').textContent = `${skill.name || 'Habilidad'} · Nv.${stats.level}`;
       this.root.querySelector('#jsuModalSkillSlot').textContent = slotData.key || 'slot';
 
-      this.root.querySelector('#jsuStatDamage').textContent = stats.current.damage;
+      this.root.querySelector('#jsuStatDamage').textContent = skill.displayDamage || stats.current.damage;
       this.root.querySelector('#jsuStatMp').textContent = stats.current.mpCost;
       this.root.querySelector('#jsuStatEffect').textContent = stats.current.effect;
       this.root.querySelector('#jsuStatBuff').textContent = stats.current.buff;
       this.root.querySelector('#jsuStatDuration').textContent = `${stats.current.duration}s`;
 
-      this.root.querySelector('#jsuStatDamageNext').textContent = stats.next.damage;
+      this.root.querySelector('#jsuStatDamageNext').textContent = skill.displayDamage || stats.next.damage;
       this.root.querySelector('#jsuStatMpNext').textContent = stats.next.mpCost;
       this.root.querySelector('#jsuStatEffectNext').textContent = stats.next.effect;
       this.root.querySelector('#jsuStatBuffNext').textContent = stats.next.buff;
@@ -516,7 +555,16 @@
         const addCrystals = randomInt(r.resourceAddMin, r.resourceAddMax);
         const addDamage = randomInt(r.damageAddMin, r.damageAddMax);
         const addMpCost = randomInt(r.mpAddMin, r.mpAddMax);
-        skill.baseDamage = toNumber(skill.baseDamage, 0) + addDamage;
+        if (r.damageAddMode === 'percent') {
+          const currentDamage = toNumber(skill.baseDamage, 0);
+          const extraDamage = currentDamage > 0
+            ? Math.max(1, Math.round(currentDamage * (addDamage / 100)))
+            : 0;
+          skill.baseDamage = currentDamage + extraDamage;
+          skill.atkBuffPercent = Math.max(0, toNumber(skill.atkBuffPercent, 0) + (addDamage / 100));
+        } else {
+          skill.baseDamage = toNumber(skill.baseDamage, 0) + addDamage;
+        }
         skill.baseMpCost = toNumber(skill.baseMpCost, 0) + addMpCost;
         if (!skill.upgradeCost) skill.upgradeCost = { ...DEFAULT_UPGRADE_COST };
         skill.upgradeCost.scrolls = toNumber(skill.upgradeCost.scrolls, 0) + addScrolls;

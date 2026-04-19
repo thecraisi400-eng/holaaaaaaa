@@ -27,6 +27,7 @@
     indra: 'assets/images/indra_battle.png',
     asura: 'assets/images/asura_battle.png'
   };
+  const ITACHI_SUSANOO_BATTLE_SPRITE = 'assets/images/itachi_susano.png';
 
   const ENEMY_D_RANK_SPRITES = {
     1: 'assets/images/enemies/rank-d/mission-1.png',
@@ -85,6 +86,7 @@
       this.activeSkillLabel = null;
       this.activeSkillTracker = null;
       this.activeSkillFxTimer = 0;
+      this.activeSkillLabelMinFrames = 0;
       this.tsukuyomiState = null;
       this.amaterasuState = null;
       this.bgMountains = [];
@@ -222,12 +224,21 @@
     }
 
     endCinematicSkill() {
+      if (this.activeSkillLabelMinFrames > 0) {
+        this.slowMo = 1;
+        this.activeSkillProjectile = null;
+        this.activeSkillTracker = null;
+        this.activeSkillFxTimer = Math.max(this.activeSkillFxTimer, this.activeSkillLabelMinFrames);
+        if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
+        return;
+      }
       if (this.activeSkillLabel?.owner) this.activeSkillLabel.owner.skillLock = null;
       this.slowMo = 1;
       this.activeSkillProjectile = null;
       this.activeSkillLabel = null;
       this.activeSkillTracker = null;
       this.activeSkillFxTimer = 0;
+      this.activeSkillLabelMinFrames = 0;
       if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
     }
 
@@ -371,6 +382,7 @@
       };
       this.activeSkillTracker = { owner, pendingHits: 1 };
       this.activeSkillFxTimer = 0;
+      this.activeSkillLabelMinFrames = Math.max(this.activeSkillLabelMinFrames, 30);
       if (this.veil) this.veil.style.background = 'rgba(0,0,0,0.45)';
     }
 
@@ -386,6 +398,7 @@
         pendingHits: Math.max(1, Math.round(totalProjectiles || 1))
       };
       this.activeSkillFxTimer = 0;
+      this.activeSkillLabelMinFrames = Math.max(this.activeSkillLabelMinFrames, 30);
       if (this.veil) this.veil.style.background = `rgba(0,0,0,${Math.max(0, Math.min(0.75, darkness))})`;
     }
 
@@ -409,6 +422,7 @@
         owner
       };
       this.activeSkillFxTimer = Math.max(1, Math.round((durationMs / 1000) * 60));
+      this.activeSkillLabelMinFrames = Math.max(this.activeSkillLabelMinFrames, 30);
       if (this.veil) this.veil.style.background = `rgba(0,0,0,${Math.max(0, Math.min(0.75, darkness))})`;
     }
 
@@ -487,8 +501,14 @@
       const skills = getSkills();
       if (!skills.length) return;
       if (Math.random() > chance) return;
-      const selected = skills[Math.floor(Math.random() * skills.length)];
-      if (!attacker.canUseSkill(selected)) return;
+      const available = skills.filter((skill) => attacker.canUseSkill(skill));
+      if (!available.length) return;
+      const rollCandidates = available.filter((skill) => {
+        const percent = Math.max(0, Math.min(100, Number(skill?.useChancePercent ?? 100)));
+        return (Math.random() * 100) < percent;
+      });
+      const pool = rollCandidates.length ? rollCandidates : available;
+      const selected = pool[Math.floor(Math.random() * pool.length)];
       attacker.launchJutsu(defender, {
         isEquipped: true,
         skillName: selected.name || selected,
@@ -788,7 +808,10 @@
       }
       if (this.activeSkillFxTimer > 0) {
         this.activeSkillFxTimer -= dt;
-        if (this.activeSkillFxTimer <= 0 && !this.activeSkillProjectile) this.endCinematicSkill();
+        if (this.activeSkillFxTimer <= 0 && !this.activeSkillProjectile && this.activeSkillLabelMinFrames <= 0) this.endCinematicSkill();
+      }
+      if (this.activeSkillLabelMinFrames > 0) {
+        this.activeSkillLabelMinFrames -= dt;
       }
       this.updateTsukuyomiState(dt);
       this.updateAmaterasuState();
@@ -974,14 +997,14 @@
       setTimeout(() => this.roundAnnouncementEl?.classList.remove('show'), 1050);
     }
 
-    buildSpriteProfile(path) {
+    buildSpriteProfile(path, options = {}) {
       if (!path) return null;
       return {
         path,
         image: this.getSpriteImage(path),
-        frameW: SPRITE_FRAME_SIZE,
-        frameH: SPRITE_FRAME_SIZE,
-        framesPerRow: SPRITE_FRAMES
+        frameW: Number(options.frameW) || SPRITE_FRAME_SIZE,
+        frameH: Number(options.frameH) || SPRITE_FRAME_SIZE,
+        framesPerRow: Number(options.framesPerRow) || SPRITE_FRAMES
       };
     }
 
@@ -1150,6 +1173,7 @@
           this.growth = 1;
           this.maxGrowth = this.isShurikenjutsu ? 1.25 : 1;
           this.startDelay = Math.max(0, Math.round(options.startDelay || 0));
+          this.sizeScale = Math.max(0.2, Number(options.sizeScale) || 1);
           if (this.isShurikenjutsu) {
             this.size = 7;
             this.color = '#d6dce6';
@@ -1163,6 +1187,7 @@
             this.vy = 0;
             this.life = 240;
           }
+          this.size *= this.sizeScale;
         }
         update(dt) {
           if (this.startDelay > 0) {
@@ -1335,6 +1360,15 @@
           this.atkBuff = null;
           this.tsukuyomiLock = null;
           this.tsukuyomiAura = null;
+          this.defaultSpriteProfile = spriteProfile;
+          this.defaultRenderScale = 1;
+          this.renderScale = 1;
+          this.defenseMultiplier = 1;
+          this.rangedOnly = false;
+          this.cannotJump = false;
+          this.movementSlowMultiplier = 1;
+          this.projectileScaleBonus = 0;
+          this.susanooState = null;
         }
         get cx() { return this.x + NW / 2; }
         get cy() { return this.y + NH / 2; }
@@ -1398,6 +1432,8 @@
               this.e.spawnSparks(this.cx, this.cy, 12, '#44AAFF');
             }
           }
+
+          dmg *= Math.max(0.05, Number(this.defenseMultiplier) || 1);
 
           this.dmgBurst += rawDmg;
           if (this.dmgBurst >= this.maxHp * 0.15) {
@@ -1604,6 +1640,14 @@
             this.flashTimer = 12;
             return;
           }
+          if (skillData?.id === 'itachi-susanoo') {
+            this.mp = Math.max(0, this.mp - mpCost);
+            this.jutsuCD = 120;
+            this.skillCooldowns[skillData.id] = Math.max(1, Math.round((skillData.cooldownSeconds || 225) * 60));
+            this.activateSusanoo(skillData, skillName);
+            this.flashTimer = 12;
+            return;
+          }
           if (isEquipped) this.placeForEquippedSkill(target);
           this.mp = Math.max(0, this.mp - mpCost);
           this.jutsuCD = isEquipped ? 120 : 90;
@@ -1618,7 +1662,8 @@
             isEquipped,
             skillName,
             skillData,
-            target
+            target,
+            sizeScale: 1 + Math.max(0, Number(this.projectileScaleBonus || 0))
           });
           this.e.jutsus.push(projectile);
           this.e.spawnSparks(this.cx, this.cy, 14, this.glowColor);
@@ -1629,6 +1674,45 @@
             this.e.beginCinematicSkill(this, skillName, projectile);
           }
           this.flashTimer = 8;
+        }
+
+        activateSusanoo(skillData, skillName) {
+          if (!this.defaultSpriteProfile) this.defaultSpriteProfile = this.spriteProfile;
+          const susanooProfile = this.e.buildSpriteProfile(
+            ITACHI_SUSANOO_BATTLE_SPRITE,
+            { frameW: 128, frameH: 128, framesPerRow: 4 }
+          );
+          this.spriteProfile = susanooProfile || this.defaultSpriteProfile;
+          this.renderScale = Math.max(1, Number(skillData?.transformScale) || 1.85);
+          this.defenseMultiplier = Math.max(0.05, Number(skillData?.defenseMultiplier) || 0.10);
+          this.projectileScaleBonus = Math.max(0, Number(skillData?.projectileScaleBonus) || 0.25);
+          this.rangedOnly = true;
+          this.cannotJump = true;
+          this.movementSlowMultiplier = 0.60;
+          this.susanooState = {
+            timer: Math.max(1, Math.round((Number(skillData?.transformDurationSeconds) || 30) * 60)),
+            skillName: skillName || '🛡️ SUSANOO'
+          };
+          this.applyAtkBuff(Number(skillData?.atkBuffPercent) || 0.25, Number(skillData?.atkBuffSeconds) || 30);
+          this.onGround = true;
+          this.vy = 0;
+          this.y = this.e.GROUND - NH;
+          this.e.beginTimedSkillFx(this, skillName || '🛡️ SUSANOO', 500, 0.25, 0.35);
+        }
+
+        revertSusanoo() {
+          if (!this.susanooState) return;
+          this.susanooState = null;
+          this.spriteProfile = this.defaultSpriteProfile || this.spriteProfile;
+          this.renderScale = this.defaultRenderScale || 1;
+          this.defenseMultiplier = 1;
+          this.projectileScaleBonus = 0;
+          this.rangedOnly = false;
+          this.cannotJump = false;
+          this.movementSlowMultiplier = 1;
+          this.onGround = true;
+          this.vy = 0;
+          this.y = this.e.GROUND - NH;
         }
 
         die() {
@@ -1725,18 +1809,27 @@
             this.atkBuff.timer -= dt;
             if (this.atkBuff.timer <= 0) this.atkBuff = null;
           }
+          if (this.susanooState) {
+            this.susanooState.timer -= dt;
+            if (this.susanooState.timer <= 0) this.revertSusanoo();
+          }
           this.dmgBurstTimer += dms;
           if (this.dmgBurstTimer >= 2000) {
             this.dmgBurstTimer = 0;
             this.dmgBurst = 0;
           }
 
-          if (!this.onGround) this.vy += G * dt;
+          if (!this.onGround && !this.cannotJump) this.vy += G * dt;
           this.x += this.vx * dt;
           this.y += this.vy * dt;
-          this.vx *= 0.87;
+          this.vx *= this.cannotJump ? 0.80 : 0.87;
           if (this.y >= this.e.GROUND - NH) { this.y = this.e.GROUND - NH; this.vy = 0; this.onGround = true; } else this.onGround = false;
           if (this.y < 4) { this.y = 4; this.vy = 0; }
+          if (this.cannotJump) {
+            this.y = this.e.GROUND - NH;
+            this.vy = 0;
+            this.onGround = true;
+          }
           if (this.skillLock) {
             this.x = this.skillLock.x;
             this.y = this.skillLock.y;
@@ -1756,12 +1849,12 @@
           if (this.x <= 3) {
             this.x = 3;
             this.vx = 4.5;
-            if (this.onGround) { this.vy = -9; this.onGround = false; }
+            if (!this.cannotJump && this.onGround) { this.vy = -9; this.onGround = false; }
           }
           if (this.x >= this.e.W - NW - 3) {
             this.x = this.e.W - NW - 3;
             this.vx = -4.5;
-            if (this.onGround) { this.vy = -9; this.onGround = false; }
+            if (!this.cannotJump && this.onGround) { this.vy = -9; this.onGround = false; }
           }
 
           if (!enemy || enemy.isDead) return;
@@ -1780,8 +1873,8 @@
           const tdy = this.tY - this.y;
           const tLen = Math.sqrt(tdx * tdx + tdy * tdy);
           if (tLen > 8) {
-            this.vx += (tdx / tLen) * 5 * 0.26;
-            if (tdy < -22 && this.onGround) {
+            this.vx += (tdx / tLen) * 5 * 0.26 * this.movementSlowMultiplier;
+            if (!this.cannotJump && tdy < -22 && this.onGround) {
               this.vy = -11;
               this.onGround = false;
             }
@@ -1802,11 +1895,13 @@
 
           if (!enemy.isDead) {
             const dist = Math.hypot(this.cx - enemy.cx, this.cy - enemy.cy);
-            if (dist < 50 && this.atkCD <= 0) {
+            if (!this.rangedOnly && dist < 50 && this.atkCD <= 0) {
               const dmgPayload = this.e.calcDamage(this, enemy, 'basic');
               enemy.receiveHit(dmgPayload.damage, this.cx, this, dmgPayload.crit);
               this.atkCD = 42;
             } else if (dist > 150 && this.jutsuCD <= 0) {
+              this.launchJutsu(enemy);
+            } else if (this.rangedOnly && this.jutsuCD <= 0) {
               this.launchJutsu(enemy);
             }
           }
@@ -2058,6 +2153,11 @@
           const frame = this.animF % (this.spriteProfile.framesPerRow || SPRITE_FRAMES);
           const sx = frame * this.spriteProfile.frameW;
           const sy = row * this.spriteProfile.frameH;
+          const renderScale = Math.max(1, Number(this.renderScale) || 1);
+          const renderW = NW * renderScale;
+          const renderH = NH * renderScale;
+          const drawX = this.x - ((renderW - NW) / 2);
+          const drawY = this.y - (renderH - NH);
 
           ctx.save();
           ctx.globalAlpha = deadAlpha;
@@ -2081,10 +2181,10 @@
             sy,
             this.spriteProfile.frameW,
             this.spriteProfile.frameH,
-            this.x,
-            this.y,
-            NW,
-            NH
+            drawX,
+            drawY,
+            renderW,
+            renderH
           );
           ctx.restore();
           return true;

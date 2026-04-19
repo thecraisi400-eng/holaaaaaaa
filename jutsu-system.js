@@ -27,7 +27,25 @@
     hagoromo: createEmptyCharacterConfig('hagoromo'),
     hashirama: createEmptyCharacterConfig('hashirama'),
     indra: createEmptyCharacterConfig('indra'),
-    itachi: createEmptyCharacterConfig('itachi'),
+    itachi: (() => {
+      const cfg = createEmptyCharacterConfig('itachi');
+      cfg.slots[0].skill = {
+        id: 'itachi_katon_gokakyu',
+        name: '🔥 KATON: GŌKAKYŪ NO JUTSU',
+        em: '🔥',
+        level: 1,
+        damage: 40,
+        mpCost: 14,
+        cooldownSec: 13,
+        burnPct: 2,
+        burnDurationSec: 4,
+        buffAtkPct: 10,
+        buffDurationSec: 25,
+        upgradeCost: { scrolls: 10, gems: 7 }
+      };
+      cfg.equipped[0] = deepClone(cfg.slots[0].skill);
+      return cfg;
+    })(),
     itama: createEmptyCharacterConfig('itama'),
     kaguya: createEmptyCharacterConfig('kaguya'),
     karin: createEmptyCharacterConfig('karin'),
@@ -123,7 +141,18 @@
       if (!current) return [];
       return current.equipped
         .filter((skill) => skill && typeof skill === 'object')
-        .map((skill) => ({ id: skill.id, name: skill.name, em: skill.em }));
+        .map((skill) => ({
+          id: skill.id,
+          name: skill.name,
+          em: skill.em,
+          damage: skill.damage,
+          mpCost: skill.mpCost,
+          cooldownSec: skill.cooldownSec,
+          burnPct: skill.burnPct,
+          burnDurationSec: skill.burnDurationSec,
+          buffAtkPct: skill.buffAtkPct,
+          buffDurationSec: skill.buffDurationSec
+        }));
     },
 
     equipFromLeftSlot(leftSlotIndex) {
@@ -188,19 +217,61 @@
         const icon = skill?.em || '⬚';
         const text = skill?.name || '';
 
+        const statsLine = skill
+          ? `DMG ${Math.round(skill.damage || 0)} · MP ${Math.round(skill.mpCost || 0)} · CD ${Math.round(skill.cooldownSec || 0)}s · Lv.${Math.max(1, Number(skill.level || 1))}`
+          : '';
+
         button.innerHTML = `
           <span class="jsu-left-slot-title">${slotData.key}</span>
           <span class="jsu-left-slot-icon">${icon}</span>
           <span class="jsu-left-slot-name">${text}</span>
+          <span class="jsu-left-slot-name">${statsLine}</span>
         `;
 
         if (!skill) {
           button.classList.add('is-empty');
         }
 
-        button.addEventListener('click', () => this.equipFromLeftSlot(index));
+        button.addEventListener('click', (event) => {
+          if (skill && event.shiftKey) {
+            this.upgradeSkill(index);
+            return;
+          }
+          this.equipFromLeftSlot(index);
+        });
         lib.appendChild(button);
       });
+    },
+
+    upgradeSkill(leftSlotIndex) {
+      const current = this.getActiveCharacterConfig();
+      if (!current) return;
+      const slotData = current.slots[leftSlotIndex];
+      const skill = slotData?.skill;
+      if (!skill) return;
+
+      const currentCost = skill.upgradeCost || { scrolls: 10, gems: 7 };
+      const dmgInc = this.randomInt(19, 28);
+      const mpInc = this.randomInt(7, 11);
+      skill.level = Math.max(1, Number(skill.level || 1)) + 1;
+      skill.damage = Math.max(1, Number(skill.damage || 0) + dmgInc);
+      skill.mpCost = Math.max(1, Number(skill.mpCost || 0) + mpInc);
+      skill.upgradeCost = {
+        scrolls: Math.max(10, Number(currentCost.scrolls || 10) + this.randomInt(10, 30)),
+        gems: Math.max(7, Number(currentCost.gems || 7) + this.randomInt(10, 30))
+      };
+
+      current.equipped = current.equipped.map((equippedSkill) => {
+        if (!equippedSkill || equippedSkill.id !== skill.id) return equippedSkill;
+        return deepClone(skill);
+      });
+
+      this.setStatus(`📈 ${skill.name} Lv.${skill.level} | +${dmgInc} daño | +${mpInc} MP | Próximo costo: 📜${skill.upgradeCost.scrolls} 💠${skill.upgradeCost.gems}`);
+      this.render();
+    },
+
+    randomInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
     },
 
     renderSlots() {

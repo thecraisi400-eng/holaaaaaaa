@@ -89,6 +89,7 @@
     const durationPerLevel = toNumber(skill.durationPerLevel, 1);
     const effect = String(skill.effect || 'Sin efecto');
     const buff = String(skill.buff || 'Sin buff');
+    const rules = skill.upgradeRules || null;
 
     const current = {
       damage: baseDamage + ((level - 1) * damagePerLevel),
@@ -98,7 +99,7 @@
       buff
     };
 
-    const next = {
+    const nextNumeric = {
       damage: current.damage + damagePerLevel,
       mpCost: current.mpCost + mpCostPerLevel,
       duration: current.duration + durationPerLevel,
@@ -106,7 +107,26 @@
       buff: `${buff} +`
     };
 
-    return { level, current, next };
+    const next = { ...nextNumeric };
+    if (rules) {
+      const minDamageAdd = Math.max(0, toNumber(rules.damageAddMin, 0));
+      const maxDamageAdd = Math.max(minDamageAdd, toNumber(rules.damageAddMax, minDamageAdd));
+      const minMpAdd = Math.max(0, toNumber(rules.mpAddMin, 0));
+      const maxMpAdd = Math.max(minMpAdd, toNumber(rules.mpAddMax, minMpAdd));
+      next.damage = minDamageAdd === maxDamageAdd
+        ? `${current.damage + minDamageAdd}`
+        : `${current.damage + minDamageAdd} ~ ${current.damage + maxDamageAdd}`;
+      next.mpCost = minMpAdd === maxMpAdd
+        ? `${current.mpCost + minMpAdd}`
+        : `${current.mpCost + minMpAdd} ~ ${current.mpCost + maxMpAdd}`;
+      next.duration = durationPerLevel > 0
+        ? `${nextNumeric.duration}s`
+        : `${current.duration}s`;
+      next.effect = `${effect} +`;
+      next.buff = `${buff} +`;
+    }
+
+    return { level, current, next, nextNumeric };
   }
 
   const JutsuSystem = {
@@ -344,7 +364,7 @@
       this.root.querySelector('#jsuStatMpNext').textContent = stats.next.mpCost;
       this.root.querySelector('#jsuStatEffectNext').textContent = stats.next.effect;
       this.root.querySelector('#jsuStatBuffNext').textContent = stats.next.buff;
-      this.root.querySelector('#jsuStatDurationNext').textContent = `${stats.next.duration}s`;
+      this.root.querySelector('#jsuStatDurationNext').textContent = String(stats.next.duration);
 
       this.root.querySelector('#jsuUpgradeScrollCost').textContent = String(upgradeCost.scrolls || 0);
       this.root.querySelector('#jsuUpgradeCrystalCost').textContent = String(upgradeCost.crystals || 0);

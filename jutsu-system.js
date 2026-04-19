@@ -121,6 +121,36 @@
       mpAddMax: 11
     }
   };
+  CHARACTER_SKILL_BOOK.itachi.slots[3].skill = {
+    id: 'itachi-tsukuyomi',
+    name: '🌙 TSUKUYOMI',
+    em: '🌙',
+    level: 1,
+    baseDamage: 100,
+    damagePerLevel: 0,
+    baseMpCost: 20,
+    mpCostPerLevel: 0,
+    baseDuration: 16,
+    durationPerLevel: 0,
+    stunSeconds: 4,
+    enemyLockSeconds: 5,
+    selfHpPenaltyPercent: 0.05,
+    globalSlowMo: 0.30,
+    veilColor: 'rgba(120,0,0,0.45)',
+    cooldownSeconds: 16,
+    aiRetryDelaySeconds: 10,
+    effect: 'Detiene al enemigo 4s',
+    buff: 'Daña al jugador -5% HP',
+    upgradeCost: { scrolls: 14, crystals: 12 },
+    upgradeRules: {
+      resourceAddMin: 10,
+      resourceAddMax: 35,
+      damageAddMin: 19,
+      damageAddMax: 28,
+      mpAddMin: 7,
+      mpAddMax: 11
+    }
+  };
 
   const deepClone = (value) => JSON.parse(JSON.stringify(value));
   const DEFAULT_UPGRADE_COST = { scrolls: 5, crystals: 3 };
@@ -295,7 +325,12 @@
             cloneLifetimeSeconds: toNumber(skill.cloneLifetimeSeconds, 0),
             cloneCount: toNumber(skill.cloneCount, 0),
             cloneStatMultiplier: toNumber(skill.cloneStatMultiplier, 0),
-            aiRetryDelaySeconds: toNumber(skill.aiRetryDelaySeconds, 0)
+            aiRetryDelaySeconds: toNumber(skill.aiRetryDelaySeconds, 0),
+            stunSeconds: toNumber(skill.stunSeconds, 0),
+            enemyLockSeconds: toNumber(skill.enemyLockSeconds, 0),
+            selfHpPenaltyPercent: toNumber(skill.selfHpPenaltyPercent, 0),
+            globalSlowMo: toNumber(skill.globalSlowMo, 0),
+            veilColor: skill.veilColor || ''
           };
         });
     },

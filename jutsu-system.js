@@ -42,13 +42,50 @@
   };
 
   const deepClone = (value) => JSON.parse(JSON.stringify(value));
+  const DEFAULT_UPGRADE_COST = { scrolls: 5, crystals: 3 };
+  const toNumber = (value, fallback = 0) => (Number.isFinite(Number(value)) ? Number(value) : fallback);
+
+  function buildSkillStats(skill) {
+    const level = Math.max(1, toNumber(skill.level, 1));
+    const baseDamage = toNumber(skill.baseDamage, toNumber(skill.damage, 80));
+    const damagePerLevel = toNumber(skill.damagePerLevel, Math.max(8, Math.round(baseDamage * 0.12)));
+    const baseMpCost = toNumber(skill.baseMpCost, toNumber(skill.mpCost, 12));
+    const mpCostPerLevel = toNumber(skill.mpCostPerLevel, 1);
+    const baseDuration = toNumber(skill.baseDuration, toNumber(skill.duration, 6));
+    const durationPerLevel = toNumber(skill.durationPerLevel, 1);
+    const effect = String(skill.effect || 'Sin efecto');
+    const buff = String(skill.buff || 'Sin buff');
+
+    const current = {
+      damage: baseDamage + ((level - 1) * damagePerLevel),
+      mpCost: baseMpCost + ((level - 1) * mpCostPerLevel),
+      duration: baseDuration + ((level - 1) * durationPerLevel),
+      effect,
+      buff
+    };
+
+    const next = {
+      damage: current.damage + damagePerLevel,
+      mpCost: current.mpCost + mpCostPerLevel,
+      duration: current.duration + durationPerLevel,
+      effect: `${effect} +`,
+      buff: `${buff} +`
+    };
+
+    return { level, current, next };
+  }
 
   const JutsuSystem = {
     host: null,
     root: null,
     state: {
       activeCharacterId: null,
-      byCharacter: deepClone(CHARACTER_SKILL_BOOK)
+      byCharacter: deepClone(CHARACTER_SKILL_BOOK),
+      resources: {
+        scrolls: 30,
+        crystals: 25
+      },
+      selectedSkillIndex: null
     },
 
     mount() {
@@ -109,6 +146,17 @@
         });
       });
 
+      const closeBtn = this.root.querySelector('#jsuSkillModalClose');
+      const modal = this.root.querySelector('#jsuSkillModal');
+      const upgradeBtn = this.root.querySelector('#jsuUpgradeBtn');
+      const equipBtn = this.root.querySelector('#jsuEquipBtn');
+      closeBtn?.addEventListener('click', () => this.closeSkillModal());
+      modal?.addEventListener('click', (event) => {
+        if (event.target === modal) this.closeSkillModal();
+      });
+      upgradeBtn?.addEventListener('click', () => this.upgradeSelectedSkill());
+      equipBtn?.addEventListener('click', () => this.toggleEquipSelectedSkill());
+
       window.addEventListener('ngs:hero-stats-updated', this.handleHeroChange);
     },
 
@@ -126,7 +174,7 @@
         .map((skill) => ({ id: skill.id, name: skill.name, em: skill.em }));
     },
 
-    equipFromLeftSlot(leftSlotIndex) {
+    openSkillModal(leftSlotIndex) {
       const current = this.getActiveCharacterConfig();
       if (!current) return;
 
@@ -136,14 +184,11 @@
         this.setStatus(`⚠️ ${slotData?.key || 'slot'} vacío. Edita jutsu-system.js para añadir habilidades.`);
         return;
       }
-
-      const firstEmpty = current.equipped.findIndex((value) => value == null);
-      const targetIndex = firstEmpty >= 0 ? firstEmpty : 2;
-      current.equipped[targetIndex] = deepClone(skill);
-
-      this.spawnParticles(targetIndex);
-      this.setStatus(`⬣ ${skill.name} equipada en círculo ${targetIndex + 1}`);
-      this.renderSlots();
+      this.state.selectedSkillIndex = leftSlotIndex;
+      this.renderSkillModal();
+      const modal = this.root.querySelector('#jsuSkillModal');
+      modal?.classList.add('is-open');
+      modal?.setAttribute('aria-hidden', 'false');
     },
 
     unequipSlot(slotIndex) {
@@ -160,8 +205,10 @@
 
     render() {
       this.renderCharacterLabel();
+      this.renderResources();
       this.renderLibrary();
       this.renderSlots();
+      this.renderSkillModal();
     },
 
     renderCharacterLabel() {
@@ -198,9 +245,113 @@
           button.classList.add('is-empty');
         }
 
-        button.addEventListener('click', () => this.equipFromLeftSlot(index));
+        button.addEventListener('click', () => this.openSkillModal(index));
         lib.appendChild(button);
       });
+    },
+
+    renderResources() {
+      const scrollsEl = this.root.querySelector('#jsuScrolls');
+      const crystalsEl = this.root.querySelector('#jsuCrystals');
+      if (scrollsEl) scrollsEl.textContent = String(this.state.resources.scrolls);
+      if (crystalsEl) crystalsEl.textContent = String(this.state.resources.crystals);
+    },
+
+    getSelectedSkillData() {
+      const current = this.getActiveCharacterConfig();
+      const idx = this.state.selectedSkillIndex;
+      if (!current || idx == null) return null;
+      const slotData = current.slots[idx];
+      const skill = slotData?.skill;
+      if (!skill) return null;
+      return { current, idx, slotData, skill };
+    },
+
+    isSkillEquipped(skillId) {
+      const current = this.getActiveCharacterConfig();
+      if (!current) return false;
+      return current.equipped.some((skill) => skill?.id === skillId);
+    },
+
+    renderSkillModal() {
+      const data = this.getSelectedSkillData();
+      if (!data) return;
+      const { slotData, skill } = data;
+      const stats = buildSkillStats(skill);
+      const upgradeCost = skill.upgradeCost || DEFAULT_UPGRADE_COST;
+      const isEquipped = this.isSkillEquipped(skill.id);
+
+      this.root.querySelector('#jsuModalSkillIcon').textContent = skill.em || '✦';
+      this.root.querySelector('#jsuModalSkillName').textContent = `${skill.name || 'Habilidad'} · Nv.${stats.level}`;
+      this.root.querySelector('#jsuModalSkillSlot').textContent = slotData.key || 'slot';
+
+      this.root.querySelector('#jsuStatDamage').textContent = stats.current.damage;
+      this.root.querySelector('#jsuStatMp').textContent = stats.current.mpCost;
+      this.root.querySelector('#jsuStatEffect').textContent = stats.current.effect;
+      this.root.querySelector('#jsuStatBuff').textContent = stats.current.buff;
+      this.root.querySelector('#jsuStatDuration').textContent = `${stats.current.duration}s`;
+
+      this.root.querySelector('#jsuStatDamageNext').textContent = stats.next.damage;
+      this.root.querySelector('#jsuStatMpNext').textContent = stats.next.mpCost;
+      this.root.querySelector('#jsuStatEffectNext').textContent = stats.next.effect;
+      this.root.querySelector('#jsuStatBuffNext').textContent = stats.next.buff;
+      this.root.querySelector('#jsuStatDurationNext').textContent = `${stats.next.duration}s`;
+
+      this.root.querySelector('#jsuUpgradeScrollCost').textContent = String(upgradeCost.scrolls || 0);
+      this.root.querySelector('#jsuUpgradeCrystalCost').textContent = String(upgradeCost.crystals || 0);
+      this.root.querySelector('#jsuEquipBtn').textContent = isEquipped ? 'QUITAR' : 'EQUIPAR';
+    },
+
+    closeSkillModal() {
+      const modal = this.root.querySelector('#jsuSkillModal');
+      modal?.classList.remove('is-open');
+      modal?.setAttribute('aria-hidden', 'true');
+      this.state.selectedSkillIndex = null;
+    },
+
+    upgradeSelectedSkill() {
+      const data = this.getSelectedSkillData();
+      if (!data) return;
+      const { skill } = data;
+      const upgradeCost = skill.upgradeCost || DEFAULT_UPGRADE_COST;
+      const neededScrolls = toNumber(upgradeCost.scrolls, 0);
+      const neededCrystals = toNumber(upgradeCost.crystals, 0);
+
+      if (this.state.resources.scrolls < neededScrolls || this.state.resources.crystals < neededCrystals) {
+        this.setStatus('⚠️ No tienes suficientes 📜 y 💠 para mejorar.');
+        return;
+      }
+
+      this.state.resources.scrolls -= neededScrolls;
+      this.state.resources.crystals -= neededCrystals;
+      skill.level = Math.max(1, toNumber(skill.level, 1) + 1);
+
+      this.renderResources();
+      this.renderSkillModal();
+      this.setStatus(`✨ ${skill.name} mejorada a nivel ${skill.level}.`);
+    },
+
+    toggleEquipSelectedSkill() {
+      const data = this.getSelectedSkillData();
+      if (!data) return;
+      const { current, skill } = data;
+      const equippedIndex = current.equipped.findIndex((equippedSkill) => equippedSkill?.id === skill.id);
+
+      if (equippedIndex >= 0) {
+        current.equipped[equippedIndex] = null;
+        this.renderSlots();
+        this.renderSkillModal();
+        this.setStatus(`✕ ${skill.name} removida del círculo ${equippedIndex + 1}`);
+        return;
+      }
+
+      const firstEmpty = current.equipped.findIndex((value) => value == null);
+      const targetIndex = firstEmpty >= 0 ? firstEmpty : 2;
+      current.equipped[targetIndex] = deepClone(skill);
+      this.spawnParticles(targetIndex);
+      this.renderSlots();
+      this.renderSkillModal();
+      this.setStatus(`⬣ ${skill.name} equipada en círculo ${targetIndex + 1}`);
     },
 
     renderSlots() {

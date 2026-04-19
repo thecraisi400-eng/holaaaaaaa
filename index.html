@@ -358,9 +358,11 @@
     <h2 class="jsu-sr-only">Sistema de Gestión de Jutsus por personaje</h2>
 
     <div class="jsu-top-bar">
-      <div class="jsu-bar-title">⚡ Editor de Habilidades (Script)</div>
+      <div class="jsu-bar-title">HABILIDADES</div>
       <div class="jsu-res-pill">
         <div class="jsu-pill">🥷 <span id="jsuCharacterName">--</span></div>
+        <div class="jsu-pill">📜 <span id="jsuScrolls">30</span></div>
+        <div class="jsu-pill">💠 <span id="jsuCrystals">25</span></div>
       </div>
     </div>
 
@@ -402,6 +404,48 @@
     <div class="jsu-status-bar">
       <span class="jsu-status-txt">CLICK en slot izquierdo para equipar · CLICK en círculo derecho para quitar</span>
       <span id="jsuStatusMsg" class="jsu-status-msg"></span>
+    </div>
+
+    <div id="jsuSkillModal" class="jsu-skill-modal" aria-hidden="true">
+      <div class="jsu-skill-card">
+        <button id="jsuSkillModalClose" class="jsu-skill-close" type="button">✕</button>
+        <div class="jsu-modal-top">
+          <div class="jsu-modal-title-wrap">
+            <div id="jsuModalSkillIcon" class="jsu-modal-skill-icon">✦</div>
+            <div>
+              <div id="jsuModalSkillName" class="jsu-modal-skill-name">Habilidad</div>
+              <div id="jsuModalSkillSlot" class="jsu-modal-skill-slot">slot</div>
+            </div>
+          </div>
+          <div class="jsu-modal-columns">
+            <div>
+              <h4>Actual</h4>
+              <ul class="jsu-modal-stats">
+                <li>⚔ DAÑO <span id="jsuStatDamage">0</span></li>
+                <li>🔵 COSTO MP <span id="jsuStatMp">0</span></li>
+                <li>💀 EFECTO <span id="jsuStatEffect">Ninguno</span></li>
+                <li>✦ BUFF <span id="jsuStatBuff">Ninguno</span></li>
+                <li>⏱ DURACIÓN <span id="jsuStatDuration">0s</span></li>
+              </ul>
+            </div>
+            <div>
+              <h4>Tras mejora</h4>
+              <ul class="jsu-modal-stats">
+                <li>⚔ DAÑO <span id="jsuStatDamageNext">0</span></li>
+                <li>🔵 COSTO MP <span id="jsuStatMpNext">0</span></li>
+                <li>💀 EFECTO <span id="jsuStatEffectNext">Ninguno</span></li>
+                <li>✦ BUFF <span id="jsuStatBuffNext">Ninguno</span></li>
+                <li>⏱ DURACIÓN <span id="jsuStatDurationNext">0s</span></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="jsu-modal-divider"></div>
+        <div class="jsu-modal-bottom">
+          <button id="jsuUpgradeBtn" type="button" class="jsu-modal-action jsu-upgrade-btn">MEJORAR · 📜 <span id="jsuUpgradeScrollCost">0</span> · 💠 <span id="jsuUpgradeCrystalCost">0</span></button>
+          <button id="jsuEquipBtn" type="button" class="jsu-modal-action jsu-equip-btn">EQUIPAR</button>
+        </div>
+      </div>
     </div>
   </div>
 </template>

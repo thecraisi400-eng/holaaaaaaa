@@ -1436,6 +1436,7 @@ html, body {
 }
 
 .jsu-pill span { color: var(--jsu-gold); font-weight: 700; }
+.jsu-currency-pill span { color: #8de4ff; }
 
 .jsu-main-area {
   display: flex;
@@ -1597,3 +1598,98 @@ html, body {
 
 .jsu-status-txt { font-size: 9px; color: rgba(168, 196, 216, 0.45); letter-spacing: 0.5px; }
 .jsu-status-msg { font-size: 9px; color: var(--jsu-accent); margin-left: auto; }
+
+.jsu-skill-modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 15;
+  padding: 12px;
+}
+
+.jsu-skill-modal-overlay.active { display: flex; }
+
+.jsu-skill-modal {
+  width: min(560px, 100%);
+  height: min(320px, 100%);
+  background: rgba(19, 26, 38, 0.92);
+  border: 1px solid var(--jsu-border);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.jsu-skill-modal-close {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--jsu-border);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--jsu-text);
+  cursor: pointer;
+}
+
+.jsu-skill-modal-top {
+  height: 60%;
+  padding: 14px 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.jsu-skill-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.jsu-skill-modal-name { font-size: 16px; color: #d8f5ff; letter-spacing: 1px; }
+.jsu-skill-modal-icon { font-size: 24px; color: var(--jsu-accent); }
+
+.jsu-skill-modal-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  font-size: 12px;
+}
+
+.jsu-skill-stats-current,
+.jsu-skill-stats-next {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.jsu-skill-stats-current { color: #cae3f5; }
+.jsu-skill-stats-next { color: #9effd0; text-align: right; }
+
+.jsu-skill-modal-divider {
+  border-top: 1px solid rgba(141, 228, 255, 0.3);
+  height: 0;
+}
+
+.jsu-skill-modal-bottom {
+  height: 40%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 12px;
+}
+
+.jsu-modal-action-btn {
+  border: 1px solid var(--jsu-border);
+  background: rgba(0, 0, 0, 0.35);
+  color: #dff6ff;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+
+.jsu-modal-action-btn:hover { border-color: var(--jsu-accent); }
+.jsu-modal-action-btn:disabled { opacity: 0.45; cursor: not-allowed; }

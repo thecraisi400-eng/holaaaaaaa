@@ -358,8 +358,10 @@
     <h2 class="jsu-sr-only">Sistema de Gestión de Jutsus por personaje</h2>
 
     <div class="jsu-top-bar">
-      <div class="jsu-bar-title">⚡ Editor de Habilidades (Script)</div>
+      <div class="jsu-bar-title">HABILIDADES</div>
       <div class="jsu-res-pill">
+        <div class="jsu-pill jsu-currency-pill">📜 <span id="jsuScrolls">30</span></div>
+        <div class="jsu-pill jsu-currency-pill">💠 <span id="jsuCrystals">25</span></div>
         <div class="jsu-pill">🥷 <span id="jsuCharacterName">--</span></div>
       </div>
     </div>
@@ -402,6 +404,39 @@
     <div class="jsu-status-bar">
       <span class="jsu-status-txt">CLICK en slot izquierdo para equipar · CLICK en círculo derecho para quitar</span>
       <span id="jsuStatusMsg" class="jsu-status-msg"></span>
+    </div>
+
+    <div id="jsuSkillModalOverlay" class="jsu-skill-modal-overlay">
+      <div class="jsu-skill-modal">
+        <button id="jsuSkillModalClose" class="jsu-skill-modal-close" type="button">✕</button>
+        <div class="jsu-skill-modal-top">
+          <div class="jsu-skill-modal-head">
+            <div id="jsuSkillModalName" class="jsu-skill-modal-name">Habilidad</div>
+            <div id="jsuSkillModalIcon" class="jsu-skill-modal-icon">✦</div>
+          </div>
+          <div class="jsu-skill-modal-columns">
+            <div class="jsu-skill-stats-current">
+              <div>⚔ DAÑO: <span id="jsuStatDamageCur">0</span></div>
+              <div>🔵 COSTO MP: <span id="jsuStatMpCur">0</span></div>
+              <div>💀 EFECTO: <span id="jsuStatEffectCur">-</span></div>
+              <div>✦ BUFF: <span id="jsuStatBuffCur">-</span></div>
+              <div>⏱ DURACIÓN: <span id="jsuStatDurationCur">0s</span></div>
+            </div>
+            <div class="jsu-skill-stats-next">
+              <div>↑ DAÑO: <span id="jsuStatDamageNext">0</span></div>
+              <div>↑ COSTO MP: <span id="jsuStatMpNext">0</span></div>
+              <div>↑ EFECTO: <span id="jsuStatEffectNext">-</span></div>
+              <div>↑ BUFF: <span id="jsuStatBuffNext">-</span></div>
+              <div>↑ DURACIÓN: <span id="jsuStatDurationNext">0s</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="jsu-skill-modal-divider"></div>
+        <div class="jsu-skill-modal-bottom">
+          <button id="jsuUpgradeBtn" class="jsu-modal-action-btn jsu-upgrade-btn" type="button">MEJORAR</button>
+          <button id="jsuEquipBtn" class="jsu-modal-action-btn jsu-equip-btn" type="button">EQUIPAR</button>
+        </div>
+      </div>
     </div>
   </div>
 </template>

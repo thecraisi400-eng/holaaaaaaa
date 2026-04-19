@@ -207,6 +207,7 @@
 
     endCinematicSkill() {
       this.slowMo = 1;
+      if (this.activeSkillLabel?.owner) this.activeSkillLabel.owner.lockedBySkill = false;
       this.activeSkillProjectile = null;
       this.activeSkillLabel = null;
       if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
@@ -271,6 +272,16 @@
           ctx.textBaseline = 'middle';
           ctx.font = 'bold 18px Arial';
           ctx.fillText(skill.em || '✦', slotX + slotSize / 2, slotY + slotSize / 2 + 1);
+          const fighter = this.fighters?.[0];
+          const cdFrames = fighter?.equippedSkillCooldowns?.[skill.id] || 0;
+          if (cdFrames > 0) {
+            const sec = Math.ceil(cdFrames / 60);
+            ctx.fillStyle = 'rgba(0,0,0,0.58)';
+            ctx.fillRect(slotX, slotY, slotSize, slotSize);
+            ctx.font = 'bold 10px Arial Black';
+            ctx.fillStyle = '#FFCE45';
+            ctx.fillText(`${sec}s`, slotX + slotSize / 2, slotY + slotSize / 2 + 12);
+          }
         } else {
           ctx.strokeStyle = 'rgba(255,255,255,0.22)';
           ctx.lineWidth = 1;
@@ -287,10 +298,18 @@
       const skills = getSkills();
       if (!skills.length) return;
       if (Math.random() > chance) return;
-      const selected = skills[Math.floor(Math.random() * skills.length)];
+      const available = skills.filter((skill) => {
+        const cd = attacker.equippedSkillCooldowns?.[skill.id] || 0;
+        return cd <= 0;
+      });
+      if (!available.length) return;
+      const selected = available[Math.floor(Math.random() * available.length)];
+      if (!attacker.equippedSkillCooldowns) attacker.equippedSkillCooldowns = {};
+      attacker.equippedSkillCooldowns[selected.id] = Math.max(1, Number(selected.cooldownSec || 13)) * 60;
       attacker.launchJutsu(defender, {
         isEquipped: true,
-        skillName: selected.name || selected
+        skillName: selected.name || selected,
+        skillData: selected
       });
     }
 
@@ -543,6 +562,19 @@
           const b = this.jutsus[j];
           if (a.owner === b.owner || a.dead || b.dead) continue;
           if (Math.hypot(a.x - b.x, a.y - b.y) < a.size + b.size + 6) {
+            if (a.kind === 'itachi_katon_gokakyu' || b.kind === 'itachi_katon_gokakyu') {
+              const katon = a.kind === 'itachi_katon_gokakyu' ? a : b;
+              const other = katon === a ? b : a;
+              const isGenericProjectile = !other.isEquipped;
+              if (isGenericProjectile) {
+                other.dead = true;
+                continue;
+              }
+              katon.dead = true;
+              other.dead = true;
+              if (katon.isEquipped && this.activeSkillProjectile === katon) this.endCinematicSkill();
+              continue;
+            }
             const ex = (a.x + b.x) / 2;
             const ey = (a.y + b.y) / 2;
             for (let k = 0; k < 22; k += 1) {
@@ -609,8 +641,14 @@
         for (const f of this.fighters) {
           if (f === j.owner || f.isDead || f.invincible) continue;
           if (Math.hypot(j.x - f.cx, j.y - f.cy) < j.size + NW / 2) {
-            const dmgPayload = this.calcDamage(j.owner, f, 'jutsu');
-            f.receiveHit(dmgPayload.damage, j.x, j.owner, dmgPayload.crit);
+            if (j.kind === 'itachi_katon_gokakyu') {
+              f.receiveHit(Number(j.skillData?.damage || 40), j.x, j.owner, true);
+              f.applyBurn(Number(j.skillData?.burnPct || 2), Number(j.skillData?.burnDurationSec || 4));
+              j.owner.applyAtkBuff(Number(j.skillData?.buffAtkPct || 10), Number(j.skillData?.buffDurationSec || 25));
+            } else {
+              const dmgPayload = this.calcDamage(j.owner, f, 'jutsu');
+              f.receiveHit(dmgPayload.damage, j.x, j.owner, dmgPayload.crit);
+            }
             for (let i = 0; i < 16; i += 1) {
               const ang = Math.random() * Math.PI * 2;
               const spd = 2 + Math.random() * 4;
@@ -701,6 +739,7 @@
       const heroProfile = this.buildSpriteProfile(heroSpritePath);
       const enemyProfile = this.buildSpriteProfile(enemySpritePath);
       this.fighters = [new this.Fighter(this, 70, 0, heroProfile), new this.Fighter(this, 360, 1, enemyProfile)];
+      this.fighters[0].equippedSkillCooldowns = {};
       if (this.combatAdapter) {
         const heroRuntime = this.battleContext?.runtimeModifiers?.playerRuntime || {};
         const heroMaxHp = this.combatAdapter.hero.maxHp;
@@ -888,10 +927,27 @@
           this.color = owner.glowColor; this.size = 9; this.life = 200; this.dead = false; this.trail = [];
           this.isEquipped = Boolean(options.isEquipped);
           this.skillName = options.skillName || '';
+          this.skillData = options.skillData || null;
+          this.kind = this.skillData?.id || '';
+          if (this.kind === 'itachi_katon_gokakyu') {
+            this.color = '#ff2d2d';
+            this.size = 35;
+            this.homingTarget = options.homingTarget || null;
+            this.turnRate = 0.12;
+          }
         }
         update(dt) {
           this.trail.unshift({ x: this.x, y: this.y });
-          if (this.trail.length > 12) this.trail.pop();
+          if (this.trail.length > (this.kind === 'itachi_katon_gokakyu' ? 18 : 12)) this.trail.pop();
+          if (this.kind === 'itachi_katon_gokakyu' && this.homingTarget && !this.homingTarget.isDead) {
+            const tx = this.homingTarget.cx - this.x;
+            const ty = this.homingTarget.cy - this.y;
+            const d = Math.hypot(tx, ty) || 1;
+            const targetVx = (tx / d) * 6.5;
+            const targetVy = (ty / d) * 6.5;
+            this.vx += (targetVx - this.vx) * this.turnRate * dt;
+            this.vy += (targetVy - this.vy) * this.turnRate * dt;
+          }
           this.x += this.vx * dt; this.y += this.vy * dt; this.life -= dt;
           const e = this.owner.e;
           if (this.x < -12 || this.x > e.W + 12 || this.y < -12 || this.y > e.H + 12 || this.life <= 0) this.dead = true;
@@ -960,9 +1016,36 @@
           this.deathT = 0;
           this.deathSmoke = 0;
           this.spriteProfile = spriteProfile;
+          this.lockedBySkill = false;
+          this.burnEffect = null;
+          this.atkBuff = null;
+          this.equippedSkillCooldowns = {};
         }
         get cx() { return this.x + NW / 2; }
         get cy() { return this.y + NH / 2; }
+
+        applyBurn(percentPerSecond, durationSec) {
+          this.burnEffect = {
+            percentPerSecond: Math.max(0, Number(percentPerSecond || 0)) / 100,
+            remaining: Math.max(1, Number(durationSec || 4)) * 60,
+            tick: 0
+          };
+        }
+
+        applyAtkBuff(percent, durationSec) {
+          const ratio = Math.max(0, Number(percent || 0)) / 100;
+          const baseAtk = this.combat?.atk || 10;
+          if (this.atkBuff && this.atkBuff.active) {
+            this.combat.atk = this.atkBuff.baseAtk;
+          }
+          this.atkBuff = {
+            baseAtk,
+            ratio,
+            remaining: Math.max(1, Number(durationSec || 25)) * 60,
+            active: true
+          };
+          if (this.combat) this.combat.atk = baseAtk * (1 + ratio);
+        }
 
         receiveHit(rawDmg, fromX, attacker, forcedCrit = false) {
           if (this.isDead || this.invincible) return;
@@ -1032,7 +1115,7 @@
         }
 
         placeForEquippedSkill(target) {
-          const distance = this.e.W * 0.60;
+          const distance = this.e.W * 0.70;
           const dir = this.cx < target.cx ? -1 : 1;
           const nx = target.x + (dir * distance);
           this.x = Math.max(4, Math.min(this.e.W - NW - 4, nx));
@@ -1044,18 +1127,19 @@
 
         launchJutsu(target, options = {}) {
           if (this.jutsuCD > 0) return;
-          const mpCost = Math.max(2, Math.round(this.maxMp * 0.02));
+          const mpCost = Math.max(2, Math.round(options.skillData?.mpCost || (this.maxMp * 0.02)));
           if (this.mp < mpCost) return;
           const isEquipped = Boolean(options.isEquipped);
           const skillName = options.skillName || 'Habilidad';
+          const isKaton = options.skillData?.id === 'itachi_katon_gokakyu';
           if (isEquipped) this.placeForEquippedSkill(target);
           this.mp = Math.max(0, this.mp - mpCost);
-          this.jutsuCD = isEquipped ? 120 : 90;
+          this.jutsuCD = isEquipped ? Math.max(60, Number(options.skillData?.cooldownSec || 13) * 60) : 90;
           const dx = target.cx - this.cx;
           const dy = target.cy - this.cy;
           const d = Math.sqrt(dx * dx + dy * dy) || 1;
-          const spd = isEquipped ? 6.2 : 5;
-          const projectile = new this.e.Jutsu(this.cx, this.cy, (dx / d) * spd, (dy / d) * spd, this, { isEquipped, skillName });
+          const spd = isKaton ? 6.5 : (isEquipped ? 6.2 : 5);
+          const projectile = new this.e.Jutsu(this.cx, this.cy, (dx / d) * spd, (dy / d) * spd, this, { isEquipped, skillName, skillData: options.skillData, homingTarget: target });
           this.e.jutsus.push(projectile);
           this.e.spawnSparks(this.cx, this.cy, 14, this.glowColor);
           this.e.triggerShake(6, 14);
@@ -1063,6 +1147,11 @@
             this.tX = target.x;
             this.tY = this.e.GROUND - NH;
             this.e.beginCinematicSkill(this, skillName, projectile);
+            if (isKaton) {
+              this.lockedBySkill = true;
+              this.e.slowMo = 0.15;
+              if (this.e.veil) this.e.veil.style.background = 'rgba(0,0,0,0.45)';
+            }
           }
           this.flashTimer = 8;
         }
@@ -1092,6 +1181,30 @@
           if (this.stunTimer > 0) this.stunTimer -= dt;
           if (this.atkCD > 0) this.atkCD -= dt;
           if (this.jutsuCD > 0) this.jutsuCD -= dt;
+          if (this.equippedSkillCooldowns) {
+            Object.keys(this.equippedSkillCooldowns).forEach((skillId) => {
+              this.equippedSkillCooldowns[skillId] = Math.max(0, this.equippedSkillCooldowns[skillId] - dt);
+            });
+          }
+          if (this.burnEffect && this.burnEffect.remaining > 0) {
+            this.burnEffect.remaining -= dt;
+            this.burnEffect.tick += dt;
+            while (this.burnEffect.tick >= 60) {
+              this.burnEffect.tick -= 60;
+              const burnDamage = Math.max(1, this.maxHp * this.burnEffect.percentPerSecond);
+              this.hp = Math.max(0, this.hp - burnDamage);
+              this.e.damageNums.push(new this.e.DamageNum(this.cx, this.y - 16, burnDamage, false));
+              if (this.hp <= 0 && !this.isDead) this.die();
+            }
+            if (this.burnEffect.remaining <= 0) this.burnEffect = null;
+          }
+          if (this.atkBuff && this.atkBuff.active) {
+            this.atkBuff.remaining -= dt;
+            if (this.atkBuff.remaining <= 0) {
+              if (this.combat) this.combat.atk = this.atkBuff.baseAtk;
+              this.atkBuff.active = false;
+            }
+          }
           if (this.invTimer > 0) {
             this.invTimer -= dt;
             if (this.invTimer <= 0) this.invincible = false;
@@ -1131,6 +1244,10 @@
 
           this.facingRight = enemy.cx > this.cx;
           if (this.stunTimer > 0) return;
+          if (this.lockedBySkill) {
+            if (!this.e.activeSkillProjectile || this.e.activeSkillProjectile.dead) this.lockedBySkill = false;
+            return;
+          }
 
           this.dashTimer += dms;
           if (this.dashTimer >= this.dashInterval) {
@@ -1177,6 +1294,24 @@
         }
 
         draw(ctx) {
+          if (this.burnEffect && this.burnEffect.remaining > 0) {
+            ctx.save();
+            ctx.globalAlpha = 0.35;
+            ctx.fillStyle = '#FF1A1A';
+            ctx.beginPath();
+            ctx.arc(this.cx, this.cy, 35, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 0.9;
+            for (let i = 0; i < 8; i += 1) {
+              const ang = (Date.now() * 0.002 + i) % (Math.PI * 2);
+              const rr = 8 + (i % 4) * 5;
+              ctx.fillStyle = i % 2 === 0 ? '#FF0000' : '#FF5A2A';
+              ctx.beginPath();
+              ctx.arc(this.cx + Math.cos(ang * 2.2 + i) * rr, this.cy + Math.sin(ang * 1.7 + i) * rr, 4.5, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            ctx.restore();
+          }
           for (const t of this.trail) {
             ctx.save();
             ctx.globalAlpha = t.a * 0.45;

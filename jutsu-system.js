@@ -96,6 +96,33 @@
       mpAddMax: 11
     }
   };
+  CHARACTER_SKILL_BOOK.itachi.slots[2].skill = {
+    id: 'itachi-shurikenjutsu',
+    name: '⭐ SHURIKENJUTSU',
+    em: '⭐',
+    level: 1,
+    baseDamage: 30,
+    damagePerLevel: 0,
+    baseMpCost: 13,
+    mpCostPerLevel: 0,
+    baseDuration: 14,
+    durationPerLevel: 0,
+    shurikenCount: 5,
+    shurikenGrowthMax: 0.25,
+    cooldownSeconds: 14,
+    aiRetryDelaySeconds: 10,
+    effect: '-',
+    buff: '-',
+    upgradeCost: { scrolls: 14, crystals: 12 },
+    upgradeRules: {
+      resourceAddMin: 10,
+      resourceAddMax: 35,
+      damageAddMin: 19,
+      damageAddMax: 28,
+      mpAddMin: 7,
+      mpAddMax: 11
+    }
+  };
 
   const deepClone = (value) => JSON.parse(JSON.stringify(value));
   const DEFAULT_UPGRADE_COST = { scrolls: 5, crystals: 3 };
@@ -270,7 +297,9 @@
             cloneLifetimeSeconds: toNumber(skill.cloneLifetimeSeconds, 0),
             cloneCount: toNumber(skill.cloneCount, 0),
             cloneStatMultiplier: toNumber(skill.cloneStatMultiplier, 0),
-            aiRetryDelaySeconds: toNumber(skill.aiRetryDelaySeconds, 0)
+            aiRetryDelaySeconds: toNumber(skill.aiRetryDelaySeconds, 0),
+            shurikenCount: toNumber(skill.shurikenCount, 0),
+            shurikenGrowthMax: toNumber(skill.shurikenGrowthMax, 0)
           };
         });
     },

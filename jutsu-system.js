@@ -68,6 +68,34 @@
       mpAddMax: 11
     }
   };
+  CHARACTER_SKILL_BOOK.itachi.slots[1].skill = {
+    id: 'itachi-kage-bunshin',
+    name: '👥 KAGE BUNSHIN NO JUTSU',
+    em: '👥',
+    level: 1,
+    baseDamage: 0,
+    damagePerLevel: 0,
+    baseMpCost: 17,
+    mpCostPerLevel: 0,
+    baseDuration: 20,
+    durationPerLevel: 0,
+    cloneLifetimeSeconds: 13,
+    cloneCount: 2,
+    cloneStatMultiplier: 0.20,
+    cooldownSeconds: 20,
+    aiRetryDelaySeconds: 10,
+    effect: 'Crea 2 clones con 20% de stats',
+    buff: '-',
+    upgradeCost: { scrolls: 13, crystals: 9 },
+    upgradeRules: {
+      resourceAddMin: 10,
+      resourceAddMax: 35,
+      damageAddMin: 19,
+      damageAddMax: 28,
+      mpAddMin: 7,
+      mpAddMax: 11
+    }
+  };
 
   const deepClone = (value) => JSON.parse(JSON.stringify(value));
   const DEFAULT_UPGRADE_COST = { scrolls: 5, crystals: 3 };
@@ -238,7 +266,11 @@
             burnPercent: toNumber(skill.burnPercent, 0),
             burnSeconds: toNumber(skill.burnSeconds, 0),
             atkBuffPercent: toNumber(skill.atkBuffPercent, 0),
-            atkBuffSeconds: toNumber(skill.atkBuffSeconds, 0)
+            atkBuffSeconds: toNumber(skill.atkBuffSeconds, 0),
+            cloneLifetimeSeconds: toNumber(skill.cloneLifetimeSeconds, 0),
+            cloneCount: toNumber(skill.cloneCount, 0),
+            cloneStatMultiplier: toNumber(skill.cloneStatMultiplier, 0),
+            aiRetryDelaySeconds: toNumber(skill.aiRetryDelaySeconds, 0)
           };
         });
     },

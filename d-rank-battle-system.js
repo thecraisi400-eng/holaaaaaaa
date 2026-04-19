@@ -7,7 +7,7 @@
   const G = 0.44;
   const SPRITE_SIZE = 256;
   const SPRITE_FRAMES = 4;
-  const SPRITE_FRAME_SIZE = SPRITE_SIZE / SPRITE_FRAMES;
+  const SUSANOO_SPRITE_PATH = 'assets/images/itachi_susano.png';
 
   const HERO_BATTLE_SPRITES = {
     madara: 'assets/images/madara_battle.png',
@@ -486,8 +486,13 @@
       if (this.activeSkillProjectile) return;
       const skills = getSkills();
       if (!skills.length) return;
-      if (Math.random() > chance) return;
-      const selected = skills[Math.floor(Math.random() * skills.length)];
+      const usable = skills.filter((skill) => {
+        const skillChance = Number(skill?.aiUseChance);
+        const rollChance = Number.isFinite(skillChance) && skillChance > 0 ? Math.min(1, Math.max(0, skillChance)) : chance;
+        return Math.random() <= rollChance;
+      });
+      if (!usable.length) return;
+      const selected = usable[Math.floor(Math.random() * usable.length)];
       if (!attacker.canUseSkill(selected)) return;
       attacker.launchJutsu(defender, {
         isEquipped: true,
@@ -819,7 +824,7 @@
         if (j.dead) continue;
         for (const f of this.getAllCombatants()) {
           if (f === j.owner || f.team === j.ownerTeam || f.isDead || f.invincible) continue;
-          if (Math.hypot(j.x - f.cx, j.y - f.cy) < j.size + NW / 2) {
+          if (Math.hypot(j.x - f.cx, j.y - f.cy) < j.size + (f.hitRadius || (NW / 2))) {
             const isItachiKaton = j.skillData?.id === 'itachi-katon-gokakyu';
             const isItachiShurikenjutsu = j.skillData?.id === 'itachi-shurikenjutsu';
             const isItachiAmaterasu = j.skillData?.id === 'itachi-amaterasu';
@@ -974,14 +979,17 @@
       setTimeout(() => this.roundAnnouncementEl?.classList.remove('show'), 1050);
     }
 
-    buildSpriteProfile(path) {
+    buildSpriteProfile(path, options = {}) {
       if (!path) return null;
+      const spriteSize = Number(options.spriteSize || SPRITE_SIZE);
+      const framesPerRow = Number(options.framesPerRow || SPRITE_FRAMES);
+      const frameSize = Math.max(1, spriteSize / Math.max(1, framesPerRow));
       return {
         path,
         image: this.getSpriteImage(path),
-        frameW: SPRITE_FRAME_SIZE,
-        frameH: SPRITE_FRAME_SIZE,
-        framesPerRow: SPRITE_FRAMES
+        frameW: frameSize,
+        frameH: frameSize,
+        framesPerRow
       };
     }
 
@@ -1142,10 +1150,12 @@
           this.target = options.target || null;
           this.isShurikenjutsu = this.skillData?.id === 'itachi-shurikenjutsu';
           this.isAmaterasu = this.skillData?.id === 'itachi-amaterasu';
+          this.isSusanoBuffed = Boolean(owner?.isSusanoActive);
+          this.isGenericProjectile = !this.isEquipped;
           this.homing = this.skillData?.id === 'itachi-katon-gokakyu' || this.isShurikenjutsu;
+          if (this.isSusanoBuffed && this.isGenericProjectile) this.homing = true;
           if (this.isAmaterasu) this.homing = true;
           this.piercesGenericProjectiles = this.homing;
-          this.isGenericProjectile = !this.isEquipped;
           this.rotation = Math.random() * Math.PI * 2;
           this.growth = 1;
           this.maxGrowth = this.isShurikenjutsu ? 1.25 : 1;
@@ -1155,6 +1165,10 @@
             this.color = '#d6dce6';
             this.vx = 0;
             this.vy = 0;
+          }
+          if (this.isSusanoBuffed) {
+            this.size *= 1.35;
+            this.life = Math.round(this.life * 1.25);
           }
           if (this.isAmaterasu) {
             this.size = 32.5;
@@ -1177,7 +1191,7 @@
             const dx = this.target.cx - this.x;
             const dy = this.target.cy - this.y;
             const d = Math.sqrt(dx * dx + dy * dy) || 1;
-            const spd = 5.6;
+            const spd = this.isSusanoBuffed ? 7.2 : 5.6;
             const steer = 0.18;
             this.vx += (((dx / d) * spd) - this.vx) * steer;
             this.vy += (((dy / d) * spd) - this.vy) * steer;
@@ -1325,6 +1339,10 @@
           this.deathT = 0;
           this.deathSmoke = 0;
           this.spriteProfile = spriteProfile;
+          this.spriteScale = 1;
+          this.spriteW = NW;
+          this.spriteH = NH;
+          this.baseSpriteProfile = spriteProfile;
           this.skillCooldowns = {};
           this.skillRetryTimers = {};
           this.skillLock = null;
@@ -1333,11 +1351,16 @@
           this.amaterasuBurn = null;
           this.selfCurse = null;
           this.atkBuff = null;
+          this.defBuff = null;
+          this.isSusanoActive = false;
+          this.susanoTimer = 0;
+          this.susanoBaseCombat = null;
           this.tsukuyomiLock = null;
           this.tsukuyomiAura = null;
         }
-        get cx() { return this.x + NW / 2; }
-        get cy() { return this.y + NH / 2; }
+        get cx() { return this.x + this.spriteW / 2; }
+        get cy() { return this.y + this.spriteH / 2; }
+        get hitRadius() { return this.spriteW * 0.5; }
         getSkillCooldown(skillId) { return Math.max(0, this.skillCooldowns?.[skillId] || 0); }
         canUseSkill(skillData = null) {
           if (!skillData?.id) return this.jutsuCD <= 0;
@@ -1356,6 +1379,46 @@
             percent: Math.max(0, Number(percent) || 0),
             timer: Math.max(1, Math.round((durationSeconds || 1) * 60))
           };
+        }
+        applyDefBuff(percent, durationSeconds) {
+          this.defBuff = {
+            percent: Math.max(0, Number(percent) || 0),
+            timer: Math.max(1, Math.round((durationSeconds || 1) * 60))
+          };
+        }
+        activateSusano(skillData) {
+          const durationSeconds = Math.max(1, Number(skillData?.transformDurationSeconds) || 30);
+          this.isSusanoActive = true;
+          this.susanoTimer = Math.max(1, Math.round(durationSeconds * 60));
+          if (!this.susanoBaseCombat) {
+            this.susanoBaseCombat = {
+              atk: Number(this.combat?.atk || 10),
+              incomingMitigation: Number(this.combat?.incomingMitigation || 0)
+            };
+          }
+          this.spriteProfile = this.e.buildSpriteProfile(SUSANOO_SPRITE_PATH, { spriteSize: 512, framesPerRow: 4 });
+          this.spriteScale = 1.2;
+          this.spriteW = NW * this.spriteScale;
+          this.spriteH = NH * this.spriteScale;
+          this.y = this.e.GROUND - this.spriteH;
+          this.vy = 0;
+          this.onGround = true;
+          this.applyAtkBuff(Number(skillData?.atkBuffPercent) || 0.25, durationSeconds);
+          this.applyDefBuff(Number(skillData?.defBuffPercent) || 0.90, durationSeconds);
+        }
+        deactivateSusano() {
+          if (!this.isSusanoActive) return;
+          this.isSusanoActive = false;
+          this.susanoTimer = 0;
+          this.spriteScale = 1;
+          this.spriteW = NW;
+          this.spriteH = NH;
+          this.spriteProfile = this.baseSpriteProfile;
+          this.y = this.e.GROUND - this.spriteH;
+          this.vy = 0;
+          this.onGround = true;
+          if (this.susanoBaseCombat) this.combat.atk = this.susanoBaseCombat.atk;
+          this.defBuff = null;
         }
         applyAmaterasuBurn(percentPerSecond, durationSeconds, source) {
           this.amaterasuBurn = {
@@ -1385,6 +1448,9 @@
             return;
           }
           let dmg = rawDmg;
+          if (this.defBuff?.percent) {
+            dmg *= Math.max(0.05, 1 - this.defBuff.percent);
+          }
           const canShield = !this.shieldBroken && !this.defBreak && this.shieldTime < 2000;
           if (canShield && Math.random() < 0.30) {
             dmg = rawDmg * 0.30;
@@ -1427,11 +1493,11 @@
         }
 
         doKawarimi(attacker) {
-          const behind = attacker.facingRight ? attacker.x - NW - 28 : attacker.x + NW + 28;
-          const nx = Math.max(5, Math.min(this.e.W - NW - 5, behind));
+          const behind = attacker.facingRight ? attacker.x - this.spriteW - 28 : attacker.x + attacker.spriteW + 28;
+          const nx = Math.max(5, Math.min(this.e.W - this.spriteW - 5, behind));
           this.e.spawnSmoke(this.cx, this.cy, 18);
           this.x = nx;
-          this.y = this.e.GROUND - NH;
+          this.y = this.e.GROUND - this.spriteH;
           this.vx = 0;
           this.vy = 0;
           this.onGround = true;
@@ -1445,9 +1511,9 @@
           const distance = this.e.W * 0.70;
           const dir = this.cx < target.cx ? -1 : 1;
           const nx = target.x + (dir * distance);
-          const lockedX = Math.max(4, Math.min(this.e.W - NW - 4, nx));
+          const lockedX = Math.max(4, Math.min(this.e.W - this.spriteW - 4, nx));
           const verticalReach = this.e.H * Math.max(0.1, Math.min(0.9, Number(aerialRatio) || 0.4));
-          const lockedY = Math.max(6, this.e.GROUND - NH - verticalReach);
+          const lockedY = Math.max(6, this.e.GROUND - this.spriteH - verticalReach);
           this.x = lockedX;
           this.y = lockedY;
           this.vx = 0;
@@ -1547,7 +1613,7 @@
               maxMp: clone.maxMp
             };
             clone.tX = target ? target.x : clone.x + (Math.random() - 0.5) * 90;
-            clone.tY = this.e.GROUND - NH;
+            clone.tY = this.e.GROUND - clone.spriteH;
             this.e.spawnSmoke(clone.cx, clone.cy, 14);
             this.e.summons.push(clone);
           }
@@ -1604,6 +1670,15 @@
             this.flashTimer = 12;
             return;
           }
+          if (skillData?.id === 'itachi-susanoo') {
+            this.mp = Math.max(0, this.mp - mpCost);
+            this.jutsuCD = 120;
+            this.skillCooldowns[skillData.id] = Math.max(1, Math.round((skillData.cooldownSeconds || 225) * 60));
+            this.activateSusano(skillData);
+            this.e.beginTimedSkillFx(this, skillName, 1000, 0.30, 0.45);
+            this.flashTimer = 12;
+            return;
+          }
           if (isEquipped) this.placeForEquippedSkill(target);
           this.mp = Math.max(0, this.mp - mpCost);
           this.jutsuCD = isEquipped ? 120 : 90;
@@ -1613,7 +1688,7 @@
           const dx = target.cx - this.cx;
           const dy = target.cy - this.cy;
           const d = Math.sqrt(dx * dx + dy * dy) || 1;
-          const spd = isEquipped ? 6.2 : 5;
+          const spd = this.isSusanoActive ? 7.4 : (isEquipped ? 6.2 : 5);
           const projectile = new this.e.Jutsu(this.cx, this.cy, (dx / d) * spd, (dy / d) * spd, this, {
             isEquipped,
             skillName,
@@ -1625,7 +1700,7 @@
           this.e.triggerShake(6, 14);
           if (isEquipped) {
             this.tX = target.x;
-            this.tY = this.e.GROUND - NH;
+            this.tY = this.e.GROUND - this.spriteH;
             this.e.beginCinematicSkill(this, skillName, projectile);
           }
           this.flashTimer = 8;
@@ -1651,7 +1726,7 @@
           if (this.isDead) {
             this.deathT += dt;
             this.deathSmoke = Math.min(1, this.deathT * 0.09);
-            if (this.deathT % 6 < 1) this.e.spawnSmoke(this.cx + (Math.random() - 0.5) * NW, this.cy + (Math.random() - 0.5) * NH, 3);
+            if (this.deathT % 6 < 1) this.e.spawnSmoke(this.cx + (Math.random() - 0.5) * this.spriteW, this.cy + (Math.random() - 0.5) * this.spriteH, 3);
             return;
           }
           if (this.isClone && this.cloneLifetime > 0) {
@@ -1725,6 +1800,14 @@
             this.atkBuff.timer -= dt;
             if (this.atkBuff.timer <= 0) this.atkBuff = null;
           }
+          if (this.defBuff) {
+            this.defBuff.timer -= dt;
+            if (this.defBuff.timer <= 0) this.defBuff = null;
+          }
+          if (this.susanoTimer > 0) {
+            this.susanoTimer -= dt;
+            if (this.susanoTimer <= 0) this.deactivateSusano();
+          }
           this.dmgBurstTimer += dms;
           if (this.dmgBurstTimer >= 2000) {
             this.dmgBurstTimer = 0;
@@ -1735,7 +1818,7 @@
           this.x += this.vx * dt;
           this.y += this.vy * dt;
           this.vx *= 0.87;
-          if (this.y >= this.e.GROUND - NH) { this.y = this.e.GROUND - NH; this.vy = 0; this.onGround = true; } else this.onGround = false;
+          if (this.y >= this.e.GROUND - this.spriteH) { this.y = this.e.GROUND - this.spriteH; this.vy = 0; this.onGround = true; } else this.onGround = false;
           if (this.y < 4) { this.y = 4; this.vy = 0; }
           if (this.skillLock) {
             this.x = this.skillLock.x;
@@ -1756,12 +1839,12 @@
           if (this.x <= 3) {
             this.x = 3;
             this.vx = 4.5;
-            if (this.onGround) { this.vy = -9; this.onGround = false; }
+            if (this.onGround && !this.isSusanoActive) { this.vy = -9; this.onGround = false; }
           }
-          if (this.x >= this.e.W - NW - 3) {
-            this.x = this.e.W - NW - 3;
+          if (this.x >= this.e.W - this.spriteW - 3) {
+            this.x = this.e.W - this.spriteW - 3;
             this.vx = -4.5;
-            if (this.onGround) { this.vy = -9; this.onGround = false; }
+            if (this.onGround && !this.isSusanoActive) { this.vy = -9; this.onGround = false; }
           }
 
           if (!enemy || enemy.isDead) return;
@@ -1771,17 +1854,17 @@
           this.dashTimer += dms;
           if (this.dashTimer >= this.dashInterval) {
             this.dashTimer = 0;
-            const aerial = Math.random() < 0.38;
-            this.tX = 22 + Math.random() * (this.e.W - 44 - NW);
-            this.tY = aerial ? this.e.GROUND - NH - 55 - Math.random() * 130 : this.e.GROUND - NH;
+            const aerial = !this.isSusanoActive && Math.random() < 0.38;
+            this.tX = 22 + Math.random() * (this.e.W - 44 - this.spriteW);
+            this.tY = aerial ? this.e.GROUND - this.spriteH - 55 - Math.random() * 130 : this.e.GROUND - this.spriteH;
           }
 
           const tdx = this.tX - this.x;
           const tdy = this.tY - this.y;
           const tLen = Math.sqrt(tdx * tdx + tdy * tdy);
           if (tLen > 8) {
-            this.vx += (tdx / tLen) * 5 * 0.26;
-            if (tdy < -22 && this.onGround) {
+            this.vx += (tdx / tLen) * 5 * 0.26 * (this.isSusanoActive ? 0.45 : 1);
+            if (!this.isSusanoActive && tdy < -22 && this.onGround) {
               this.vy = -11;
               this.onGround = false;
             }
@@ -1802,11 +1885,11 @@
 
           if (!enemy.isDead) {
             const dist = Math.hypot(this.cx - enemy.cx, this.cy - enemy.cy);
-            if (dist < 50 && this.atkCD <= 0) {
+            if (!this.isSusanoActive && dist < 50 && this.atkCD <= 0) {
               const dmgPayload = this.e.calcDamage(this, enemy, 'basic');
               enemy.receiveHit(dmgPayload.damage, this.cx, this, dmgPayload.crit);
               this.atkCD = 42;
-            } else if (dist > 150 && this.jutsuCD <= 0) {
+            } else if ((this.isSusanoActive || dist > 150) && this.jutsuCD <= 0) {
               this.launchJutsu(enemy);
             }
           }
@@ -2062,16 +2145,16 @@
           ctx.save();
           ctx.globalAlpha = deadAlpha;
           if (!this.facingRight) {
-            ctx.translate(this.x + NW / 2, 0);
+            ctx.translate(this.x + this.spriteW / 2, 0);
             ctx.scale(-1, 1);
-            ctx.translate(-(this.x + NW / 2), 0);
+            ctx.translate(-(this.x + this.spriteW / 2), 0);
           }
 
-          const shadowAlpha = Math.max(0, 0.35 - (this.e.GROUND - NH - this.y) * 0.005);
+          const shadowAlpha = Math.max(0, 0.35 - (this.e.GROUND - this.spriteH - this.y) * 0.005);
           ctx.globalAlpha = deadAlpha * shadowAlpha;
           ctx.fillStyle = 'rgba(0,0,0,.45)';
           ctx.beginPath();
-          ctx.ellipse(this.x + NW / 2, this.e.GROUND - 1, NW * 0.7, 4, 0, 0, Math.PI * 2);
+          ctx.ellipse(this.x + this.spriteW / 2, this.e.GROUND - 1, this.spriteW * 0.7, 4, 0, 0, Math.PI * 2);
           ctx.fill();
 
           ctx.globalAlpha = deadAlpha;
@@ -2083,8 +2166,8 @@
             this.spriteProfile.frameH,
             this.x,
             this.y,
-            NW,
-            NH
+            this.spriteW,
+            this.spriteH
           );
           ctx.restore();
           return true;
@@ -2100,7 +2183,7 @@
         drawHPBar(ctx, alpha = 1) {
           const bW = 30;
           const bH = 4;
-          const bx = this.x + NW / 2 - bW / 2;
+          const bx = this.x + this.spriteW / 2 - bW / 2;
           const by = this.y - 12;
           ctx.save();
           ctx.globalAlpha = alpha;
@@ -2112,7 +2195,7 @@
           ctx.font = 'bold 7px Arial';
           ctx.textAlign = 'center';
           ctx.fillStyle = this.isDead ? '#666' : (this.id === 0 ? '#FFD700' : '#AA88FF');
-          ctx.fillText(this.name, this.x + NW / 2, by - 3);
+          ctx.fillText(this.name, this.x + this.spriteW / 2, by - 3);
           ctx.restore();
         }
       };

@@ -206,6 +206,11 @@
       return window.JutsuSystem.getEquippedSkills();
     }
 
+    getHeroEquippedSkillSlots() {
+      if (!window.JutsuSystem || typeof window.JutsuSystem.getEquippedSkillSlots !== 'function') return [];
+      return window.JutsuSystem.getEquippedSkillSlots();
+    }
+
     getEnemySkills() {
       const skills = this.battleContext?.missionConfig?.enemySkills;
       return Array.isArray(skills) ? skills.filter(Boolean) : [];
@@ -438,14 +443,14 @@
     }
 
     drawEquippedSkillSlots(ctx) {
-      const slotSize = 32;
-      const gap = 6;
+      const slotSize = Math.round(32 * 1.15);
+      const gap = 5;
       const baseX = 10;
       const baseY = this.H - slotSize - 10;
-      const equipped = this.getHeroEquippedSkills().slice(0, 3);
+      const equipped = this.getHeroEquippedSkillSlots().slice(0, 6);
       const hero = this.fighters[0];
 
-      for (let i = 0; i < 3; i += 1) {
+      for (let i = 0; i < 6; i += 1) {
         const slotX = baseX + i * (slotSize + gap);
         const slotY = baseY;
         const skill = equipped[i] || null;

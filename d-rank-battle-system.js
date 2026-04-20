@@ -1410,7 +1410,7 @@
           };
         }
         activateSusano(skillData) {
-          const durationSeconds = Math.max(1, Number(skillData?.transformDurationSeconds) || 30);
+          const durationSeconds = Math.max(1, Number(skillData?.transformDurationSeconds) || 29);
           this.isSusanoActive = true;
           this.susanoTimer = Math.max(1, Math.round(durationSeconds * 60));
           if (!this.susanoBaseCombat) {
@@ -1426,8 +1426,8 @@
           this.y = this.e.GROUND - this.spriteH;
           this.vy = 0;
           this.onGround = true;
-          this.applyAtkBuff(Number(skillData?.atkBuffPercent) || 0.25, durationSeconds);
-          this.applyDefBuff(Number(skillData?.defBuffPercent) || 0.90, durationSeconds);
+          this.applyAtkBuff(Number(skillData?.atkBuffPercent) || 0.35, durationSeconds);
+          this.applyDefBuff(Number(skillData?.defBuffPercent) || 0.97, durationSeconds);
         }
         deactivateSusano() {
           if (!this.isSusanoActive) return;

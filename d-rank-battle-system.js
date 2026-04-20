@@ -748,8 +748,28 @@
         for (let j = i + 1; j < this.jutsus.length; j += 1) {
           const a = this.jutsus[i];
           const b = this.jutsus[j];
-          if (a.owner === b.owner || a.dead || b.dead) continue;
+          if (a.owner === b.owner || a.ownerTeam === b.ownerTeam || a.dead || b.dead) continue;
           if (Math.hypot(a.x - b.x, a.y - b.y) < a.size + b.size + 6) {
+            const aIsSuperiorVsB = a.isSuperiorProjectile && b.isGenericProjectile && !b.isSuperiorProjectile;
+            const bIsSuperiorVsA = b.isSuperiorProjectile && a.isGenericProjectile && !a.isSuperiorProjectile;
+
+            if (aIsSuperiorVsB || bIsSuperiorVsA) {
+              const superior = aIsSuperiorVsB ? a : b;
+              const weaker = aIsSuperiorVsB ? b : a;
+              for (let k = 0; k < 18; k += 1) {
+                const ang = Math.random() * Math.PI * 2;
+                const spd = 2.8 + Math.random() * 4.2;
+                this.particles.push(new this.Particle(this, weaker.x, weaker.y, Math.cos(ang) * spd, Math.sin(ang) * spd - 0.9, '#FFD700', 24, 2.8, 'spark'));
+                this.particles.push(new this.Particle(this, weaker.x, weaker.y, Math.cos(ang) * spd * 0.7, Math.sin(ang) * spd * 0.7, '#FF5A00', 20, 2.4, 'spark'));
+              }
+              this.triggerShake(4, 12);
+              weaker.resolveReason = 'overpowered';
+              weaker.dead = true;
+              superior.vx *= 1.04;
+              superior.vy *= 1.04;
+              continue;
+            }
+
             const ex = (a.x + b.x) / 2;
             const ey = (a.y + b.y) / 2;
             for (let k = 0; k < 22; k += 1) {
@@ -1150,9 +1170,11 @@
           this.target = options.target || null;
           this.isShurikenjutsu = this.skillData?.id === 'itachi-shurikenjutsu';
           this.isAmaterasu = this.skillData?.id === 'itachi-amaterasu';
+          this.isKatonGokakyu = this.skillData?.id === 'itachi-katon-gokakyu';
           this.isSusanoBuffed = Boolean(owner?.isSusanoActive);
           this.isGenericProjectile = !this.isEquipped;
-          this.homing = this.skillData?.id === 'itachi-katon-gokakyu' || this.isShurikenjutsu;
+          this.isSuperiorProjectile = this.isKatonGokakyu || (this.isSusanoBuffed && this.isGenericProjectile);
+          this.homing = this.isKatonGokakyu || this.isShurikenjutsu;
           if (this.isSusanoBuffed && this.isGenericProjectile) this.homing = true;
           if (this.isAmaterasu) this.homing = true;
           this.piercesGenericProjectiles = this.homing;
@@ -1626,6 +1648,20 @@
           this.isDead = true;
         }
 
+        launchSusanoVolley(target) {
+          if (!target || target.isDead) return;
+          const spawnProjectile = (startDelay = 0, spreadY = 0) => {
+            const projectile = new this.e.Jutsu(this.cx, this.cy + spreadY, 0, 0, this, {
+              isEquipped: false,
+              target,
+              startDelay
+            });
+            this.e.jutsus.push(projectile);
+          };
+          spawnProjectile(0, -8);
+          spawnProjectile(14, 8);
+        }
+
         launchJutsu(target, options = {}) {
           if (this.jutsuCD > 0) return;
           const skillData = options.skillData || null;
@@ -1675,6 +1711,7 @@
             this.jutsuCD = 120;
             this.skillCooldowns[skillData.id] = Math.max(1, Math.round((skillData.cooldownSeconds || 225) * 60));
             this.activateSusano(skillData);
+            this.launchSusanoVolley(target);
             this.e.beginTimedSkillFx(this, skillName, 1000, 0.30, 0.45);
             this.flashTimer = 12;
             return;

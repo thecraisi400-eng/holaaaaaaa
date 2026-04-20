@@ -443,15 +443,17 @@
     }
 
     drawEquippedSkillSlots(ctx) {
-      const slotSize = Math.round(32 * 1.15);
-      const gap = 5;
+      const slotBaseSize = Math.round(32 * 1.15);
+      const slotWidth = Math.round(slotBaseSize * 1.07);
+      const slotHeight = Math.round(slotBaseSize * 0.90);
+      const gap = 5 + Math.max(1, Math.round(slotBaseSize * 0.05));
       const baseX = 10;
-      const baseY = this.H - slotSize - 10;
+      const baseY = this.H - slotHeight - 10;
       const equipped = this.getHeroEquippedSkillSlots().slice(0, 6);
       const hero = this.fighters[0];
 
       for (let i = 0; i < 6; i += 1) {
-        const slotX = baseX + i * (slotSize + gap);
+        const slotX = baseX + i * (slotWidth + gap);
         const slotY = baseY;
         const skill = equipped[i] || null;
 
@@ -459,29 +461,31 @@
         ctx.fillStyle = skill ? 'rgba(12,20,36,0.90)' : 'rgba(0,0,0,0.45)';
         ctx.strokeStyle = skill ? 'rgba(120,190,255,0.95)' : 'rgba(180,180,180,0.60)';
         ctx.lineWidth = 1.4;
-        ctx.fillRect(slotX, slotY, slotSize, slotSize);
-        ctx.strokeRect(slotX, slotY, slotSize, slotSize);
+        ctx.fillRect(slotX, slotY, slotWidth, slotHeight);
+        ctx.strokeRect(slotX, slotY, slotWidth, slotHeight);
 
         if (skill) {
           ctx.fillStyle = '#FFFFFF';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.font = 'bold 18px Arial';
-          ctx.fillText(skill.em || '✦', slotX + slotSize / 2, slotY + slotSize / 2 + 1);
+          ctx.fillText(skill.em || '✦', slotX + slotWidth / 2, slotY + slotHeight / 2 + 1);
           const cdFrames = hero?.getSkillCooldown?.(skill.id) || 0;
           if (cdFrames > 0) {
             const ratio = Math.min(1, cdFrames / Math.max(1, (skill.cooldownSeconds || 13) * 60));
             const secs = Math.max(0, Math.ceil(cdFrames / 60));
             ctx.fillStyle = 'rgba(0,0,0,0.62)';
-            ctx.fillRect(slotX, slotY + slotSize * (1 - ratio), slotSize, slotSize * ratio);
+            ctx.fillRect(slotX, slotY + slotHeight * (1 - ratio), slotWidth, slotHeight * ratio);
             ctx.fillStyle = '#ffe066';
             ctx.font = 'bold 10px Arial Black';
-            ctx.fillText(`${secs}s`, slotX + slotSize / 2, slotY + slotSize / 2 + 11);
+            ctx.fillText(`${secs}s`, slotX + slotWidth / 2, slotY + slotHeight / 2 + 11);
           }
         } else {
+          const emptyInsetX = Math.max(6, Math.round(slotWidth * 0.22));
+          const emptyInsetY = Math.max(5, Math.round(slotHeight * 0.22));
           ctx.strokeStyle = 'rgba(255,255,255,0.22)';
           ctx.lineWidth = 1;
-          ctx.strokeRect(slotX + 8, slotY + 8, slotSize - 16, slotSize - 16);
+          ctx.strokeRect(slotX + emptyInsetX, slotY + emptyInsetY, slotWidth - emptyInsetX * 2, slotHeight - emptyInsetY * 2);
         }
         ctx.restore();
       }

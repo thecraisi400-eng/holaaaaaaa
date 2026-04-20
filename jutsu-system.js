@@ -14,7 +14,7 @@
       { key: 'slot5', skill: null },
       { key: 'slot6', skill: null }
     ],
-    equipped: [null, null, null]
+    equipped: [null, null, null, null, null, null]
   });
 
   // ===============================================================
@@ -363,39 +363,48 @@
       window.JutsuSystem.render();
     },
 
+    buildSkillPayload(skill) {
+      if (!skill || typeof skill !== 'object') return null;
+      const stats = buildSkillStats(skill);
+      return {
+        id: skill.id,
+        name: skill.name,
+        em: skill.em,
+        damage: stats.current.damage,
+        mpCost: stats.current.mpCost,
+        duration: stats.current.duration,
+        cooldownSeconds: toNumber(skill.cooldownSeconds, stats.current.duration || 13),
+        burnPercent: toNumber(skill.burnPercent, 0),
+        burnSeconds: toNumber(skill.burnSeconds, 0),
+        atkBuffPercent: toNumber(skill.atkBuffPercent, 0),
+        atkBuffSeconds: toNumber(skill.atkBuffSeconds, 0),
+        cloneLifetimeSeconds: toNumber(skill.cloneLifetimeSeconds, 0),
+        cloneCount: toNumber(skill.cloneCount, 0),
+        cloneStatMultiplier: toNumber(skill.cloneStatMultiplier, 0),
+        aiRetryDelaySeconds: toNumber(skill.aiRetryDelaySeconds, 0),
+        ritualSeconds: toNumber(skill.ritualSeconds, 0),
+        enemyStopSeconds: toNumber(skill.enemyStopSeconds, 0),
+        selfHpPercentCost: toNumber(skill.selfHpPercentCost, 0),
+        amaterasuSlowMo: toNumber(skill.amaterasuSlowMo, 0.30),
+        amaterasuDarkness: toNumber(skill.amaterasuDarkness, 0.45),
+        defBuffPercent: toNumber(skill.defBuffPercent, 0),
+        transformDurationSeconds: toNumber(skill.transformDurationSeconds, 0),
+        aiUseChance: toNumber(skill.aiUseChance, 0)
+      };
+    },
+
     getEquippedSkills() {
       const current = this.getActiveCharacterConfig();
       if (!current) return [];
       return current.equipped
-        .filter((skill) => skill && typeof skill === 'object')
-        .map((skill) => {
-          const stats = buildSkillStats(skill);
-          return {
-            id: skill.id,
-            name: skill.name,
-            em: skill.em,
-            damage: stats.current.damage,
-            mpCost: stats.current.mpCost,
-            duration: stats.current.duration,
-            cooldownSeconds: toNumber(skill.cooldownSeconds, stats.current.duration || 13),
-            burnPercent: toNumber(skill.burnPercent, 0),
-            burnSeconds: toNumber(skill.burnSeconds, 0),
-            atkBuffPercent: toNumber(skill.atkBuffPercent, 0),
-            atkBuffSeconds: toNumber(skill.atkBuffSeconds, 0),
-            cloneLifetimeSeconds: toNumber(skill.cloneLifetimeSeconds, 0),
-            cloneCount: toNumber(skill.cloneCount, 0),
-            cloneStatMultiplier: toNumber(skill.cloneStatMultiplier, 0),
-            aiRetryDelaySeconds: toNumber(skill.aiRetryDelaySeconds, 0),
-            ritualSeconds: toNumber(skill.ritualSeconds, 0),
-            enemyStopSeconds: toNumber(skill.enemyStopSeconds, 0),
-            selfHpPercentCost: toNumber(skill.selfHpPercentCost, 0),
-            amaterasuSlowMo: toNumber(skill.amaterasuSlowMo, 0.30),
-            amaterasuDarkness: toNumber(skill.amaterasuDarkness, 0.45),
-            defBuffPercent: toNumber(skill.defBuffPercent, 0),
-            transformDurationSeconds: toNumber(skill.transformDurationSeconds, 0),
-            aiUseChance: toNumber(skill.aiUseChance, 0)
-          };
-        });
+        .map((skill) => this.buildSkillPayload(skill))
+        .filter(Boolean);
+    },
+
+    getEquippedSkillSlots() {
+      const current = this.getActiveCharacterConfig();
+      if (!current) return [];
+      return current.equipped.map((skill) => this.buildSkillPayload(skill));
     },
 
     openSkillModal(leftSlotIndex) {
@@ -417,7 +426,7 @@
 
     unequipSlot(slotIndex) {
       const current = this.getActiveCharacterConfig();
-      if (!current || Number.isNaN(slotIndex) || slotIndex < 0 || slotIndex > 2) return;
+      if (!current || Number.isNaN(slotIndex) || slotIndex < 0 || slotIndex >= current.equipped.length) return;
 
       const equippedSkill = current.equipped[slotIndex];
       if (!equippedSkill) return;
@@ -584,7 +593,7 @@
       }
 
       const firstEmpty = current.equipped.findIndex((value) => value == null);
-      const targetIndex = firstEmpty >= 0 ? firstEmpty : 2;
+      const targetIndex = firstEmpty >= 0 ? firstEmpty : current.equipped.length - 1;
       current.equipped[targetIndex] = deepClone(skill);
       this.spawnParticles(targetIndex);
       this.renderSlots();
@@ -596,7 +605,7 @@
       const current = this.getActiveCharacterConfig();
       if (!current) return;
 
-      for (let i = 0; i < 3; i += 1) {
+      for (let i = 0; i < current.equipped.length; i += 1) {
         const skill = current.equipped[i];
         const circle = this.root.querySelector(`#jsuSlot${i}`);
         const em = this.root.querySelector(`#jsuSlotEm${i}`);
@@ -607,14 +616,14 @@
         if (skill) {
           circle.classList.remove('empty');
           circle.classList.add('has-skill');
-          em.style.fontSize = '28px';
+          em.style.fontSize = '22px';
           em.style.opacity = '1';
           em.textContent = skill.em || '✦';
           name.textContent = skill.name || '';
         } else {
           circle.classList.add('empty');
           circle.classList.remove('has-skill', 'shake');
-          em.style.fontSize = '20px';
+          em.style.fontSize = '16px';
           em.style.opacity = '0.25';
           em.textContent = '✦';
           name.textContent = '';
@@ -628,6 +637,7 @@
 
       container.innerHTML = '';
       const colors = ['#00d4ff', '#ffffff', '#44aaff', '#00ffcc'];
+      const radius = container.clientWidth / 2;
       for (let i = 0; i < 14; i += 1) {
         const particle = document.createElement('div');
         particle.className = 'jsu-particle';
@@ -637,8 +647,8 @@
         const ty = `${Math.sin(angle) * dist}px`;
 
         particle.style.cssText = `
-          left:${34 + Math.random() * 12 - 6}px;
-          top:${34 + Math.random() * 12 - 6}px;
+          left:${radius + (Math.random() * 12 - 6)}px;
+          top:${radius + (Math.random() * 12 - 6)}px;
           background:${colors[Math.floor(Math.random() * colors.length)]};
           --tx:${tx};
           --ty:${ty};

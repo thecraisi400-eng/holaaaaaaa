@@ -1502,11 +1502,13 @@ html, body {
 
 .jsu-slot-panel {
   flex: 1;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
   align-items: center;
-  justify-content: space-around;
-  padding: 8px 6px;
+  justify-items: center;
+  gap: 6px 4px;
+  padding: 8px 4px;
 }
 
 .jsu-slot-wrap { display: flex; flex-direction: column; align-items: center; gap: 3px; }
@@ -1520,8 +1522,8 @@ html, body {
 }
 
 .jsu-slot-circle {
-  width: 68px;
-  height: 68px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   border: 2px solid var(--jsu-border);
   background: rgba(0, 0, 0, 0.5);
@@ -1553,7 +1555,7 @@ html, body {
 }
 
 .jsu-slot-sname {
-  font-size: 8px;
+  font-size: 7px;
   color: var(--jsu-accent);
   font-weight: 700;
   text-align: center;

@@ -14,7 +14,7 @@
       { key: 'slot5', skill: null },
       { key: 'slot6', skill: null }
     ],
-    equipped: [null, null, null]
+    equipped: [null, null, null, null, null, null]
   });
 
   // ===============================================================
@@ -318,7 +318,16 @@
         if (!this.state.byCharacter[id]) {
           this.state.byCharacter[id] = createEmptyCharacterConfig(id);
         }
+        this.normalizeEquippedSlots(this.state.byCharacter[id]);
       });
+    },
+
+    normalizeEquippedSlots(config) {
+      if (!config) return;
+      if (!Array.isArray(config.equipped)) config.equipped = [];
+      const normalized = config.equipped.slice(0, 6);
+      while (normalized.length < 6) normalized.push(null);
+      config.equipped = normalized;
     },
 
     syncActiveCharacter() {
@@ -332,6 +341,7 @@
       const id = this.state.activeCharacterId;
       if (!id) return null;
       if (!this.state.byCharacter[id]) this.state.byCharacter[id] = createEmptyCharacterConfig(id);
+      this.normalizeEquippedSlots(this.state.byCharacter[id]);
       return this.state.byCharacter[id];
     },
 
@@ -417,7 +427,7 @@
 
     unequipSlot(slotIndex) {
       const current = this.getActiveCharacterConfig();
-      if (!current || Number.isNaN(slotIndex) || slotIndex < 0 || slotIndex > 2) return;
+      if (!current || Number.isNaN(slotIndex) || slotIndex < 0 || slotIndex > 5) return;
 
       const equippedSkill = current.equipped[slotIndex];
       if (!equippedSkill) return;
@@ -584,7 +594,7 @@
       }
 
       const firstEmpty = current.equipped.findIndex((value) => value == null);
-      const targetIndex = firstEmpty >= 0 ? firstEmpty : 2;
+      const targetIndex = firstEmpty >= 0 ? firstEmpty : 5;
       current.equipped[targetIndex] = deepClone(skill);
       this.spawnParticles(targetIndex);
       this.renderSlots();
@@ -596,7 +606,7 @@
       const current = this.getActiveCharacterConfig();
       if (!current) return;
 
-      for (let i = 0; i < 3; i += 1) {
+      for (let i = 0; i < 6; i += 1) {
         const skill = current.equipped[i];
         const circle = this.root.querySelector(`#jsuSlot${i}`);
         const em = this.root.querySelector(`#jsuSlotEm${i}`);
@@ -607,7 +617,7 @@
         if (skill) {
           circle.classList.remove('empty');
           circle.classList.add('has-skill');
-          em.style.fontSize = '28px';
+          em.style.fontSize = '22px';
           em.style.opacity = '1';
           em.textContent = skill.em || '✦';
           name.textContent = skill.name || '';
@@ -631,14 +641,16 @@
       for (let i = 0; i < 14; i += 1) {
         const particle = document.createElement('div');
         particle.className = 'jsu-particle';
+        const centerX = container.clientWidth / 2;
+        const centerY = container.clientHeight / 2;
         const angle = (Math.random() * 360) * (Math.PI / 180);
         const dist = 18 + Math.random() * 26;
         const tx = `${Math.cos(angle) * dist}px`;
         const ty = `${Math.sin(angle) * dist}px`;
 
         particle.style.cssText = `
-          left:${34 + Math.random() * 12 - 6}px;
-          top:${34 + Math.random() * 12 - 6}px;
+          left:${centerX + Math.random() * 10 - 5}px;
+          top:${centerY + Math.random() * 10 - 5}px;
           background:${colors[Math.floor(Math.random() * colors.length)]};
           --tx:${tx};
           --ty:${ty};

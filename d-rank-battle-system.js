@@ -5,6 +5,7 @@
   const NW = Math.round(64 * SC);
   const NH = Math.round(64 * SC);
   const G = 0.44;
+  const SHARED_SKILL_LOCK_SECONDS = 5;
   const SPRITE_SIZE = 256;
   const SPRITE_FRAMES = 4;
   const SUSANOO_SPRITE_PATH = 'assets/images/itachi_susano.png';
@@ -1368,6 +1369,7 @@
           this.baseSpriteProfile = spriteProfile;
           this.skillCooldowns = {};
           this.skillRetryTimers = {};
+          this.sharedSkillLockTimer = 0;
           this.skillLock = null;
           this.shurikenSkillState = null;
           this.burn = null;
@@ -1385,8 +1387,15 @@
         get cy() { return this.y + this.spriteH / 2; }
         get hitRadius() { return this.spriteW * 0.5; }
         getSkillCooldown(skillId) { return Math.max(0, this.skillCooldowns?.[skillId] || 0); }
+        getSharedSkillLock() { return Math.max(0, this.sharedSkillLockTimer || 0); }
+        applySharedSkillLock(seconds = SHARED_SKILL_LOCK_SECONDS) {
+          const lockFrames = Math.max(1, Math.round((Number(seconds) || SHARED_SKILL_LOCK_SECONDS) * 60));
+          this.sharedSkillLockTimer = Math.max(this.getSharedSkillLock(), lockFrames);
+        }
         canUseSkill(skillData = null) {
           if (!skillData?.id) return this.jutsuCD <= 0;
+          if (this.isSusanoActive) return false;
+          if (this.getSharedSkillLock() > 0) return false;
           return this.getSkillCooldown(skillData.id) <= 0 && Math.max(0, this.skillRetryTimers?.[skillData.id] || 0) <= 0;
         }
         applyBurn(percentPerSecond, durationSeconds, source) {
@@ -1671,10 +1680,13 @@
           const isEquipped = Boolean(options.isEquipped);
           const skillName = options.skillName || 'Habilidad';
           if (isEquipped && skillData?.id && this.getSkillCooldown(skillData.id) > 0) return;
+          if (isEquipped && this.isSusanoActive) return;
+          if (isEquipped && this.getSharedSkillLock() > 0) return;
           const aiRetrySeconds = Math.max(0, Number(skillData?.aiRetryDelaySeconds || 0));
           if (isEquipped && skillData?.id && aiRetrySeconds > 0) {
             this.skillRetryTimers[skillData.id] = Math.max(1, Math.round(aiRetrySeconds * 60));
           }
+          if (isEquipped) this.applySharedSkillLock();
           if (skillData?.id === 'itachi-kage-bunshin') {
             this.mp = Math.max(0, this.mp - mpCost);
             this.jutsuCD = 110;
@@ -1789,6 +1801,7 @@
           if (this.stunTimer > 0) this.stunTimer -= dt;
           if (this.atkCD > 0) this.atkCD -= dt;
           if (this.jutsuCD > 0) this.jutsuCD -= dt;
+          if (this.sharedSkillLockTimer > 0) this.sharedSkillLockTimer = Math.max(0, this.sharedSkillLockTimer - dt);
           if (this.invTimer > 0) {
             this.invTimer -= dt;
             if (this.invTimer <= 0) this.invincible = false;

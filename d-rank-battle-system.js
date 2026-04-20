@@ -763,6 +763,7 @@
                 this.particles.push(new this.Particle(this, weaker.x, weaker.y, Math.cos(ang) * spd * 0.7, Math.sin(ang) * spd * 0.7, '#FF5A00', 20, 2.4, 'spark'));
               }
               this.triggerShake(4, 12);
+              this.spawnSmoke(weaker.x, weaker.y, 12);
               weaker.resolveReason = 'overpowered';
               weaker.dead = true;
               superior.vx *= 1.04;
@@ -1726,13 +1727,22 @@
           const dy = target.cy - this.cy;
           const d = Math.sqrt(dx * dx + dy * dy) || 1;
           const spd = this.isSusanoActive ? 7.4 : (isEquipped ? 6.2 : 5);
-          const projectile = new this.e.Jutsu(this.cx, this.cy, (dx / d) * spd, (dy / d) * spd, this, {
-            isEquipped,
-            skillName,
-            skillData,
-            target
-          });
-          this.e.jutsus.push(projectile);
+          const shouldUseSusanoDoubleShot = this.isSusanoActive && !isEquipped && !skillData;
+          const spawnProjectile = (startDelay = 0, spreadY = 0) => {
+            const projectile = new this.e.Jutsu(this.cx, this.cy + spreadY, (dx / d) * spd, (dy / d) * spd, this, {
+              isEquipped,
+              skillName,
+              skillData,
+              target,
+              startDelay
+            });
+            this.e.jutsus.push(projectile);
+            return projectile;
+          };
+          const projectile = spawnProjectile();
+          if (shouldUseSusanoDoubleShot) {
+            spawnProjectile(10, -10);
+          }
           this.e.spawnSparks(this.cx, this.cy, 14, this.glowColor);
           this.e.triggerShake(6, 14);
           if (isEquipped) {

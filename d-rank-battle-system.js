@@ -438,16 +438,20 @@
     }
 
     drawEquippedSkillSlots(ctx) {
-      const slotSize = 32;
-      const gap = 6;
+      const slotSize = 24;
+      const gap = 5;
+      const rowGap = 4;
       const baseX = 10;
-      const baseY = this.H - slotSize - 10;
-      const equipped = this.getHeroEquippedSkills().slice(0, 3);
+      const totalHeight = (slotSize * 2) + rowGap;
+      const baseY = this.H - totalHeight - 10;
+      const equipped = this.getHeroEquippedSkills().slice(0, 6);
       const hero = this.fighters[0];
 
-      for (let i = 0; i < 3; i += 1) {
-        const slotX = baseX + i * (slotSize + gap);
-        const slotY = baseY;
+      for (let i = 0; i < 6; i += 1) {
+        const row = Math.floor(i / 3);
+        const col = i % 3;
+        const slotX = baseX + col * (slotSize + gap);
+        const slotY = baseY + row * (slotSize + rowGap);
         const skill = equipped[i] || null;
 
         ctx.save();
@@ -461,7 +465,7 @@
           ctx.fillStyle = '#FFFFFF';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.font = 'bold 18px Arial';
+          ctx.font = 'bold 14px Arial';
           ctx.fillText(skill.em || '✦', slotX + slotSize / 2, slotY + slotSize / 2 + 1);
           const cdFrames = hero?.getSkillCooldown?.(skill.id) || 0;
           if (cdFrames > 0) {
@@ -470,13 +474,13 @@
             ctx.fillStyle = 'rgba(0,0,0,0.62)';
             ctx.fillRect(slotX, slotY + slotSize * (1 - ratio), slotSize, slotSize * ratio);
             ctx.fillStyle = '#ffe066';
-            ctx.font = 'bold 10px Arial Black';
-            ctx.fillText(`${secs}s`, slotX + slotSize / 2, slotY + slotSize / 2 + 11);
+            ctx.font = 'bold 8px Arial Black';
+            ctx.fillText(`${secs}s`, slotX + slotSize / 2, slotY + slotSize / 2 + 8);
           }
         } else {
           ctx.strokeStyle = 'rgba(255,255,255,0.22)';
           ctx.lineWidth = 1;
-          ctx.strokeRect(slotX + 8, slotY + 8, slotSize - 16, slotSize - 16);
+          ctx.strokeRect(slotX + 6, slotY + 6, slotSize - 12, slotSize - 12);
         }
         ctx.restore();
       }

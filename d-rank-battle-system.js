@@ -1389,6 +1389,8 @@
           this.isSusanoActive = false;
           this.susanoTimer = 0;
           this.susanoBaseCombat = null;
+          this.susanoPreTransformState = null;
+          this.spriteRenderYOffset = 0;
           this.tsukuyomiLock = null;
           this.tsukuyomiAura = null;
         }
@@ -1429,6 +1431,10 @@
         }
         activateSusano(skillData) {
           const durationSeconds = Math.max(1, Number(skillData?.transformDurationSeconds) || 29);
+          this.susanoPreTransformState = {
+            y: this.y,
+            tY: this.tY
+          };
           this.isSusanoActive = true;
           this.susanoTimer = Math.max(1, Math.round(durationSeconds * 60));
           if (!this.susanoBaseCombat) {
@@ -1442,6 +1448,8 @@
           this.spriteW = NW * this.spriteScale;
           this.spriteH = NH * this.spriteScale;
           this.y = this.e.GROUND - this.spriteH;
+          this.tY = this.y;
+          this.spriteRenderYOffset = this.spriteH * 0.15;
           this.vy = 0;
           this.onGround = true;
           this.applyAtkBuff(Number(skillData?.atkBuffPercent) || 0.35, durationSeconds);
@@ -1455,7 +1463,12 @@
           this.spriteW = NW;
           this.spriteH = NH;
           this.spriteProfile = this.baseSpriteProfile;
-          this.y = this.e.GROUND - this.spriteH;
+          const preTransformY = Number(this.susanoPreTransformState?.y);
+          this.y = Number.isFinite(preTransformY) ? preTransformY : (this.e.GROUND - this.spriteH);
+          const preTransformTY = Number(this.susanoPreTransformState?.tY);
+          this.tY = Number.isFinite(preTransformTY) ? preTransformTY : this.y;
+          this.spriteRenderYOffset = 0;
+          this.susanoPreTransformState = null;
           this.vy = 0;
           this.onGround = true;
           if (this.susanoBaseCombat) this.combat.atk = this.susanoBaseCombat.atk;
@@ -2234,7 +2247,7 @@
             this.spriteProfile.frameW,
             this.spriteProfile.frameH,
             this.x,
-            this.y,
+            this.y + (this.spriteRenderYOffset || 0),
             this.spriteW,
             this.spriteH
           );

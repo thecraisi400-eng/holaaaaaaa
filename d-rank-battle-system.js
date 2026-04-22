@@ -8,7 +8,7 @@
   const SHARED_SKILL_LOCK_SECONDS = 5;
   const SPRITE_SIZE = 256;
   const SPRITE_FRAMES = 4;
-  const SUSANOO_SPRITE_PATH = 'assets/images/itachi_susano.png';
+  const ITACHI_SUSANOO_SPRITE_PATH = 'assets/images/itachi_susano.png';
 
   const HERO_BATTLE_SPRITES = {
     madara: 'assets/images/madara_battle.png',
@@ -1717,7 +1717,8 @@
             this.vy = 0;
           }
           if (this.isSusanoBuffed) {
-            this.size *= 1.35;
+            const projectileScale = Math.max(1, Number(this.skillData?.susanoProjectileScale) || 1.35);
+            this.size *= projectileScale;
             this.life = Math.round(this.life * 1.25);
           }
           if (this.isChidori) {
@@ -1769,9 +1770,10 @@
             const dx = this.target.cx - this.x;
             const dy = this.target.cy - this.y;
             const d = Math.sqrt(dx * dx + dy * dy) || 1;
+            const susanoProjectileSpeed = Math.max(0.5, Number(this.skillData?.susanoProjectileSpeed) || 7.2);
             const spd = (this.isChidori || this.isChidoriNagashi)
               ? 8.8
-              : (this.isSasukeAmaterasu ? 7.3 : (this.isSasukeKatonGokakyu ? 6.9 : (this.isSusanoBuffed ? 7.2 : 5.6)));
+              : (this.isSasukeAmaterasu ? 7.3 : (this.isSasukeKatonGokakyu ? 6.9 : (this.isSusanoBuffed ? susanoProjectileSpeed : 5.6)));
             const steer = (this.isChidori || this.isChidoriNagashi)
               ? 0.22
               : (this.isSasukeAmaterasu ? 0.24 : (this.isSasukeKatonGokakyu ? 0.20 : 0.18));
@@ -2047,6 +2049,7 @@
           this.susanoTimer = 0;
           this.susanoBaseCombat = null;
           this.susanoPreTransformState = null;
+          this.activeSusanoSkillData = null;
           this.spriteRenderYOffset = 0;
           this.tsukuyomiLock = null;
           this.tsukuyomiAura = null;
@@ -2087,12 +2090,14 @@
           };
         }
         activateSusano(skillData) {
-          const durationSeconds = Math.max(1, Number(skillData?.transformDurationSeconds) || 29);
+          const durationSeconds = Math.max(1, Number(skillData?.transformDurationSeconds) || 30);
           this.susanoPreTransformState = {
+            x: this.x,
             y: this.y,
             tY: this.tY
           };
           this.isSusanoActive = true;
+          this.activeSusanoSkillData = skillData ? { ...skillData } : null;
           this.susanoTimer = Math.max(1, Math.round(durationSeconds * 60));
           if (!this.susanoBaseCombat) {
             this.susanoBaseCombat = {
@@ -2100,17 +2105,21 @@
               incomingMitigation: Number(this.combat?.incomingMitigation || 0)
             };
           }
-          this.spriteProfile = this.e.buildSpriteProfile(SUSANOO_SPRITE_PATH, { spriteSize: 512, framesPerRow: 4 });
-          this.spriteScale = 3.3;
+          const susanoSpritePath = skillData?.susanoSpritePath || ITACHI_SUSANOO_SPRITE_PATH;
+          this.spriteProfile = this.e.buildSpriteProfile(susanoSpritePath, { spriteSize: 512, framesPerRow: 4 });
+          this.spriteScale = Math.max(1.1, Number(skillData?.susanoScale) || 2.2);
+          const prevCenterX = this.x + (this.spriteW / 2);
           this.spriteW = NW * this.spriteScale;
           this.spriteH = NH * this.spriteScale;
+          this.x = Math.max(3, Math.min(this.e.W - this.spriteW - 3, prevCenterX - (this.spriteW / 2)));
           this.y = this.e.GROUND - this.spriteH;
+          this.tX = this.x;
           this.tY = this.y;
           this.spriteRenderYOffset = this.spriteH * 0.15;
           this.vy = 0;
           this.onGround = true;
           this.applyAtkBuff(Number(skillData?.atkBuffPercent) || 0.35, durationSeconds);
-          this.applyDefBuff(Number(skillData?.defBuffPercent) || 0.97, durationSeconds);
+          this.applyDefBuff(Number(skillData?.defBuffPercent) || 0.90, durationSeconds);
         }
         deactivateSusano() {
           if (!this.isSusanoActive) return;
@@ -2120,12 +2129,15 @@
           this.spriteW = NW;
           this.spriteH = NH;
           this.spriteProfile = this.baseSpriteProfile;
+          const preTransformX = Number(this.susanoPreTransformState?.x);
+          this.x = Number.isFinite(preTransformX) ? preTransformX : Math.max(3, Math.min(this.e.W - this.spriteW - 3, this.x));
           const preTransformY = Number(this.susanoPreTransformState?.y);
           this.y = Number.isFinite(preTransformY) ? preTransformY : (this.e.GROUND - this.spriteH);
           const preTransformTY = Number(this.susanoPreTransformState?.tY);
           this.tY = Number.isFinite(preTransformTY) ? preTransformTY : this.y;
           this.spriteRenderYOffset = 0;
           this.susanoPreTransformState = null;
+          this.activeSusanoSkillData = null;
           this.vy = 0;
           this.onGround = true;
           if (this.susanoBaseCombat) this.combat.atk = this.susanoBaseCombat.atk;
@@ -2339,9 +2351,11 @@
 
         launchSusanoVolley(target) {
           if (!target || target.isDead) return;
+          const susanoSkillData = this.activeSusanoSkillData || null;
           const spawnProjectile = (startDelay = 0, spreadY = 0) => {
             const projectile = new this.e.Jutsu(this.cx, this.cy + spreadY, 0, 0, this, {
               isEquipped: false,
+              skillData: susanoSkillData,
               target,
               startDelay
             });
@@ -2438,7 +2452,7 @@
             this.flashTimer = 12;
             return;
           }
-          if (skillData?.id === 'itachi-susanoo') {
+          if (skillData?.id === 'itachi-susanoo' || skillData?.id === 'sasuke-susanoo') {
             this.mp = Math.max(0, this.mp - mpCost);
             this.jutsuCD = 120;
             this.skillCooldowns[skillData.id] = Math.max(1, Math.round((skillData.cooldownSeconds || 225) * 60));
@@ -2459,11 +2473,12 @@
           const d = Math.sqrt(dx * dx + dy * dy) || 1;
           const spd = this.isSusanoActive ? 7.4 : (isEquipped ? 6.2 : 5);
           const shouldUseSusanoDoubleShot = this.isSusanoActive && !isEquipped && !skillData;
+          const activeSkillData = skillData || (shouldUseSusanoDoubleShot ? this.activeSusanoSkillData : null);
           const spawnProjectile = (startDelay = 0, spreadY = 0) => {
             const projectile = new this.e.Jutsu(this.cx, this.cy + spreadY, (dx / d) * spd, (dy / d) * spd, this, {
               isEquipped,
               skillName,
-              skillData,
+              skillData: activeSkillData,
               target,
               startDelay
             });

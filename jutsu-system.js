@@ -160,6 +160,38 @@
       mpAddMax: 11
     }
   };
+  CHARACTER_SKILL_BOOK.sasuke.slots[4].skill = {
+    id: 'sasuke-mangekyo-sharingan',
+    name: '👁️ MANGEKYŌ SHARINGAN',
+    em: '👁️',
+    level: 1,
+    baseDamage: 85,
+    damagePerLevel: 0,
+    baseMpCost: 23,
+    mpCostPerLevel: 0,
+    baseDuration: 90,
+    durationPerLevel: 0,
+    cooldownSeconds: 90,
+    aiUseChance: 0.28,
+    mangekyoSlowMo: 0.30,
+    mangekyoDarkness: 0.45,
+    mangekyoCenterDistanceRatio: 0.65,
+    mangekyoRitualSeconds: 3,
+    mangekyoEnemyStopSeconds: 7,
+    mangekyoEnemyAuraSeconds: 4,
+    mangekyoSelfHpPercentCost: 0.06,
+    effect: 'Detiene al enemigo 7s',
+    buff: 'Daña al jugador -6% HP',
+    upgradeCost: { scrolls: 14, crystals: 12 },
+    upgradeRules: {
+      resourceAddMin: 10,
+      resourceAddMax: 35,
+      damageAddMin: 19,
+      damageAddMax: 28,
+      mpAddMin: 7,
+      mpAddMax: 11
+    }
+  };
 
   CHARACTER_SKILL_BOOK.itachi.slots[0].skill = {
     id: 'itachi-katon-gokakyu',
@@ -524,7 +556,14 @@
         chidoriNagashiImpactSeconds: toNumber(skill.chidoriNagashiImpactSeconds, 1),
         sasukeKatonSlowMo: toNumber(skill.sasukeKatonSlowMo, 0.13),
         sasukeKatonDarkness: toNumber(skill.sasukeKatonDarkness, 0.45),
-        sasukeKatonPositionRatio: toNumber(skill.sasukeKatonPositionRatio, 0.73)
+        sasukeKatonPositionRatio: toNumber(skill.sasukeKatonPositionRatio, 0.73),
+        mangekyoSlowMo: toNumber(skill.mangekyoSlowMo, 0.30),
+        mangekyoDarkness: toNumber(skill.mangekyoDarkness, 0.45),
+        mangekyoCenterDistanceRatio: toNumber(skill.mangekyoCenterDistanceRatio, 0.65),
+        mangekyoRitualSeconds: toNumber(skill.mangekyoRitualSeconds, 3),
+        mangekyoEnemyStopSeconds: toNumber(skill.mangekyoEnemyStopSeconds, 7),
+        mangekyoEnemyAuraSeconds: toNumber(skill.mangekyoEnemyAuraSeconds, 4),
+        mangekyoSelfHpPercentCost: toNumber(skill.mangekyoSelfHpPercentCost, 0.06)
       };
     },
 

@@ -203,6 +203,35 @@
       mpAddMax: 11
     }
   };
+  CHARACTER_SKILL_BOOK.sasuke.slots[0].skill = {
+    id: 'sasuke-chidori',
+    name: '⚡ CHIDORI',
+    em: '⚡',
+    level: 1,
+    baseDamage: 35,
+    damagePerLevel: 0,
+    baseMpCost: 11,
+    mpCostPerLevel: 0,
+    baseDuration: 25,
+    durationPerLevel: 0,
+    cooldownSeconds: 25,
+    chidoriChargeSpeed: 7.3,
+    chidoriRetreatRatio: 0.70,
+    chidoriSlowMo: 0.50,
+    chidoriDarkness: 0.45,
+    aiUseChance: 0.42,
+    effect: '-',
+    buff: '-',
+    upgradeCost: { scrolls: 10, crystals: 7 },
+    upgradeRules: {
+      resourceAddMin: 10,
+      resourceAddMax: 30,
+      damageAddMin: 19,
+      damageAddMax: 28,
+      mpAddMin: 7,
+      mpAddMax: 11
+    }
+  };
 
   const deepClone = (value) => JSON.parse(JSON.stringify(value));
   const DEFAULT_UPGRADE_COST = { scrolls: 5, crystals: 3 };
@@ -389,7 +418,11 @@
         amaterasuDarkness: toNumber(skill.amaterasuDarkness, 0.45),
         defBuffPercent: toNumber(skill.defBuffPercent, 0),
         transformDurationSeconds: toNumber(skill.transformDurationSeconds, 0),
-        aiUseChance: toNumber(skill.aiUseChance, 0)
+        aiUseChance: toNumber(skill.aiUseChance, 0),
+        chidoriChargeSpeed: toNumber(skill.chidoriChargeSpeed, 7.3),
+        chidoriRetreatRatio: toNumber(skill.chidoriRetreatRatio, 0.70),
+        chidoriSlowMo: toNumber(skill.chidoriSlowMo, 0.50),
+        chidoriDarkness: toNumber(skill.chidoriDarkness, 0.45)
       };
     },
 

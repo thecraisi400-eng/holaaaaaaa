@@ -99,6 +99,35 @@
       mpAddMax: 11
     }
   };
+  CHARACTER_SKILL_BOOK.sasuke.slots[2].skill = {
+    id: 'sasuke-chidori-nagashi',
+    name: '☀️ CHIDORI NAGASHI',
+    em: '☀️',
+    level: 1,
+    baseDamage: 70,
+    damagePerLevel: 0,
+    baseMpCost: 22,
+    mpCostPerLevel: 0,
+    baseDuration: 75,
+    durationPerLevel: 0,
+    cooldownSeconds: 75,
+    aiUseChance: 0.28,
+    chidoriNagashiSlowMo: 0.23,
+    chidoriNagashiDarkness: 0.45,
+    chidoriNagashiRetreatDistanceRatio: 0.74,
+    chidoriNagashiImpactSeconds: 1,
+    effect: '-',
+    buff: '-',
+    upgradeCost: { scrolls: 10, crystals: 7 },
+    upgradeRules: {
+      resourceAddMin: 10,
+      resourceAddMax: 30,
+      damageAddMin: 19,
+      damageAddMax: 28,
+      mpAddMin: 7,
+      mpAddMax: 11
+    }
+  };
 
   CHARACTER_SKILL_BOOK.itachi.slots[0].skill = {
     id: 'itachi-katon-gokakyu',
@@ -455,6 +484,10 @@
         chidoriDashDistanceRatio: toNumber(skill.chidoriDashDistanceRatio, 0.80),
         chidoriRetreatDistanceRatio: toNumber(skill.chidoriRetreatDistanceRatio, 0.70),
         chidoriReleaseFxDistanceRatio: toNumber(skill.chidoriReleaseFxDistanceRatio, 0.60),
+        chidoriNagashiSlowMo: toNumber(skill.chidoriNagashiSlowMo, 0.23),
+        chidoriNagashiDarkness: toNumber(skill.chidoriNagashiDarkness, 0.45),
+        chidoriNagashiRetreatDistanceRatio: toNumber(skill.chidoriNagashiRetreatDistanceRatio, 0.74),
+        chidoriNagashiImpactSeconds: toNumber(skill.chidoriNagashiImpactSeconds, 1),
         sasukeKatonSlowMo: toNumber(skill.sasukeKatonSlowMo, 0.13),
         sasukeKatonDarkness: toNumber(skill.sasukeKatonDarkness, 0.45),
         sasukeKatonPositionRatio: toNumber(skill.sasukeKatonPositionRatio, 0.73)

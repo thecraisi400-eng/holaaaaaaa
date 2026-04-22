@@ -71,6 +71,34 @@
       mpAddMax: 11
     }
   };
+  CHARACTER_SKILL_BOOK.sasuke.slots[1].skill = {
+    id: 'sasuke-katon-gokakyu',
+    name: '🔥 KATON: GŌKAKYŪ NO JUTSU',
+    em: '🔥',
+    level: 1,
+    baseDamage: 40,
+    damagePerLevel: 0,
+    baseMpCost: 12,
+    mpCostPerLevel: 0,
+    baseDuration: 45,
+    durationPerLevel: 0,
+    cooldownSeconds: 45,
+    aiUseChance: 0.28,
+    sasukeKatonSlowMo: 0.13,
+    sasukeKatonDarkness: 0.45,
+    sasukeKatonPositionRatio: 0.73,
+    effect: '-',
+    buff: '-',
+    upgradeCost: { scrolls: 10, crystals: 7 },
+    upgradeRules: {
+      resourceAddMin: 10,
+      resourceAddMax: 30,
+      damageAddMin: 19,
+      damageAddMax: 28,
+      mpAddMin: 7,
+      mpAddMax: 11
+    }
+  };
 
   CHARACTER_SKILL_BOOK.itachi.slots[0].skill = {
     id: 'itachi-katon-gokakyu',
@@ -426,7 +454,10 @@
         chidoriDarkness: toNumber(skill.chidoriDarkness, 0.65),
         chidoriDashDistanceRatio: toNumber(skill.chidoriDashDistanceRatio, 0.80),
         chidoriRetreatDistanceRatio: toNumber(skill.chidoriRetreatDistanceRatio, 0.70),
-        chidoriReleaseFxDistanceRatio: toNumber(skill.chidoriReleaseFxDistanceRatio, 0.60)
+        chidoriReleaseFxDistanceRatio: toNumber(skill.chidoriReleaseFxDistanceRatio, 0.60),
+        sasukeKatonSlowMo: toNumber(skill.sasukeKatonSlowMo, 0.13),
+        sasukeKatonDarkness: toNumber(skill.sasukeKatonDarkness, 0.45),
+        sasukeKatonPositionRatio: toNumber(skill.sasukeKatonPositionRatio, 0.73)
       };
     },
 

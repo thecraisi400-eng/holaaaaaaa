@@ -1994,6 +1994,11 @@
           this.cloneLifetime = Math.max(0, Math.round((options.cloneLifetimeSeconds || 0) * 60));
           this.x = x;
           this.y = this.e.GROUND - NH;
+          this.battleStartState = {
+            x: this.x,
+            y: this.y,
+            tY: this.y
+          };
           this.vx = 0;
           this.vy = 0;
           this.onGround = true;
@@ -2108,6 +2113,7 @@
           const susanoSpritePath = skillData?.susanoSpritePath || ITACHI_SUSANOO_SPRITE_PATH;
           this.spriteProfile = this.e.buildSpriteProfile(susanoSpritePath, { spriteSize: 512, framesPerRow: 4 });
           this.spriteScale = Math.max(1.1, Number(skillData?.susanoScale) || 2.2);
+          const susanoVerticalOffsetPercent = Number(skillData?.susanoVerticalOffsetPercent);
           const prevCenterX = this.x + (this.spriteW / 2);
           this.spriteW = NW * this.spriteScale;
           this.spriteH = NH * this.spriteScale;
@@ -2115,7 +2121,9 @@
           this.y = this.e.GROUND - this.spriteH;
           this.tX = this.x;
           this.tY = this.y;
-          this.spriteRenderYOffset = this.spriteH * 0.15;
+          this.spriteRenderYOffset = Number.isFinite(susanoVerticalOffsetPercent)
+            ? this.spriteH * susanoVerticalOffsetPercent
+            : this.spriteH * 0.15;
           this.vy = 0;
           this.onGround = true;
           this.applyAtkBuff(Number(skillData?.atkBuffPercent) || 0.35, durationSeconds);
@@ -2129,12 +2137,22 @@
           this.spriteW = NW;
           this.spriteH = NH;
           this.spriteProfile = this.baseSpriteProfile;
+          const isSasukeSusano = this.activeSusanoSkillData?.id === 'sasuke-susanoo';
           const preTransformX = Number(this.susanoPreTransformState?.x);
-          this.x = Number.isFinite(preTransformX) ? preTransformX : Math.max(3, Math.min(this.e.W - this.spriteW - 3, this.x));
           const preTransformY = Number(this.susanoPreTransformState?.y);
-          this.y = Number.isFinite(preTransformY) ? preTransformY : (this.e.GROUND - this.spriteH);
           const preTransformTY = Number(this.susanoPreTransformState?.tY);
-          this.tY = Number.isFinite(preTransformTY) ? preTransformTY : this.y;
+          const battleStartX = Number(this.battleStartState?.x);
+          const battleStartY = Number(this.battleStartState?.y);
+          const battleStartTY = Number(this.battleStartState?.tY);
+          this.x = isSasukeSusano && Number.isFinite(battleStartX)
+            ? battleStartX
+            : (Number.isFinite(preTransformX) ? preTransformX : Math.max(3, Math.min(this.e.W - this.spriteW - 3, this.x)));
+          this.y = isSasukeSusano && Number.isFinite(battleStartY)
+            ? battleStartY
+            : (Number.isFinite(preTransformY) ? preTransformY : (this.e.GROUND - this.spriteH));
+          this.tY = isSasukeSusano && Number.isFinite(battleStartTY)
+            ? battleStartTY
+            : (Number.isFinite(preTransformTY) ? preTransformTY : this.y);
           this.spriteRenderYOffset = 0;
           this.susanoPreTransformState = null;
           this.activeSusanoSkillData = null;

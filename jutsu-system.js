@@ -203,6 +203,30 @@
       mpAddMax: 11
     }
   };
+  CHARACTER_SKILL_BOOK.sasuke.slots[0].skill = {
+    id: 'sasuke-chidori',
+    name: '⚡ CHIDORI',
+    em: '⚡',
+    level: 1,
+    baseDamage: 35,
+    damagePerLevel: 0,
+    baseMpCost: 11,
+    mpCostPerLevel: 0,
+    baseDuration: 25,
+    durationPerLevel: 0,
+    cooldownSeconds: 25,
+    effect: '-',
+    buff: '-',
+    upgradeCost: { scrolls: 10, crystals: 7 },
+    upgradeRules: {
+      resourceAddMin: 10,
+      resourceAddMax: 30,
+      damageAddMin: 19,
+      damageAddMax: 28,
+      mpAddMin: 7,
+      mpAddMax: 11
+    }
+  };
 
   const deepClone = (value) => JSON.parse(JSON.stringify(value));
   const DEFAULT_UPGRADE_COST = { scrolls: 5, crystals: 3 };

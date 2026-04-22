@@ -128,6 +128,38 @@
       mpAddMax: 11
     }
   };
+  CHARACTER_SKILL_BOOK.sasuke.slots[3].skill = {
+    id: 'sasuke-amaterasu',
+    name: '🌙 AMATERASU',
+    em: '🌙',
+    level: 1,
+    baseDamage: 50,
+    damagePerLevel: 0,
+    baseMpCost: 45,
+    mpCostPerLevel: 0,
+    baseDuration: 110,
+    durationPerLevel: 0,
+    cooldownSeconds: 110,
+    aiUseChance: 0.28,
+    burnPercent: 0.04,
+    burnSeconds: 3,
+    selfHpPercentCost: 0.05,
+    amaterasuSlowMo: 0.30,
+    amaterasuDarkness: 0.45,
+    amaterasuRetreatDistanceRatio: 0.65,
+    amaterasuFlameSize: 65,
+    effect: 'Quemadura -4% HP por 3s',
+    buff: 'Daña al jugador -5% HP',
+    upgradeCost: { scrolls: 14, crystals: 12 },
+    upgradeRules: {
+      resourceAddMin: 10,
+      resourceAddMax: 35,
+      damageAddMin: 19,
+      damageAddMax: 28,
+      mpAddMin: 7,
+      mpAddMax: 11
+    }
+  };
 
   CHARACTER_SKILL_BOOK.itachi.slots[0].skill = {
     id: 'itachi-katon-gokakyu',
@@ -476,6 +508,8 @@
         selfHpPercentCost: toNumber(skill.selfHpPercentCost, 0),
         amaterasuSlowMo: toNumber(skill.amaterasuSlowMo, 0.30),
         amaterasuDarkness: toNumber(skill.amaterasuDarkness, 0.45),
+        amaterasuRetreatDistanceRatio: toNumber(skill.amaterasuRetreatDistanceRatio, 0.60),
+        amaterasuFlameSize: toNumber(skill.amaterasuFlameSize, 65),
         defBuffPercent: toNumber(skill.defBuffPercent, 0),
         transformDurationSeconds: toNumber(skill.transformDurationSeconds, 0),
         aiUseChance: toNumber(skill.aiUseChance, 0),

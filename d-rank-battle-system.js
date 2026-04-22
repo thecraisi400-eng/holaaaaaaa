@@ -418,6 +418,38 @@
       this.spawnSparks(owner.cx, owner.cy, 18, '#60a5fa');
     }
 
+    beginSasukeKatonSkill(owner, target, skillData, skillName) {
+      if (!owner || !target || owner.isDead || target.isDead) return;
+      const positionRatio = Math.max(0.3, Math.min(0.9, Number(skillData?.sasukeKatonPositionRatio) || 0.73));
+      const separation = this.W * positionRatio;
+      const fromLeft = owner.cx < target.cx;
+      const desiredX = target.x + (fromLeft ? -separation : separation);
+      const lockedX = Math.max(4, Math.min(this.W - owner.spriteW - 4, desiredX));
+      const lockedY = Math.max(6, this.GROUND - owner.spriteH - (this.H * positionRatio));
+      owner.x = lockedX;
+      owner.y = lockedY;
+      owner.vx = 0;
+      owner.vy = 0;
+      owner.onGround = false;
+      owner.skillLock = { x: lockedX, y: lockedY };
+
+      const projectile = new this.Jutsu(owner.cx, owner.cy, 0, 0, owner, {
+        isEquipped: true,
+        skillName: skillName || '🔥 KATON: GŌKAKYŪ NO JUTSU',
+        skillData: skillData || {},
+        target
+      });
+      this.jutsus.push(projectile);
+
+      this.slowMo = Math.max(0.05, Math.min(1, Number(skillData?.sasukeKatonSlowMo) || 0.13));
+      this.activeSkillProjectile = projectile;
+      this.activeSkillLabel = { name: skillName || '🔥 KATON: GŌKAKYŪ NO JUTSU', owner };
+      this.activeSkillTracker = { owner, pendingHits: 1 };
+      this.activeSkillFxTimer = 0;
+      if (this.veil) this.veil.style.background = `rgba(0,0,0,${Math.max(0, Math.min(0.85, Number(skillData?.sasukeKatonDarkness) || 0.45))})`;
+      this.spawnSparks(owner.cx, owner.cy, 14, '#ff5a1f');
+    }
+
     beginChidoriRetreat(owner, target, projectile, skillData) {
       const state = this.chidoriState;
       if (!state || state.phase === 'retreat') return;
@@ -1004,6 +1036,7 @@
             const isItachiShurikenjutsu = j.skillData?.id === 'itachi-shurikenjutsu';
             const isItachiAmaterasu = j.skillData?.id === 'itachi-amaterasu';
             const isSasukeChidori = j.skillData?.id === 'sasuke-chidori';
+            const isSasukeKaton = j.skillData?.id === 'sasuke-katon-gokakyu';
             if (isSasukeChidori) {
               if (j.hasImpacted) continue;
               const baseDamage = Number(j.skillData?.damage || 35);
@@ -1011,6 +1044,9 @@
               j.hasImpacted = true;
               j.resolveReason = 'enemy-hit';
               this.beginChidoriRetreat(j.owner, f, j, j.skillData);
+            } else if (isSasukeKaton) {
+              f.receiveHit(Number(j.skillData?.damage || 40), j.x, j.owner, false);
+              j.resolveReason = 'enemy-hit';
             } else if (isItachiShurikenjutsu) {
               j.resolveReason = 'enemy-hit';
             } else if (isItachiAmaterasu) {
@@ -1335,11 +1371,12 @@
           this.isShurikenjutsu = this.skillData?.id === 'itachi-shurikenjutsu';
           this.isAmaterasu = this.skillData?.id === 'itachi-amaterasu';
           this.isKatonGokakyu = this.skillData?.id === 'itachi-katon-gokakyu';
+          this.isSasukeKatonGokakyu = this.skillData?.id === 'sasuke-katon-gokakyu';
           this.isChidori = this.skillData?.id === 'sasuke-chidori';
           this.isSusanoBuffed = Boolean(owner?.isSusanoActive);
           this.isGenericProjectile = !this.isEquipped;
-          this.isSuperiorProjectile = this.isKatonGokakyu || this.isChidori || (this.isSusanoBuffed && this.isGenericProjectile);
-          this.homing = this.isKatonGokakyu || this.isShurikenjutsu;
+          this.isSuperiorProjectile = this.isKatonGokakyu || this.isSasukeKatonGokakyu || this.isChidori || (this.isSusanoBuffed && this.isGenericProjectile);
+          this.homing = this.isKatonGokakyu || this.isSasukeKatonGokakyu || this.isShurikenjutsu;
           if (this.isSusanoBuffed && this.isGenericProjectile) this.homing = true;
           if (this.isAmaterasu || this.isChidori) this.homing = true;
           this.piercesGenericProjectiles = this.homing;
@@ -1372,6 +1409,13 @@
             this.vy = 0;
             this.life = 240;
           }
+          if (this.isSasukeKatonGokakyu) {
+            this.size = 32.5;
+            this.color = '#ff2b1f';
+            this.vx = 0;
+            this.vy = 0;
+            this.life = 320;
+          }
         }
         update(dt) {
           if (this.startDelay > 0) {
@@ -1386,8 +1430,8 @@
             const dx = this.target.cx - this.x;
             const dy = this.target.cy - this.y;
             const d = Math.sqrt(dx * dx + dy * dy) || 1;
-            const spd = this.isChidori ? 8.8 : (this.isSusanoBuffed ? 7.2 : 5.6);
-            const steer = this.isChidori ? 0.22 : 0.18;
+            const spd = this.isChidori ? 8.8 : (this.isSasukeKatonGokakyu ? 6.9 : (this.isSusanoBuffed ? 7.2 : 5.6));
+            const steer = this.isChidori ? 0.22 : (this.isSasukeKatonGokakyu ? 0.20 : 0.18);
             this.vx += (((dx / d) * spd) - this.vx) * steer;
             this.vy += (((dy / d) * spd) - this.vy) * steer;
           }
@@ -1420,11 +1464,49 @@
               e.particles.push(new e.Particle(e, this.x + ox, this.y + oy, Math.cos(ang) * speed, Math.sin(ang) * speed - 0.18, '#090909', 22 + Math.random() * 14, 2 + Math.random() * 2.4, 'spark'));
               e.particles.push(new e.Particle(e, this.x + (Math.random() - 0.5) * this.size, this.y + this.size * 0.5, (Math.random() - 0.5) * 0.8, -0.25 - Math.random() * 0.3, '#262626', 46 + Math.random() * 24, 2 + Math.random() * 2.2, 'dust'));
             }
+          } else if (this.isSasukeKatonGokakyu) {
+            if (Math.random() < 0.96) {
+              const ang = Math.random() * Math.PI * 2;
+              const speed = 0.9 + Math.random() * 2.8;
+              const inner = Math.random() * this.size * 0.5;
+              const ox = Math.cos(ang) * inner;
+              const oy = Math.sin(ang) * inner;
+              e.particles.push(new e.Particle(e, this.x + ox, this.y + oy, Math.cos(ang) * speed, Math.sin(ang) * speed - 0.15, '#ff3a1a', 20 + Math.random() * 18, 2.2 + Math.random() * 2.8, 'spark'));
+              e.particles.push(new e.Particle(e, this.x + ox * 0.5, this.y + oy * 0.5, (Math.random() - 0.5) * 1.0, -0.2 - Math.random() * 0.4, '#ffd27a', 16 + Math.random() * 14, 1.4 + Math.random() * 2.2, 'spark'));
+              if (Math.random() < 0.45) e.particles.push(new e.Particle(e, this.x + (Math.random() - 0.5) * this.size * 0.6, this.y + this.size * 0.45, (Math.random() - 0.5) * 0.75, -0.1 - Math.random() * 0.25, '#7f1d1d', 35 + Math.random() * 20, 2 + Math.random() * 2, 'dust'));
+            }
           } else if (Math.random() < 0.35) {
             e.particles.push(new e.Particle(e, this.x, this.y, (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 1.5, this.color, 10, 2, 'spark'));
           }
         }
         draw(ctx) {
+          if (this.isSasukeKatonGokakyu) {
+            for (let i = 0; i < this.trail.length; i += 1) {
+              const t = this.trail[i];
+              const r = this.size * (1 - i / this.trail.length) * 1.05;
+              if (r <= 0) continue;
+              ctx.save();
+              ctx.globalAlpha = (1 - i / this.trail.length) * 0.42;
+              ctx.fillStyle = '#ff6a00';
+              ctx.beginPath();
+              ctx.arc(t.x, t.y, r, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            }
+            const fireCore = ctx.createRadialGradient(this.x, this.y, this.size * 0.15, this.x, this.y, this.size * 2.1);
+            fireCore.addColorStop(0, 'rgba(255,255,210,0.98)');
+            fireCore.addColorStop(0.28, 'rgba(255,180,70,0.95)');
+            fireCore.addColorStop(0.56, 'rgba(255,69,0,0.92)');
+            fireCore.addColorStop(0.8, 'rgba(220,20,20,0.8)');
+            fireCore.addColorStop(1, 'rgba(120,10,10,0)');
+            ctx.save();
+            ctx.fillStyle = fireCore;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size * 2.1, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+            return;
+          }
           if (this.isChidori) {
             for (let i = 0; i < this.trail.length; i += 1) {
               const t = this.trail[i];
@@ -1959,6 +2041,14 @@
             this.jutsuCD = 120;
             this.skillCooldowns[skillData.id] = Math.max(1, Math.round((skillData.cooldownSeconds || 25) * 60));
             this.e.beginChidoriSkill(this, target, skillData, skillName);
+            this.flashTimer = 12;
+            return;
+          }
+          if (skillData?.id === 'sasuke-katon-gokakyu') {
+            this.mp = Math.max(0, this.mp - mpCost);
+            this.jutsuCD = 120;
+            this.skillCooldowns[skillData.id] = Math.max(1, Math.round((skillData.cooldownSeconds || 45) * 60));
+            this.e.beginSasukeKatonSkill(this, target, skillData, skillName);
             this.flashTimer = 12;
             return;
           }

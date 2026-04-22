@@ -90,6 +90,7 @@
       this.amaterasuState = null;
       this.chidoriState = null;
       this.chidoriNagashiState = null;
+      this.mangekyoState = null;
       this.bgMountains = [];
       this.bgMountains2 = [];
       this.bgRocks = [];
@@ -313,6 +314,55 @@
       };
     }
 
+    beginMangekyoSkill(owner, target, skillData, skillName) {
+      if (!owner || !target || owner.isDead || target.isDead) return;
+      const separation = this.W * Math.max(0.50, Math.min(0.80, Number(skillData?.mangekyoCenterDistanceRatio) || 0.65));
+      const halfGap = separation / 2;
+      const centerX = this.W / 2;
+      const ownerX = Math.max(4, Math.min(this.W - owner.spriteW - 4, centerX - halfGap - (owner.spriteW / 2)));
+      const targetX = Math.max(4, Math.min(this.W - target.spriteW - 4, centerX + halfGap - (target.spriteW / 2)));
+      const lockYOwner = this.GROUND - owner.spriteH;
+      const lockYTarget = this.GROUND - target.spriteH;
+      const ritualFrames = Math.max(1, Math.round((Number(skillData?.mangekyoRitualSeconds) || 3) * 60));
+      const enemyStopFrames = Math.max(1, Math.round((Number(skillData?.mangekyoEnemyStopSeconds) || 7) * 60));
+      const enemyAuraFrames = Math.max(1, Math.round((Number(skillData?.mangekyoEnemyAuraSeconds) || 4) * 60));
+
+      owner.tsukuyomiLock = { x: ownerX, y: lockYOwner };
+      target.tsukuyomiLock = { x: targetX, y: lockYTarget };
+      owner.x = ownerX;
+      owner.y = lockYOwner;
+      owner.vx = 0;
+      owner.vy = 0;
+      owner.onGround = true;
+      target.x = targetX;
+      target.y = lockYTarget;
+      target.vx = 0;
+      target.vy = 0;
+      target.onGround = true;
+      owner.stunTimer = Math.max(owner.stunTimer, ritualFrames);
+      target.stunTimer = Math.max(target.stunTimer, enemyStopFrames);
+
+      owner.tsukuyomiAura = { color: 'rgba(200,20,20,0.55)', particleColor: '#ff3b3b', size: 37.5 };
+      target.tsukuyomiAura = { color: 'rgba(200,20,20,0.55)', particleColor: '#ff3b3b', size: 37.5 };
+
+      this.slowMo = Math.max(0.05, Math.min(1, Number(skillData?.mangekyoSlowMo) || 0.30));
+      this.activeSkillProjectile = null;
+      this.activeSkillLabel = { name: skillName || '👁️ MANGEKYŌ SHARINGAN', owner };
+      this.activeSkillTracker = { owner, pendingHits: 1 };
+      this.activeSkillFxTimer = 0;
+      if (this.veil) this.veil.style.background = `rgba(140,0,0,${Math.max(0, Math.min(0.75, Number(skillData?.mangekyoDarkness) || 0.45))})`;
+
+      this.mangekyoState = {
+        owner,
+        target,
+        skillData: skillData || {},
+        phase: 'ritual',
+        ritualFrames,
+        enemyStopFrames,
+        enemyAuraFrames
+      };
+    }
+
     updateTsukuyomiState(dt) {
       if (!this.tsukuyomiState) return;
       const state = this.tsukuyomiState;
@@ -373,6 +423,66 @@
         j.resolveReason = 'amaterasu-priority';
         j.dead = true;
       });
+    }
+
+    updateMangekyoState(dt) {
+      if (!this.mangekyoState) return;
+      const state = this.mangekyoState;
+      const owner = state.owner;
+      const target = state.target;
+      if (!owner || !target || owner.isDead || target.isDead) {
+        if (owner) { owner.tsukuyomiLock = null; owner.tsukuyomiAura = null; owner.skillLock = null; }
+        if (target) { target.tsukuyomiLock = null; target.tsukuyomiAura = null; }
+        this.mangekyoState = null;
+        this.endCinematicSkill();
+        return;
+      }
+
+      this.jutsus.forEach((j) => {
+        if (!j || j.dead || j.ownerTeam === owner.team) return;
+        j.resolveReason = j.isGenericProjectile ? 'mangekyo-priority-projectile' : 'mangekyo-priority-skill';
+        j.dead = true;
+      });
+
+      if (state.phase === 'ritual') {
+        state.ritualFrames -= dt;
+        owner.stunTimer = Math.max(owner.stunTimer, 2);
+        target.stunTimer = Math.max(target.stunTimer, state.enemyStopFrames);
+        if (state.ritualFrames <= 0) {
+          const selfHpCost = Math.max(0, Number(state.skillData?.mangekyoSelfHpPercentCost) || 0.06);
+          const selfDamage = owner.maxHp * selfHpCost;
+          owner.hp = Math.max(1, owner.hp - selfDamage);
+          this.damageNums.push(new this.DamageNum(owner.cx, owner.y - 12, `-${Math.round(selfHpCost * 100)}% HP`, false));
+
+          const impactDamage = Math.max(1, Number(state.skillData?.damage) || 85);
+          target.receiveHit(impactDamage, owner.cx, owner, true);
+          owner.tsukuyomiLock = null;
+          owner.tsukuyomiAura = null;
+          owner.skillLock = null;
+          target.tsukuyomiAura = {
+            color: 'rgba(220,170,255,0.55)',
+            particleColor: '#ff2020',
+            size: 37.5,
+            strokeColor: '#ffe066',
+            particleShape: 'lightning'
+          };
+          state.phase = 'enemy-stun';
+          this.endCinematicSkill();
+        }
+      } else if (state.phase === 'enemy-stun') {
+        state.enemyStopFrames -= dt;
+        state.enemyAuraFrames -= dt;
+        target.stunTimer = Math.max(target.stunTimer, state.enemyStopFrames);
+        if (state.enemyAuraFrames <= 0 && target.tsukuyomiAura?.particleShape === 'lightning') {
+          target.tsukuyomiAura = null;
+        }
+        if (state.enemyStopFrames <= 0) {
+          target.stunTimer = 0;
+          target.tsukuyomiLock = null;
+          target.tsukuyomiAura = null;
+          this.mangekyoState = null;
+        }
+      }
     }
 
     beginChidoriNagashiSkill(owner, target, skillData, skillName) {
@@ -1185,6 +1295,7 @@
       this.updateAmaterasuState();
       this.updateChidoriState(dt);
       this.updateChidoriNagashiState(dt);
+      this.updateMangekyoState(dt);
 
       if (this.hitStop > 0) {
         this.hitStop -= dt;
@@ -1220,6 +1331,7 @@
             const isSasukeChidori = j.skillData?.id === 'sasuke-chidori';
             const isSasukeKaton = j.skillData?.id === 'sasuke-katon-gokakyu';
             const isSasukeChidoriNagashi = j.skillData?.id === 'sasuke-chidori-nagashi';
+            const isSasukeMangekyo = j.skillData?.id === 'sasuke-mangekyo-sharingan';
             if (isSasukeChidori) {
               if (j.hasImpacted) continue;
               const baseDamage = Number(j.skillData?.damage || 35);
@@ -1232,6 +1344,9 @@
               j.resolveReason = 'enemy-hit';
             } else if (isSasukeChidoriNagashi) {
               j.resolveReason = 'chidori-nagashi-controlled';
+            } else if (isSasukeMangekyo) {
+              f.receiveHit(Number(j.skillData?.damage || 85), j.x, j.owner, true);
+              j.resolveReason = 'enemy-hit';
             } else if (isItachiShurikenjutsu) {
               j.resolveReason = 'enemy-hit';
             } else if (isItachiAmaterasu || isSasukeAmaterasu) {
@@ -1359,6 +1474,7 @@
       this.amaterasuState = null;
       this.chidoriState = null;
       this.chidoriNagashiState = null;
+      this.mangekyoState = null;
       this.completionSent = false;
       if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
       if (this.winnerScreen) this.winnerScreen.style.display = 'none';
@@ -1574,6 +1690,7 @@
           this.isSasukeKatonGokakyu = this.skillData?.id === 'sasuke-katon-gokakyu';
           this.isChidori = this.skillData?.id === 'sasuke-chidori';
           this.isChidoriNagashi = this.skillData?.id === 'sasuke-chidori-nagashi';
+          this.isMangekyoSharingan = this.skillData?.id === 'sasuke-mangekyo-sharingan';
           this.isSusanoBuffed = Boolean(owner?.isSusanoActive);
           this.isGenericProjectile = !this.isEquipped;
           this.isSuperiorProjectile = this.isKatonGokakyu
@@ -1582,6 +1699,7 @@
             || this.isSasukeAmaterasu
             || this.isChidori
             || this.isChidoriNagashi
+            || this.isMangekyoSharingan
             || (this.isSusanoBuffed && this.isGenericProjectile);
           this.homing = this.isKatonGokakyu || this.isSasukeKatonGokakyu || this.isShurikenjutsu;
           if (this.isSusanoBuffed && this.isGenericProjectile) this.homing = true;
@@ -2312,6 +2430,14 @@
             this.flashTimer = 12;
             return;
           }
+          if (skillData?.id === 'sasuke-mangekyo-sharingan') {
+            this.mp = Math.max(0, this.mp - mpCost);
+            this.jutsuCD = 120;
+            this.skillCooldowns[skillData.id] = Math.max(1, Math.round((skillData.cooldownSeconds || 90) * 60));
+            this.e.beginMangekyoSkill(this, target, skillData, skillName);
+            this.flashTimer = 12;
+            return;
+          }
           if (skillData?.id === 'itachi-susanoo') {
             this.mp = Math.max(0, this.mp - mpCost);
             this.jutsuCD = 120;
@@ -2721,7 +2847,16 @@
               const py = cy + Math.sin(ang) * dist;
               const s = 1 + Math.random() * 3;
               ctx.fillStyle = aura.particleColor || '#ff4d4d';
-              if (i % 3 === 0) {
+              if (aura.particleShape === 'lightning') {
+                ctx.strokeStyle = aura.particleColor || '#ff2020';
+                ctx.lineWidth = 2.1;
+                ctx.beginPath();
+                ctx.moveTo(px - s * 1.1, py - s * 1.3);
+                ctx.lineTo(px + s * 0.35, py - s * 0.2);
+                ctx.lineTo(px - s * 0.3, py + s * 0.2);
+                ctx.lineTo(px + s * 1.2, py + s * 1.4);
+                ctx.stroke();
+              } else if (i % 3 === 0) {
                 ctx.fillRect(px - s * 0.5, py - s * 0.5, s, s);
               } else if (i % 3 === 1) {
                 ctx.beginPath();

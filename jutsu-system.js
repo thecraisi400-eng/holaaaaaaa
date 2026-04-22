@@ -192,6 +192,38 @@
       mpAddMax: 11
     }
   };
+  CHARACTER_SKILL_BOOK.sasuke.slots[5].skill = {
+    id: 'sasuke-susanoo',
+    name: '🛡️ SUSANOO',
+    em: '🛡️',
+    level: 1,
+    baseDamage: 0,
+    damagePerLevel: 0,
+    baseMpCost: 35,
+    mpCostPerLevel: 0,
+    baseDuration: 225,
+    durationPerLevel: 0,
+    atkBuffPercent: 0.35,
+    defBuffPercent: 0.90,
+    transformDurationSeconds: 30,
+    cooldownSeconds: 225,
+    aiUseChance: 0.35,
+    susanoSpritePath: 'assets/images/sasuke_susano.png',
+    susanoScale: 2.2,
+    susanoProjectileScale: 1.45,
+    susanoProjectileSpeed: 8.6,
+    effect: '-',
+    buff: 'ATK +35% · DEF +95%',
+    upgradeCost: { scrolls: 14, crystals: 12 },
+    upgradeRules: {
+      resourceAddMin: 10,
+      resourceAddMax: 35,
+      damageAddPercentMin: 1,
+      damageAddPercentMax: 3,
+      mpAddMin: 7,
+      mpAddMax: 11
+    }
+  };
 
   CHARACTER_SKILL_BOOK.itachi.slots[0].skill = {
     id: 'itachi-katon-gokakyu',
@@ -545,6 +577,10 @@
         defBuffPercent: toNumber(skill.defBuffPercent, 0),
         transformDurationSeconds: toNumber(skill.transformDurationSeconds, 0),
         aiUseChance: toNumber(skill.aiUseChance, 0),
+        susanoSpritePath: String(skill.susanoSpritePath || ''),
+        susanoScale: toNumber(skill.susanoScale, 0),
+        susanoProjectileScale: toNumber(skill.susanoProjectileScale, 0),
+        susanoProjectileSpeed: toNumber(skill.susanoProjectileSpeed, 0),
         chidoriSlowMo: toNumber(skill.chidoriSlowMo, 0.20),
         chidoriDarkness: toNumber(skill.chidoriDarkness, 0.65),
         chidoriDashDistanceRatio: toNumber(skill.chidoriDashDistanceRatio, 0.80),

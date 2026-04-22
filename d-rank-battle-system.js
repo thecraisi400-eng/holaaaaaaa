@@ -88,6 +88,7 @@
       this.activeSkillFxTimer = 0;
       this.tsukuyomiState = null;
       this.amaterasuState = null;
+      this.chidoriState = null;
       this.bgMountains = [];
       this.bgMountains2 = [];
       this.bgRocks = [];
@@ -366,6 +367,148 @@
         j.resolveReason = 'amaterasu-priority';
         j.dead = true;
       });
+    }
+
+
+    beginChidoriSkill(owner, target, skillData, skillName) {
+      if (!owner || !target || owner.isDead || target.isDead) return;
+      const dashRatio = Math.max(0.25, Math.min(0.95, Number(skillData?.chidoriDashDistanceRatio) || 0.80));
+      const separation = this.W * dashRatio;
+      const fromLeft = owner.cx < target.cx;
+      const desiredX = target.x + (fromLeft ? -separation : separation);
+      const lockedX = Math.max(4, Math.min(this.W - owner.spriteW - 4, desiredX));
+      const lockedY = this.GROUND - owner.spriteH;
+      owner.x = lockedX;
+      owner.y = lockedY;
+      owner.vx = 0;
+      owner.vy = 0;
+      owner.onGround = true;
+      owner.skillLock = { x: lockedX, y: lockedY };
+
+      const projectile = new this.Jutsu(owner.cx, owner.cy, 0, 0, owner, {
+        isEquipped: true,
+        skillName: skillName || '⚡ CHIDORI',
+        skillData: skillData || {},
+        target
+      });
+      this.jutsus.push(projectile);
+
+      this.slowMo = Math.max(0.05, Math.min(1, Number(skillData?.chidoriSlowMo) || 0.20));
+      this.activeSkillProjectile = projectile;
+      this.activeSkillLabel = { name: skillName || '⚡ CHIDORI', owner };
+      this.activeSkillTracker = { owner, pendingHits: 1 };
+      this.activeSkillFxTimer = 0;
+      if (this.veil) this.veil.style.background = `rgba(0,0,0,${Math.max(0, Math.min(0.85, Number(skillData?.chidoriDarkness) || 0.65))})`;
+
+      this.chidoriState = {
+        owner,
+        target,
+        projectile,
+        phase: 'chase',
+        retreatTimer: 0,
+        retreatDuration: 36,
+        retreatFromX: owner.x,
+        retreatToX: owner.x,
+        retreatJumpHeight: this.H * 0.22,
+        enemyReleased: false,
+        fxRemoved: false,
+        retreatDistanceRatio: Math.max(0.4, Math.min(0.95, Number(skillData?.chidoriRetreatDistanceRatio) || 0.70)),
+        releaseFxDistanceRatio: Math.max(0.3, Math.min(0.9, Number(skillData?.chidoriReleaseFxDistanceRatio) || 0.60))
+      };
+      this.spawnSparks(owner.cx, owner.cy, 18, '#60a5fa');
+    }
+
+    beginChidoriRetreat(owner, target, projectile, skillData) {
+      const state = this.chidoriState;
+      if (!state || state.phase === 'retreat') return;
+      state.phase = 'retreat';
+      state.retreatTimer = 0;
+      state.target = target;
+      state.projectile = projectile;
+      state.retreatFromX = owner.x;
+      const retreatSeparation = this.W * state.retreatDistanceRatio;
+      const retreatDir = owner.cx < target.cx ? -1 : 1;
+      state.retreatToX = Math.max(4, Math.min(this.W - owner.spriteW - 4, target.x + (retreatDir * retreatSeparation)));
+      state.retreatJumpHeight = this.H * 0.24;
+      state.enemyReleased = false;
+      state.fxRemoved = false;
+      target.stunTimer = Math.max(target.stunTimer, 9999);
+      projectile.homing = false;
+      projectile.vx = 0;
+      projectile.vy = 0;
+      this.endCinematicSkill();
+      this.spawnSparks(projectile.x, projectile.y, 20, '#93c5fd');
+    }
+
+    updateChidoriState(dt) {
+      const state = this.chidoriState;
+      if (!state) return;
+      const { owner, target, projectile } = state;
+      if (!owner || owner.isDead || !target || target.isDead || !projectile) {
+        if (owner) owner.skillLock = null;
+        if (target) target.stunTimer = Math.min(target.stunTimer, 0);
+        this.chidoriState = null;
+        return;
+      }
+      if (projectile.dead) {
+        owner.skillLock = null;
+        if (target && state.phase === 'retreat' && !state.enemyReleased) target.stunTimer = 0;
+        this.chidoriState = null;
+        return;
+      }
+
+      this.jutsus.forEach((j) => {
+        if (!j || j.dead || j.ownerTeam === owner.team) return;
+        if (!j.isGenericProjectile || j.isSuperiorProjectile) return;
+        if (Math.hypot(j.x - projectile.x, j.y - projectile.y) > projectile.size + j.size + 22) return;
+        j.resolveReason = 'chidori-overpower';
+        j.dead = true;
+        this.spawnSparks(j.x, j.y, 8, '#60a5fa');
+      });
+
+      if (state.phase === 'chase') {
+        const lockX = Math.max(4, Math.min(this.W - owner.spriteW - 4, projectile.x - owner.spriteW / 2));
+        const lockY = Math.max(6, Math.min(this.GROUND - owner.spriteH, projectile.y - owner.spriteH / 2));
+        owner.skillLock = { x: lockX, y: lockY };
+        owner.x = lockX;
+        owner.y = lockY;
+      } else if (state.phase === 'retreat') {
+        state.retreatTimer += dt;
+        const t = Math.max(0, Math.min(1, state.retreatTimer / state.retreatDuration));
+        const nx = state.retreatFromX + ((state.retreatToX - state.retreatFromX) * t);
+        const jumpArc = Math.sin(Math.PI * t) * state.retreatJumpHeight;
+        const ny = Math.max(6, this.GROUND - owner.spriteH - jumpArc);
+        owner.skillLock = { x: nx, y: ny };
+        owner.x = nx;
+        owner.y = ny;
+        projectile.x = owner.cx;
+        projectile.y = owner.cy;
+        projectile.trail.unshift({ x: projectile.x, y: projectile.y });
+        if (projectile.trail.length > 12) projectile.trail.pop();
+
+        const distFromTarget = Math.abs(owner.cx - target.cx);
+        if (!state.fxRemoved && distFromTarget >= this.W * state.releaseFxDistanceRatio) {
+          state.fxRemoved = true;
+          projectile.resolveReason = 'chidori-retreat-cleared';
+          projectile.dead = true;
+        }
+        if (!state.enemyReleased && distFromTarget >= this.W * state.retreatDistanceRatio) {
+          state.enemyReleased = true;
+          target.stunTimer = 0;
+        }
+        if (t >= 1) {
+          owner.skillLock = null;
+          owner.vx = 0;
+          owner.vy = 0;
+          owner.onGround = false;
+          if (!state.enemyReleased) target.stunTimer = 0;
+          if (!projectile.dead) {
+            projectile.resolveReason = 'chidori-retreat-end';
+            projectile.dead = true;
+          }
+          this.chidoriState = null;
+        }
+      }
     }
 
     beginCinematicSkill(owner, skillName, projectile) {
@@ -828,6 +971,7 @@
       }
       this.updateTsukuyomiState(dt);
       this.updateAmaterasuState();
+      this.updateChidoriState(dt);
 
       if (this.hitStop > 0) {
         this.hitStop -= dt;
@@ -859,7 +1003,15 @@
             const isItachiKaton = j.skillData?.id === 'itachi-katon-gokakyu';
             const isItachiShurikenjutsu = j.skillData?.id === 'itachi-shurikenjutsu';
             const isItachiAmaterasu = j.skillData?.id === 'itachi-amaterasu';
-            if (isItachiShurikenjutsu) {
+            const isSasukeChidori = j.skillData?.id === 'sasuke-chidori';
+            if (isSasukeChidori) {
+              if (j.hasImpacted) continue;
+              const baseDamage = Number(j.skillData?.damage || 35);
+              f.receiveHit(baseDamage, j.x, j.owner, true);
+              j.hasImpacted = true;
+              j.resolveReason = 'enemy-hit';
+              this.beginChidoriRetreat(j.owner, f, j, j.skillData);
+            } else if (isItachiShurikenjutsu) {
               j.resolveReason = 'enemy-hit';
             } else if (isItachiAmaterasu) {
               const baseDamage = Number(j.skillData?.damage || 50);
@@ -887,8 +1039,8 @@
               const spd = 2 + Math.random() * 4;
               this.particles.push(new this.Particle(this, j.x, j.y, Math.cos(ang) * spd, Math.sin(ang) * spd, j.color, 20, 3, 'spark'));
             }
-            j.dead = true;
-            if (j.isEquipped && this.activeSkillProjectile === j) this.endCinematicSkill();
+            if (!j.hasImpacted) j.dead = true;
+            if (j.isEquipped && this.activeSkillProjectile === j && !j.hasImpacted) this.endCinematicSkill();
           }
         }
       }
@@ -971,6 +1123,7 @@
       this.activeSkillFxTimer = 0;
       this.tsukuyomiState = null;
       this.amaterasuState = null;
+      this.chidoriState = null;
       this.completionSent = false;
       if (this.veil) this.veil.style.background = 'rgba(0,0,0,0)';
       if (this.winnerScreen) this.winnerScreen.style.display = 'none';
@@ -1182,17 +1335,19 @@
           this.isShurikenjutsu = this.skillData?.id === 'itachi-shurikenjutsu';
           this.isAmaterasu = this.skillData?.id === 'itachi-amaterasu';
           this.isKatonGokakyu = this.skillData?.id === 'itachi-katon-gokakyu';
+          this.isChidori = this.skillData?.id === 'sasuke-chidori';
           this.isSusanoBuffed = Boolean(owner?.isSusanoActive);
           this.isGenericProjectile = !this.isEquipped;
-          this.isSuperiorProjectile = this.isKatonGokakyu || (this.isSusanoBuffed && this.isGenericProjectile);
+          this.isSuperiorProjectile = this.isKatonGokakyu || this.isChidori || (this.isSusanoBuffed && this.isGenericProjectile);
           this.homing = this.isKatonGokakyu || this.isShurikenjutsu;
           if (this.isSusanoBuffed && this.isGenericProjectile) this.homing = true;
-          if (this.isAmaterasu) this.homing = true;
+          if (this.isAmaterasu || this.isChidori) this.homing = true;
           this.piercesGenericProjectiles = this.homing;
           this.rotation = Math.random() * Math.PI * 2;
           this.growth = 1;
           this.maxGrowth = this.isShurikenjutsu ? 1.25 : 1;
           this.startDelay = Math.max(0, Math.round(options.startDelay || 0));
+          this.hasImpacted = false;
           if (this.isShurikenjutsu) {
             this.size = 7;
             this.color = '#d6dce6';
@@ -1202,6 +1357,13 @@
           if (this.isSusanoBuffed) {
             this.size *= 1.35;
             this.life = Math.round(this.life * 1.25);
+          }
+          if (this.isChidori) {
+            this.size = 10;
+            this.color = '#3b82f6';
+            this.vx = 0;
+            this.vy = 0;
+            this.life = 260;
           }
           if (this.isAmaterasu) {
             this.size = 32.5;
@@ -1220,12 +1382,12 @@
           }
           this.trail.unshift({ x: this.x, y: this.y });
           if (this.trail.length > 12) this.trail.pop();
-          if (this.homing && this.target && !this.target.isDead) {
+          if (this.homing && this.target && !this.target.isDead && !this.hasImpacted) {
             const dx = this.target.cx - this.x;
             const dy = this.target.cy - this.y;
             const d = Math.sqrt(dx * dx + dy * dy) || 1;
-            const spd = this.isSusanoBuffed ? 7.2 : 5.6;
-            const steer = 0.18;
+            const spd = this.isChidori ? 8.8 : (this.isSusanoBuffed ? 7.2 : 5.6);
+            const steer = this.isChidori ? 0.22 : 0.18;
             this.vx += (((dx / d) * spd) - this.vx) * steer;
             this.vy += (((dy / d) * spd) - this.vy) * steer;
           }
@@ -1235,12 +1397,20 @@
           }
           if (this.isShurikenjutsu) this.rotation += 0.23 * dt;
           if (this.isAmaterasu) this.rotation += 0.05 * dt;
+          if (this.isChidori) this.rotation += 0.18 * dt;
           const e = this.owner.e;
           if (this.x < -12 || this.x > e.W + 12 || this.y < -12 || this.y > e.H + 12 || this.life <= 0) {
             this.resolveReason = this.resolveReason || 'expired';
             this.dead = true;
           }
-          if (this.isAmaterasu) {
+          if (this.isChidori) {
+            if (Math.random() < 0.95) {
+              const ang = Math.random() * Math.PI * 2;
+              const speed = 1.4 + Math.random() * 3.2;
+              e.particles.push(new e.Particle(e, this.x + (Math.random() - 0.5) * 20, this.y + (Math.random() - 0.5) * 20, Math.cos(ang) * speed, Math.sin(ang) * speed - 0.25, '#60a5fa', 20 + Math.random() * 16, 2 + Math.random() * 2.6, 'spark'));
+              if (Math.random() < 0.55) e.particles.push(new e.Particle(e, this.x, this.y, (Math.random() - 0.5) * 1.1, -0.2 - Math.random() * 0.3, '#bfdbfe', 16 + Math.random() * 16, 1.6 + Math.random() * 1.6, 'spark'));
+            }
+          } else if (this.isAmaterasu) {
             if (Math.random() < 0.92) {
               const ang = Math.random() * Math.PI * 2;
               const speed = 0.6 + Math.random() * 2.4;
@@ -1255,6 +1425,49 @@
           }
         }
         draw(ctx) {
+          if (this.isChidori) {
+            for (let i = 0; i < this.trail.length; i += 1) {
+              const t = this.trail[i];
+              const r = this.size * (1 - i / this.trail.length) * 1.05;
+              if (r <= 0) continue;
+              ctx.save();
+              ctx.globalAlpha = (1 - i / this.trail.length) * 0.45;
+              ctx.fillStyle = '#60a5fa';
+              ctx.beginPath();
+              ctx.arc(t.x, t.y, r, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            }
+            const core = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size * 2.2);
+            core.addColorStop(0, 'rgba(255,255,255,0.95)');
+            core.addColorStop(0.35, 'rgba(147,197,253,0.95)');
+            core.addColorStop(0.75, 'rgba(59,130,246,0.70)');
+            core.addColorStop(1, 'rgba(30,58,138,0)');
+            ctx.save();
+            ctx.fillStyle = core;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size * 2.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(191,219,254,0.95)';
+            ctx.lineWidth = 1.5;
+            for (let i = 0; i < 7; i += 1) {
+              const ang = (Math.PI * 2 * i) / 7 + (this.rotation * 0.3);
+              const len = this.size * (1.4 + Math.random() * 1.0);
+              const sx = this.x + Math.cos(ang) * (this.size * 0.25);
+              const sy = this.y + Math.sin(ang) * (this.size * 0.25);
+              const mx = sx + Math.cos(ang + (Math.random() - 0.5) * 0.7) * (len * 0.55);
+              const my = sy + Math.sin(ang + (Math.random() - 0.5) * 0.7) * (len * 0.55);
+              const ex = sx + Math.cos(ang + (Math.random() - 0.5) * 0.4) * len;
+              const ey = sy + Math.sin(ang + (Math.random() - 0.5) * 0.4) * len;
+              ctx.beginPath();
+              ctx.moveTo(sx, sy);
+              ctx.lineTo(mx, my);
+              ctx.lineTo(ex, ey);
+              ctx.stroke();
+            }
+            ctx.restore();
+            return;
+          }
           if (this.isAmaterasu) {
             for (let i = 0; i < this.trail.length; i += 1) {
               const t = this.trail[i];
@@ -1738,6 +1951,14 @@
             this.jutsuCD = 120;
             this.skillCooldowns[skillData.id] = Math.max(1, Math.round((skillData.cooldownSeconds || 11) * 60));
             this.e.beginAmaterasuSkill(this, target, skillData, skillName);
+            this.flashTimer = 12;
+            return;
+          }
+          if (skillData?.id === 'sasuke-chidori') {
+            this.mp = Math.max(0, this.mp - mpCost);
+            this.jutsuCD = 120;
+            this.skillCooldowns[skillData.id] = Math.max(1, Math.round((skillData.cooldownSeconds || 25) * 60));
+            this.e.beginChidoriSkill(this, target, skillData, skillName);
             this.flashTimer = 12;
             return;
           }

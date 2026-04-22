@@ -40,6 +40,38 @@
     tobirama: createEmptyCharacterConfig('tobirama'),
     tsunade: createEmptyCharacterConfig('tsunade')
   };
+
+  CHARACTER_SKILL_BOOK.sasuke.slots[0].skill = {
+    id: 'sasuke-chidori',
+    name: '⚡ CHIDORI',
+    em: '⚡',
+    level: 1,
+    baseDamage: 35,
+    damagePerLevel: 0,
+    baseMpCost: 11,
+    mpCostPerLevel: 0,
+    baseDuration: 25,
+    durationPerLevel: 0,
+    cooldownSeconds: 25,
+    aiUseChance: 0.28,
+    chidoriSlowMo: 0.20,
+    chidoriDarkness: 0.65,
+    chidoriDashDistanceRatio: 0.80,
+    chidoriRetreatDistanceRatio: 0.70,
+    chidoriReleaseFxDistanceRatio: 0.60,
+    effect: '-',
+    buff: '-',
+    upgradeCost: { scrolls: 10, crystals: 7 },
+    upgradeRules: {
+      resourceAddMin: 10,
+      resourceAddMax: 30,
+      damageAddMin: 19,
+      damageAddMax: 28,
+      mpAddMin: 7,
+      mpAddMax: 11
+    }
+  };
+
   CHARACTER_SKILL_BOOK.itachi.slots[0].skill = {
     id: 'itachi-katon-gokakyu',
     name: '🔥 KATON: GŌKAKYŪ NO JUTSU',
@@ -389,7 +421,12 @@
         amaterasuDarkness: toNumber(skill.amaterasuDarkness, 0.45),
         defBuffPercent: toNumber(skill.defBuffPercent, 0),
         transformDurationSeconds: toNumber(skill.transformDurationSeconds, 0),
-        aiUseChance: toNumber(skill.aiUseChance, 0)
+        aiUseChance: toNumber(skill.aiUseChance, 0),
+        chidoriSlowMo: toNumber(skill.chidoriSlowMo, 0.20),
+        chidoriDarkness: toNumber(skill.chidoriDarkness, 0.65),
+        chidoriDashDistanceRatio: toNumber(skill.chidoriDashDistanceRatio, 0.80),
+        chidoriRetreatDistanceRatio: toNumber(skill.chidoriRetreatDistanceRatio, 0.70),
+        chidoriReleaseFxDistanceRatio: toNumber(skill.chidoriReleaseFxDistanceRatio, 0.60)
       };
     },
 

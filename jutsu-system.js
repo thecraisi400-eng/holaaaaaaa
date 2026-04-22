@@ -203,6 +203,34 @@
       mpAddMax: 11
     }
   };
+  CHARACTER_SKILL_BOOK.sasuke.slots[0].skill = {
+    id: 'sasuke-chidori',
+    name: '⚡ CHIDORI',
+    em: '⚡',
+    level: 1,
+    baseDamage: 35,
+    damagePerLevel: 0,
+    baseMpCost: 11,
+    mpCostPerLevel: 0,
+    baseDuration: 25,
+    durationPerLevel: 0,
+    cooldownSeconds: 25,
+    gameSlowMo: 0.30,
+    gameDarkness: 0.75,
+    retreatDisableRatio: 0.60,
+    retreatReleaseRatio: 0.70,
+    effect: '-',
+    buff: '-',
+    upgradeCost: { scrolls: 10, crystals: 7 },
+    upgradeRules: {
+      resourceAddMin: 10,
+      resourceAddMax: 30,
+      damageAddMin: 19,
+      damageAddMax: 28,
+      mpAddMin: 7,
+      mpAddMax: 11
+    }
+  };
 
   const deepClone = (value) => JSON.parse(JSON.stringify(value));
   const DEFAULT_UPGRADE_COST = { scrolls: 5, crystals: 3 };
@@ -389,7 +417,11 @@
         amaterasuDarkness: toNumber(skill.amaterasuDarkness, 0.45),
         defBuffPercent: toNumber(skill.defBuffPercent, 0),
         transformDurationSeconds: toNumber(skill.transformDurationSeconds, 0),
-        aiUseChance: toNumber(skill.aiUseChance, 0)
+        aiUseChance: toNumber(skill.aiUseChance, 0),
+        gameSlowMo: toNumber(skill.gameSlowMo, 0.30),
+        gameDarkness: toNumber(skill.gameDarkness, 0.75),
+        retreatDisableRatio: toNumber(skill.retreatDisableRatio, 0.60),
+        retreatReleaseRatio: toNumber(skill.retreatReleaseRatio, 0.70)
       };
     },
 

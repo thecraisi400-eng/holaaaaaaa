@@ -9,6 +9,22 @@
   const SPRITE_SIZE = 256;
   const SPRITE_FRAMES = 4;
   const SUSANOO_SPRITE_PATH = 'assets/images/itachi_susano.png';
+  const QUALITY_KEY = 'ngs_battle_quality_preset';
+  const QUALITY_PARTICLE_MAP = Object.freeze({ high: 46, medium: 22, low: 16 });
+  const QUALITY_DAMAGE_NUM_LIMIT = Object.freeze({ high: 70, medium: 46, low: 30 });
+
+  function normalizeQualityPreset(preset) {
+    if (preset === 'low' || preset === 'medium' || preset === 'high') return preset;
+    return null;
+  }
+
+  function detectDefaultQualityPreset() {
+    const cores = Number(navigator.hardwareConcurrency || 4);
+    const memory = Number(navigator.deviceMemory || 4);
+    if (cores <= 4 || memory <= 4) return 'low';
+    if (cores <= 8 || memory <= 8) return 'medium';
+    return 'high';
+  }
 
   const HERO_BATTLE_SPRITES = {
     madara: 'assets/images/madara_battle.png',
@@ -94,6 +110,17 @@
       this.bgClouds = [];
       this.lastTs = 0;
       this.spriteCache = new Map();
+      this.particlePool = [];
+      this.damageNumPool = [];
+      this.qualityPreset = this.loadQualityPreset();
+      this.performanceProfile = {
+        updateMs: 0,
+        renderMs: 0,
+        frames: 0,
+        sampleElapsedMs: 0,
+        targetMaxParticles: QUALITY_PARTICLE_MAP[this.qualityPreset],
+        targetMaxDamageNums: QUALITY_DAMAGE_NUM_LIMIT[this.qualityPreset]
+      };
 
       this.boundLoop = this.loop.bind(this);
       this.bindUI();
@@ -168,6 +195,87 @@
 
     dispatchBattleEvent(eventName, detail) {
       window.dispatchEvent(new CustomEvent(eventName, { detail }));
+    }
+
+    loadQualityPreset() {
+      try {
+        const storedPreset = normalizeQualityPreset(localStorage.getItem(QUALITY_KEY));
+        return storedPreset || detectDefaultQualityPreset();
+      } catch (error) {
+        return detectDefaultQualityPreset();
+      }
+    }
+
+    setQualityPreset(preset) {
+      const nextPreset = normalizeQualityPreset(preset) || detectDefaultQualityPreset();
+      this.qualityPreset = nextPreset;
+      this.performanceProfile.targetMaxParticles = QUALITY_PARTICLE_MAP[nextPreset];
+      this.performanceProfile.targetMaxDamageNums = QUALITY_DAMAGE_NUM_LIMIT[nextPreset];
+      try {
+        localStorage.setItem(QUALITY_KEY, nextPreset);
+      } catch (error) {
+        // ignore storage issues
+      }
+    }
+
+    getQualitySettings() {
+      return {
+        preset: this.qualityPreset,
+        maxParticles: this.performanceProfile.targetMaxParticles,
+        maxDamageNums: this.performanceProfile.targetMaxDamageNums
+      };
+    }
+
+    getParticleBurstCount(highCount) {
+      const preset = this.qualityPreset;
+      if (preset === 'low') return QUALITY_PARTICLE_MAP.low;
+      if (preset === 'medium') return QUALITY_PARTICLE_MAP.medium;
+      return Math.max(1, Math.round(Number(highCount) || QUALITY_PARTICLE_MAP.high));
+    }
+
+    createParticle(x, y, vx, vy, color, life, size, type) {
+      if (this.particles.length >= this.performanceProfile.targetMaxParticles) return null;
+      const pooled = this.particlePool.pop();
+      if (pooled) {
+        pooled.reset(this, x, y, vx, vy, color, life, size, type);
+        this.particles.push(pooled);
+        return pooled;
+      }
+      const particle = new this.Particle(this, x, y, vx, vy, color, life, size, type);
+      this.particles.push(particle);
+      return particle;
+    }
+
+    createDamageNum(x, y, val, crit) {
+      if (this.damageNums.length >= this.performanceProfile.targetMaxDamageNums) return null;
+      const pooled = this.damageNumPool.pop();
+      if (pooled) {
+        pooled.reset(x, y, val, crit);
+        this.damageNums.push(pooled);
+        return pooled;
+      }
+      const damageNum = new this.DamageNum(x, y, val, crit);
+      this.damageNums.push(damageNum);
+      return damageNum;
+    }
+
+    collectGarbage() {
+      if (this.particles.length) {
+        const activeParticles = [];
+        for (const particle of this.particles) {
+          if (particle.isDead()) this.particlePool.push(particle);
+          else activeParticles.push(particle);
+        }
+        this.particles = activeParticles;
+      }
+      if (this.damageNums.length) {
+        const activeDamageNums = [];
+        for (const num of this.damageNums) {
+          if (num.isDead()) this.damageNumPool.push(num);
+          else activeDamageNums.push(num);
+        }
+        this.damageNums = activeDamageNums;
+      }
     }
 
     createCombatAdapter(battleContext) {
@@ -332,7 +440,7 @@
           const selfHpCost = Math.max(0, Number(state.skillData?.selfHpPercentCost) || 0.05);
           const selfDamage = owner.maxHp * selfHpCost;
           owner.hp = Math.max(1, owner.hp - selfDamage);
-          this.damageNums.push(new this.DamageNum(owner.cx, owner.y - 12, `-${Math.round(selfHpCost * 100)}% HP`, false));
+          this.createDamageNum(owner.cx, owner.y - 12, `-${Math.round(selfHpCost * 100)}% HP`, false);
 
           const impactDamage = Math.max(1, Number(state.skillData?.damage) || 100);
           target.receiveHit(impactDamage, owner.cx, owner, true);
@@ -554,7 +662,7 @@
       for (let i = 0; i < n; i += 1) {
         const a = Math.random() * Math.PI * 2;
         const spd = 1.5 + Math.random() * 3.5;
-        this.particles.push(new this.Particle(this, x, y, Math.cos(a) * spd, Math.sin(a) * spd, color, 18 + Math.random() * 10, 2 + Math.random() * 1.5, 'spark'));
+        this.createParticle(x, y, Math.cos(a) * spd, Math.sin(a) * spd, color, 18 + Math.random() * 10, 2 + Math.random() * 1.5, 'spark');
       }
     }
 
@@ -562,8 +670,7 @@
       const layers = [['#FFFFFF', 0.8], ['#BBBBBB', 0.5], ['#777777', 0.35]];
       for (let i = 0; i < count; i += 1) {
         const [col, spd] = layers[i % 3];
-        this.particles.push(new this.Particle(
-          this,
+        this.createParticle(
           x + (Math.random() - 0.5) * NW,
           y + (Math.random() - 0.5) * NH,
           (Math.random() - 0.5) * spd * 2,
@@ -572,7 +679,7 @@
           32 + Math.random() * 20,
           4 + Math.random() * 4 + (i % 3) * 1.5,
           'smoke'
-        ));
+        );
       }
     }
 
@@ -769,8 +876,8 @@
               for (let k = 0; k < 18; k += 1) {
                 const ang = Math.random() * Math.PI * 2;
                 const spd = 2.8 + Math.random() * 4.2;
-                this.particles.push(new this.Particle(this, weaker.x, weaker.y, Math.cos(ang) * spd, Math.sin(ang) * spd - 0.9, '#FFD700', 24, 2.8, 'spark'));
-                this.particles.push(new this.Particle(this, weaker.x, weaker.y, Math.cos(ang) * spd * 0.7, Math.sin(ang) * spd * 0.7, '#FF5A00', 20, 2.4, 'spark'));
+                this.createParticle(weaker.x, weaker.y, Math.cos(ang) * spd, Math.sin(ang) * spd - 0.9, '#FFD700', 24, 2.8, 'spark');
+                this.createParticle(weaker.x, weaker.y, Math.cos(ang) * spd * 0.7, Math.sin(ang) * spd * 0.7, '#FF5A00', 20, 2.4, 'spark');
               }
               this.triggerShake(4, 12);
               this.spawnSmoke(weaker.x, weaker.y, 12);
@@ -786,8 +893,8 @@
             for (let k = 0; k < 22; k += 1) {
               const ang = Math.random() * Math.PI * 2;
               const spd = 3 + Math.random() * 5;
-              this.particles.push(new this.Particle(this, ex, ey, Math.cos(ang) * spd, Math.sin(ang) * spd - 1, '#FFFFFF', 22, 3, 'spark'));
-              this.particles.push(new this.Particle(this, ex, ey, Math.cos(ang) * spd * 0.5, Math.sin(ang) * spd * 0.5, '#FFD700', 32, 2.5, 'spark'));
+              this.createParticle(ex, ey, Math.cos(ang) * spd, Math.sin(ang) * spd - 1, '#FFFFFF', 22, 3, 'spark');
+              this.createParticle(ex, ey, Math.cos(ang) * spd * 0.5, Math.sin(ang) * spd * 0.5, '#FFD700', 32, 2.5, 'spark');
             }
             this.critFlash = 2;
             this.triggerShake(6, 18);
@@ -804,7 +911,7 @@
     update(dt, dms) {
       this.frameN += 1;
       if (this.frameN % 65 === 0) {
-        this.particles.push(new this.Particle(this, Math.random() * this.W, this.GROUND - 2, (Math.random() - 0.5) * 1.2, -0.3 - Math.random() * 0.5, Math.random() < 0.5 ? '#C8A870' : '#A88850', 90 + Math.random() * 60, 1.2 + Math.random(), 'dust'));
+        this.createParticle(Math.random() * this.W, this.GROUND - 2, (Math.random() - 0.5) * 1.2, -0.3 - Math.random() * 0.5, Math.random() < 0.5 ? '#C8A870' : '#A88850', 90 + Math.random() * 60, 1.2 + Math.random(), 'dust');
       }
 
       if (this.critFlash > 0) this.critFlash -= dt;
@@ -832,9 +939,8 @@
       if (this.hitStop > 0) {
         this.hitStop -= dt;
         this.particles.forEach((p) => p.update(dt));
-        this.particles = this.particles.filter((p) => !p.isDead());
         this.damageNums.forEach((d) => d.update(dt));
-        this.damageNums = this.damageNums.filter((d) => !d.isDead());
+        this.collectGarbage();
         return;
       }
 
@@ -866,10 +972,11 @@
               f.receiveHit(baseDamage, j.x, j.owner, true);
               f.applyAmaterasuBurn(Number(j.skillData?.burnPercent) || 0.15, Number(j.skillData?.burnSeconds) || 3, j.owner);
               this.spawnSmoke(f.cx, f.cy + (NH * 0.35), 24);
-              for (let p = 0; p < 46; p += 1) {
+              const burstCount = this.getParticleBurstCount(46);
+              for (let p = 0; p < burstCount; p += 1) {
                 const ang = Math.random() * Math.PI * 2;
                 const spd = 1.2 + Math.random() * 5.2;
-                this.particles.push(new this.Particle(this, j.x, j.y, Math.cos(ang) * spd, Math.sin(ang) * spd - 0.35, '#050505', 28 + Math.random() * 20, 2 + Math.random() * 3.4, 'spark'));
+                this.createParticle(j.x, j.y, Math.cos(ang) * spd, Math.sin(ang) * spd - 0.35, '#050505', 28 + Math.random() * 20, 2 + Math.random() * 3.4, 'spark');
               }
               if (j.owner) j.owner.skillLock = null;
               this.amaterasuState = null;
@@ -885,7 +992,7 @@
             for (let i = 0; i < 16; i += 1) {
               const ang = Math.random() * Math.PI * 2;
               const spd = 2 + Math.random() * 4;
-              this.particles.push(new this.Particle(this, j.x, j.y, Math.cos(ang) * spd, Math.sin(ang) * spd, j.color, 20, 3, 'spark'));
+              this.createParticle(j.x, j.y, Math.cos(ang) * spd, Math.sin(ang) * spd, j.color, 20, 3, 'spark');
             }
             j.dead = true;
             if (j.isEquipped && this.activeSkillProjectile === j) this.endCinematicSkill();
@@ -901,9 +1008,8 @@
       this.jutsus = this.jutsus.filter((j) => !j.dead);
       this.summons = this.summons.filter((s) => !s.isDead);
       this.particles.forEach((p) => p.update(dt));
-      this.particles = this.particles.filter((p) => !p.isDead());
       this.damageNums.forEach((d) => d.update(dt));
-      this.damageNums = this.damageNums.filter((d) => !d.isDead());
+      this.collectGarbage();
     }
 
     render() {
@@ -1083,21 +1189,48 @@
       this.lastTs = ts;
       const dt = rawDt * this.slowMo;
       const dms = rawDt * 16.667 * this.slowMo;
+      const updateStart = performance.now();
       this.update(dt, dms);
+      const updateCost = performance.now() - updateStart;
       const hero = this.fighters[0];
       const enemy = this.fighters[1];
       this.dispatchBattleEvent('ngs:battle-tick', {
         round: this.battleContext?.runtimeModifiers?.round || 1,
         hero: { hp: Math.max(0, Math.round(hero?.hp || 0)), mp: Math.max(0, Math.round(hero?.mp || 0)) },
-        enemy: { hp: Math.max(0, Math.round(enemy?.hp || 0)) }
+        enemy: { hp: Math.max(0, Math.round(enemy?.hp || 0)) },
+        quality: this.getQualitySettings()
       });
+      const renderStart = performance.now();
       this.render();
+      const renderCost = performance.now() - renderStart;
+      this.performanceProfile.updateMs += updateCost;
+      this.performanceProfile.renderMs += renderCost;
+      this.performanceProfile.frames += 1;
+      this.performanceProfile.sampleElapsedMs += dms;
+      if (this.performanceProfile.sampleElapsedMs >= 1000 && this.performanceProfile.frames > 0) {
+        const avgUpdateMs = this.performanceProfile.updateMs / this.performanceProfile.frames;
+        const avgRenderMs = this.performanceProfile.renderMs / this.performanceProfile.frames;
+        this.dispatchBattleEvent('ngs:battle-profiler', {
+          avgUpdateMs,
+          avgRenderMs,
+          frames: this.performanceProfile.frames,
+          elapsedMs: this.performanceProfile.sampleElapsedMs,
+          quality: this.getQualitySettings()
+        });
+        this.performanceProfile.updateMs = 0;
+        this.performanceProfile.renderMs = 0;
+        this.performanceProfile.frames = 0;
+        this.performanceProfile.sampleElapsedMs = 0;
+      }
       this.animationId = requestAnimationFrame(this.boundLoop);
     }
 
     get Particle() {
       return class Particle {
         constructor(engine, x, y, vx, vy, color, life, size, type) {
+          this.reset(engine, x, y, vx, vy, color, life, size, type);
+        }
+        reset(engine, x, y, vx, vy, color, life, size, type) {
           this.e = engine;
           this.x = x; this.y = y; this.vx = vx; this.vy = vy;
           this.color = color; this.life = life; this.maxLife = life;
@@ -1139,6 +1272,9 @@
     get DamageNum() {
       return class DamageNum {
         constructor(x, y, val, crit) {
+          this.reset(x, y, val, crit);
+        }
+        reset(x, y, val, crit) {
           this.x = x; this.y = y; this.val = typeof val === 'number' ? Math.round(val) : String(val); this.crit = crit;
           this.vx = (Math.random() - 0.5) * 2.5;
           this.vy = -4.5;
@@ -1247,11 +1383,11 @@
               const inner = Math.random() * this.size * 0.35;
               const ox = Math.cos(ang) * inner;
               const oy = Math.sin(ang) * inner;
-              e.particles.push(new e.Particle(e, this.x + ox, this.y + oy, Math.cos(ang) * speed, Math.sin(ang) * speed - 0.18, '#090909', 22 + Math.random() * 14, 2 + Math.random() * 2.4, 'spark'));
-              e.particles.push(new e.Particle(e, this.x + (Math.random() - 0.5) * this.size, this.y + this.size * 0.5, (Math.random() - 0.5) * 0.8, -0.25 - Math.random() * 0.3, '#262626', 46 + Math.random() * 24, 2 + Math.random() * 2.2, 'dust'));
+              e.createParticle(this.x + ox, this.y + oy, Math.cos(ang) * speed, Math.sin(ang) * speed - 0.18, '#090909', 22 + Math.random() * 14, 2 + Math.random() * 2.4, 'spark');
+              e.createParticle(this.x + (Math.random() - 0.5) * this.size, this.y + this.size * 0.5, (Math.random() - 0.5) * 0.8, -0.25 - Math.random() * 0.3, '#262626', 46 + Math.random() * 24, 2 + Math.random() * 2.2, 'dust');
             }
           } else if (Math.random() < 0.35) {
-            e.particles.push(new e.Particle(e, this.x, this.y, (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 1.5, this.color, 10, 2, 'spark'));
+            e.createParticle(this.x, this.y, (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 1.5, this.color, 10, 2, 'spark');
           }
         }
         draw(ctx) {
@@ -1494,7 +1630,7 @@
         receiveHit(rawDmg, fromX, attacker, forcedCrit = false) {
           if (this.isDead || this.invincible) return;
           if (Math.random() < (this.combat?.evadeChance || 0.08)) {
-            this.e.damageNums.push(new this.e.DamageNum(this.cx, this.y - 7, 'EVA', false));
+            this.e.createDamageNum(this.cx, this.y - 7, 'EVA', false);
             return;
           }
           if (Math.random() < 0.15 && this.stunTimer <= 0) {
@@ -1524,18 +1660,18 @@
             this.defBreak = true;
             this.defBreakTimer = 90;
             this.dmgBurst = 0;
-            for (let i = 0; i < 8; i += 1) this.e.particles.push(new this.e.Particle(this.e, this.cx, this.cy - NH * 0.5, (Math.random() - 0.5) * 4, -3 - Math.random() * 2, '#FF0000', 28, 3, 'spark'));
+            for (let i = 0; i < 8; i += 1) this.e.createParticle(this.cx, this.cy - NH * 0.5, (Math.random() - 0.5) * 4, -3 - Math.random() * 2, '#FF0000', 28, 3, 'spark');
           }
 
           this.hp = Math.max(0, this.hp - dmg);
           const isCrit = forcedCrit || rawDmg >= 14;
-          this.e.damageNums.push(new this.e.DamageNum(this.cx + (Math.random() - 0.5) * 8, this.y - 5, dmg, isCrit));
+          this.e.createDamageNum(this.cx + (Math.random() - 0.5) * 8, this.y - 5, dmg, isCrit);
           const dir = fromX < this.cx ? 1 : -1;
           const clr = isCrit ? '#FFD700' : '#FF4422';
           for (let i = 0; i < (isCrit ? 16 : 9); i += 1) {
             const ang = (Math.random() - 0.5) * Math.PI * 0.85 + (dir > 0 ? 0 : Math.PI);
             const spd = 2 + Math.random() * 5;
-            this.e.particles.push(new this.e.Particle(this.e, this.cx, this.cy, Math.cos(ang) * spd, Math.sin(ang) * spd - 1, clr, 18 + Math.random() * 10, 2 + Math.random() * 2, 'spark'));
+            this.e.createParticle(this.cx, this.cy, Math.cos(ang) * spd, Math.sin(ang) * spd - 1, clr, 18 + Math.random() * 10, 2 + Math.random() * 2, 'spark');
           }
           this.vx += dir * 11;
           this.flashTimer = 18;
@@ -1848,7 +1984,7 @@
             if (this.burn.tickTimer <= 0) {
               const dotDamage = Math.max(1, this.maxHp * this.burn.percentPerSecond);
               this.hp = Math.max(0, this.hp - dotDamage);
-              this.e.damageNums.push(new this.e.DamageNum(this.cx, this.y - 12, dotDamage, false));
+              this.e.createDamageNum(this.cx, this.y - 12, dotDamage, false);
               this.burn.ticksLeft -= 1;
               this.burn.tickTimer = 60;
               if (this.hp <= 0 && !this.isDead) this.die();
@@ -1860,7 +1996,7 @@
             if (this.amaterasuBurn.tickTimer <= 0) {
               const dotDamage = Math.max(1, this.maxHp * this.amaterasuBurn.percentPerSecond);
               this.hp = Math.max(0, this.hp - dotDamage);
-              this.e.damageNums.push(new this.e.DamageNum(this.cx, this.y - 17, `-${Math.round(this.amaterasuBurn.percentPerSecond * 100)}% HP`, false));
+              this.e.createDamageNum(this.cx, this.y - 17, `-${Math.round(this.amaterasuBurn.percentPerSecond * 100)}% HP`, false);
               this.amaterasuBurn.ticksLeft -= 1;
               this.amaterasuBurn.tickTimer = 60;
               if (this.hp <= 0 && !this.isDead) this.die();
@@ -1872,7 +2008,7 @@
             if (this.selfCurse.tickTimer <= 0) {
               const selfDamage = Math.max(1, this.maxHp * this.selfCurse.percentPerSecond);
               this.hp = Math.max(1, this.hp - selfDamage);
-              this.e.damageNums.push(new this.e.DamageNum(this.cx, this.y - 14, `-${Math.round(this.selfCurse.percentPerSecond * 100)}% HP`, false));
+              this.e.createDamageNum(this.cx, this.y - 14, `-${Math.round(this.selfCurse.percentPerSecond * 100)}% HP`, false);
               this.selfCurse.ticksLeft -= 1;
               this.selfCurse.tickTimer = 60;
               if (this.selfCurse.ticksLeft <= 0) this.selfCurse = null;
@@ -2297,6 +2433,14 @@
     finishBattle() {
       if (!this.engine) return;
       this.engine.finishAndExit();
+    },
+    setQualityPreset(preset) {
+      if (!this.engine) return;
+      this.engine.setQualityPreset(preset);
+    },
+    getQualitySettings() {
+      if (!this.engine) return { preset: detectDefaultQualityPreset(), maxParticles: QUALITY_PARTICLE_MAP.high, maxDamageNums: QUALITY_DAMAGE_NUM_LIMIT.high };
+      return this.engine.getQualitySettings();
     },
     unmount() {
       if (!this.engine) return;

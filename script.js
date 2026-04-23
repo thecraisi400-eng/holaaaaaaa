@@ -16,7 +16,7 @@ const sections = {
   heroe: {
     icon: '🥷',
     title: 'HÉROE',
-    desc: 'Consulta y mejora el equipo de tu shinobi. Cambia armadura, armas y accesorios para maximizar tu poder de combate.',
+    desc: 'Panel de héroe cargado en el cuadro central con estadísticas y mejoras de equipo.',
   },
   misiones: {
     icon: '📜',
@@ -60,9 +60,11 @@ const sections = {
   },
 };
 
+const renderHeroSection = window.createHeroRenderer ? window.createHeroRenderer() : null;
+const centerPanel = document.getElementById('hud-center');
+
 function updateBars() {
   state.exp = Math.min(state.expMax, state.exp + Math.floor(Math.random() * 28 + 8));
-  state.gold += Math.floor(Math.random() * 12 + 3);
 
   const hpPct = Math.round((state.hp / state.hpMax) * 100);
   const mpPct = Math.round((state.mp / state.mpMax) * 100);
@@ -79,6 +81,10 @@ function updateBars() {
   document.getElementById('charLevel').textContent = state.level;
   document.getElementById('expNext').textContent = `${state.exp.toLocaleString()} / ${state.expMax.toLocaleString()} EXP — Próx. nivel: ${(state.expMax - state.exp).toLocaleString()}`;
   document.getElementById('statGold').textContent = state.gold.toLocaleString();
+
+  if (state.activeSection === 'heroe' && renderHeroSection) {
+    renderHeroSection(centerPanel, state);
+  }
 }
 
 setInterval(updateBars, 800);
@@ -136,6 +142,23 @@ const labels = {
   ajustes: 'AJUSTES',
 };
 
+function switchSection(section) {
+  state.activeSection = section;
+  if (section === 'heroe' && renderHeroSection) {
+    overlay.classList.remove('visible');
+    renderHeroSection(centerPanel, state);
+    return;
+  }
+
+  centerPanel.innerHTML = '';
+  const info = sections[section];
+  if (info) {
+    overlayTitle.innerHTML = `${info.icon} ${info.title}`;
+    overlayDesc.textContent = info.desc;
+    overlay.classList.add('visible');
+  }
+}
+
 document.querySelectorAll('.nav-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
     const rect = btn.getBoundingClientRect();
@@ -150,14 +173,7 @@ document.querySelectorAll('.nav-btn').forEach((btn) => {
 
     document.querySelectorAll('.nav-btn').forEach((b) => b.classList.remove('active'));
     btn.classList.add('active');
-    state.activeSection = sec;
-
-    const info = sections[sec];
-    if (info) {
-      overlayTitle.innerHTML = `${info.icon} ${info.title}`;
-      overlayDesc.textContent = info.desc;
-      overlay.classList.add('visible');
-    }
+    switchSection(sec);
   });
 });
 
@@ -166,4 +182,5 @@ overlayClose.addEventListener('click', () => {
   spawnParticles(window.innerWidth / 2, window.innerHeight / 2, 'amber-spark');
 });
 
+switchSection('heroe');
 updateBars();

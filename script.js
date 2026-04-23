@@ -19,10 +19,31 @@ const SAVE_KEY = 'ngs_rpg_save_data';
 const HERO_REGEN_RATE_PER_SECOND = 0.07;
 const HERO_REGEN_INTERVAL_MS = 1000;
 const BATTLE_HUD_UPDATE_INTERVAL_MS = 80;
+const SAVE_DEBOUNCE_MS = 700;
+const QUALITY_KEY = 'ngs_battle_quality_preset';
 let heroRegenIntervalId = null;
 let lastBattleHudUpdateAt = 0;
 let pendingBattleHudFrameId = null;
 let pendingBattleHudPayload = null;
+let pendingPersistTimeoutId = null;
+
+function getDefaultQualityPreset() {
+  const cores = Number(navigator.hardwareConcurrency || 4);
+  const memory = Number(navigator.deviceMemory || 4);
+  if (cores <= 4 || memory <= 4) return 'low';
+  if (cores <= 8 || memory <= 8) return 'medium';
+  return 'high';
+}
+
+function getSavedQualityPreset() {
+  try {
+    const value = localStorage.getItem(QUALITY_KEY);
+    if (value === 'high' || value === 'medium' || value === 'low') return value;
+  } catch (error) {
+    return getDefaultQualityPreset();
+  }
+  return getDefaultQualityPreset();
+}
 
 function setGold(nextGold) {
   const normalizedGold = Math.max(0, Number(nextGold) || 0);
@@ -67,6 +88,14 @@ function persistGameState() {
   }
 }
 
+function schedulePersistGameState() {
+  if (pendingPersistTimeoutId) clearTimeout(pendingPersistTimeoutId);
+  pendingPersistTimeoutId = setTimeout(() => {
+    pendingPersistTimeoutId = null;
+    persistGameState();
+  }, SAVE_DEBOUNCE_MS);
+}
+
 function rankFromLevel(level) {
   if (level >= 80) return 'KAGE';
   if (level >= 60) return 'ANBU';
@@ -85,6 +114,7 @@ window.GameState.setMp = setMp;
 window.GameState.setBattleActive = (active) => { state.inBattle = Boolean(active); };
 window.GameState.isBattleActive = () => state.inBattle;
 window.GameState.persist = persistGameState;
+window.GameState.persistDebounced = schedulePersistGameState;
 
 const sections = {
   heroe:        { icon:'🥷', title:'HÉROE',           desc:'Consulta y mejora el equipo de tu shinobi. Cambia armadura, armas y accesorios para maximizar tu poder de combate.' },
@@ -185,7 +215,7 @@ function runHeroRegenTick() {
 
   setHp(nextHp);
   setMp(nextMp);
-  persistGameState();
+  schedulePersistGameState();
 }
 
 function startHeroRegen() {
@@ -228,7 +258,7 @@ window.ProgressionService = {
         rank: updatedHero.rank
       }
     }));
-    persistGameState();
+    schedulePersistGameState();
     return updatedHero;
   }
 };
@@ -463,6 +493,7 @@ overlayClose.addEventListener('click', () => {
 });
 
 renderCenterSection(state.activeSection);
+window.ngsBattleProfiler = window.ngsBattleProfiler || { latest: null, samples: [] };
 
 window.addEventListener('ngs:game-entered', (event) => {
   const saveData = event?.detail?.saveData;
@@ -510,6 +541,10 @@ window.addEventListener('ngs:battle-started', (event) => {
   const context = event?.detail?.context;
   if (!context) return;
   window.GameState.setBattleActive(true);
+  const qualityPreset = getSavedQualityPreset();
+  if (window.DRankBattleSystem?.setQualityPreset) {
+    window.DRankBattleSystem.setQualityPreset(qualityPreset);
+  }
 });
 
 window.addEventListener('ngs:battle-tick', (event) => {
@@ -537,6 +572,24 @@ window.addEventListener('ngs:battle-ended', (event) => {
   if (delta.mp != null) setMp(delta.mp);
   if (!detail.nextRound) {
     window.GameState.setBattleActive(false);
-    persistGameState();
+    schedulePersistGameState();
+  }
+});
+
+window.addEventListener('ngs:battle-profiler', (event) => {
+  const sample = {
+    at: new Date().toISOString(),
+    avgUpdateMs: Number(event?.detail?.avgUpdateMs || 0),
+    avgRenderMs: Number(event?.detail?.avgRenderMs || 0),
+    frames: Number(event?.detail?.frames || 0),
+    quality: event?.detail?.quality?.preset || getSavedQualityPreset()
+  };
+  window.ngsBattleProfiler.latest = sample;
+  window.ngsBattleProfiler.samples.push(sample);
+  if (window.ngsBattleProfiler.samples.length > 20) {
+    window.ngsBattleProfiler.samples.shift();
+  }
+  if (sample.avgUpdateMs > 8 || sample.avgRenderMs > 8) {
+    console.info('[NGS Profile] Pico detectado', sample);
   }
 });

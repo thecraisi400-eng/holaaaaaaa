@@ -18,22 +18,31 @@ const state = {
 const SAVE_KEY = 'ngs_rpg_save_data';
 const HERO_REGEN_RATE_PER_SECOND = 0.07;
 const HERO_REGEN_INTERVAL_MS = 1000;
+const BATTLE_HUD_UPDATE_INTERVAL_MS = 80;
 let heroRegenIntervalId = null;
+let lastBattleHudUpdateAt = 0;
+let pendingBattleHudFrameId = null;
+let pendingBattleHudPayload = null;
 
 function setGold(nextGold) {
   const normalizedGold = Math.max(0, Number(nextGold) || 0);
+  if (normalizedGold === state.gold) return;
   state.gold = normalizedGold;
   updateBars();
   window.dispatchEvent(new CustomEvent('ngs:gold-updated', { detail: { gold: state.gold } }));
 }
 
 function setHp(nextHp) {
-  state.hp = Math.max(0, Math.min(state.hpMax, Number(nextHp) || 0));
+  const normalizedHp = Math.max(0, Math.min(state.hpMax, Number(nextHp) || 0));
+  if (normalizedHp === state.hp) return;
+  state.hp = normalizedHp;
   updateBars();
 }
 
 function setMp(nextMp) {
-  state.mp = Math.max(0, Math.min(state.mpMax, Number(nextMp) || 0));
+  const normalizedMp = Math.max(0, Math.min(state.mpMax, Number(nextMp) || 0));
+  if (normalizedMp === state.mp) return;
+  state.mp = normalizedMp;
   updateBars();
 }
 
@@ -246,26 +255,58 @@ function updateBars() {
   const expSpan = Math.max(1, state.expMax - state.expCurrentLevelStart);
   const expPct = Math.round(Math.min(100, Math.max(0, ((state.exp - state.expCurrentLevelStart) / expSpan) * 100)));
 
-  document.getElementById('hpFill').style.width  = hpPct  + '%';
-  document.getElementById('mpFill').style.width  = mpPct  + '%';
-  document.getElementById('expFill').style.width = expPct + '%';
+  if (!updateBars.refs) {
+    updateBars.refs = {
+      hpFill: document.getElementById('hpFill'),
+      mpFill: document.getElementById('mpFill'),
+      expFill: document.getElementById('expFill'),
+      hpCur: document.getElementById('hpCur'),
+      hpMax: document.getElementById('hpMax'),
+      hpPct: document.getElementById('hpPct'),
+      mpCur: document.getElementById('mpCur'),
+      mpMax: document.getElementById('mpMax'),
+      mpPct: document.getElementById('mpPct'),
+      expLevel: document.getElementById('expLevel'),
+      expNext: document.getElementById('expNext'),
+      statGold: document.getElementById('statGold')
+    };
+    updateBars.last = {};
+  }
+  const refs = updateBars.refs;
+  const last = updateBars.last;
 
-  document.getElementById('hpCur').textContent  = state.hp.toLocaleString();
-  document.getElementById('hpMax').textContent  = state.hpMax.toLocaleString();
-  document.getElementById('hpPct').textContent  = hpPct  + '%';
-  document.getElementById('mpCur').textContent  = state.mp.toLocaleString();
-  document.getElementById('mpMax').textContent  = state.mpMax.toLocaleString();
-  document.getElementById('mpPct').textContent  = mpPct  + '%';
+  if (last.hpPct !== hpPct && refs.hpFill) refs.hpFill.style.width = hpPct + '%';
+  if (last.mpPct !== mpPct && refs.mpFill) refs.mpFill.style.width = mpPct + '%';
+  if (last.expPct !== expPct && refs.expFill) refs.expFill.style.width = expPct + '%';
+
+  if (last.hp !== state.hp && refs.hpCur) refs.hpCur.textContent = state.hp.toLocaleString();
+  if (last.hpMax !== state.hpMax && refs.hpMax) refs.hpMax.textContent = state.hpMax.toLocaleString();
+  if (last.hpPct !== hpPct && refs.hpPct) refs.hpPct.textContent = hpPct + '%';
+  if (last.mp !== state.mp && refs.mpCur) refs.mpCur.textContent = state.mp.toLocaleString();
+  if (last.mpMax !== state.mpMax && refs.mpMax) refs.mpMax.textContent = state.mpMax.toLocaleString();
+  if (last.mpPct !== mpPct && refs.mpPct) refs.mpPct.textContent = mpPct + '%';
 
   const expNowInLevel = Math.max(0, state.exp - state.expCurrentLevelStart);
   const expNeededInLevel = Math.max(1, state.expMax - state.expCurrentLevelStart);
-  const levelEl = document.getElementById('expLevel');
-  if (levelEl) levelEl.textContent = state.level;
+  if (last.level !== state.level && refs.expLevel) refs.expLevel.textContent = state.level;
   
-  document.getElementById('expNext').textContent =
-    `${expNowInLevel.toLocaleString()} / ${expNeededInLevel.toLocaleString()} EXP — Próx. nivel: ${Math.max(0, state.expMax - state.exp).toLocaleString()}`;
+  const expText = `${expNowInLevel.toLocaleString()} / ${expNeededInLevel.toLocaleString()} EXP — Próx. nivel: ${Math.max(0, state.expMax - state.exp).toLocaleString()}`;
+  if (last.expText !== expText && refs.expNext) refs.expNext.textContent = expText;
   
-  document.getElementById('statGold').textContent = state.gold.toLocaleString();
+  if (last.gold !== state.gold && refs.statGold) refs.statGold.textContent = state.gold.toLocaleString();
+
+  updateBars.last = {
+    hp: state.hp,
+    hpMax: state.hpMax,
+    hpPct,
+    mp: state.mp,
+    mpMax: state.mpMax,
+    mpPct,
+    expPct,
+    level: state.level,
+    expText,
+    gold: state.gold
+  };
 }
 
 // ✅ Llamada única al iniciar - SIN setInterval para valores estáticos
@@ -474,8 +515,19 @@ window.addEventListener('ngs:battle-started', (event) => {
 window.addEventListener('ngs:battle-tick', (event) => {
   const hero = event?.detail?.hero;
   if (!hero) return;
-  setHp(hero.hp);
-  if (hero.mp != null) setMp(hero.mp);
+  pendingBattleHudPayload = hero;
+  if (pendingBattleHudFrameId) return;
+
+  pendingBattleHudFrameId = requestAnimationFrame(() => {
+    pendingBattleHudFrameId = null;
+    const now = performance.now();
+    if (now - lastBattleHudUpdateAt < BATTLE_HUD_UPDATE_INTERVAL_MS) return;
+    lastBattleHudUpdateAt = now;
+    const payload = pendingBattleHudPayload;
+    if (!payload) return;
+    setHp(payload.hp);
+    if (payload.mp != null) setMp(payload.mp);
+  });
 });
 
 window.addEventListener('ngs:battle-ended', (event) => {

@@ -72,6 +72,9 @@
   const charactersGrid = document.getElementById('ngsCharactersGrid');
   const selectedClanTitle = document.getElementById('ngsSelectedClanTitle');
   const loadPreviewDataDiv = document.getElementById('ngsSavePreviewData');
+  const introLayers = introRoot.querySelectorAll('.ngs-layer');
+  let pendingMouseParallax = null;
+  let parallaxFrameId = null;
 
   if (!introRoot || !app || !startScreen || !clanScreen || !characterScreen) {
     return;
@@ -332,15 +335,17 @@
 
   document.addEventListener('mousemove', (e) => {
     if (introRoot.style.display === 'none') return;
-
-    const x = e.clientX / window.innerWidth;
-    const y = e.clientY / window.innerHeight;
-    const layers = introRoot.querySelectorAll('.ngs-layer');
-
-    if (layers[0]) layers[0].style.transform = `translate(${x * 8}px, ${y * 6}px)`;
-    if (layers[1]) layers[1].style.transform = `translate(${x * -12}px, ${y * -8}px) scale(1.02)`;
-    if (layers[2]) layers[2].style.transform = `translate(${x * 4}px, ${y * 3}px)`;
-  });
+    pendingMouseParallax = { x: e.clientX / window.innerWidth, y: e.clientY / window.innerHeight };
+    if (parallaxFrameId) return;
+    parallaxFrameId = requestAnimationFrame(() => {
+      parallaxFrameId = null;
+      if (!pendingMouseParallax) return;
+      const { x, y } = pendingMouseParallax;
+      if (introLayers[0]) introLayers[0].style.transform = `translate(${x * 8}px, ${y * 6}px)`;
+      if (introLayers[1]) introLayers[1].style.transform = `translate(${x * -12}px, ${y * -8}px) scale(1.02)`;
+      if (introLayers[2]) introLayers[2].style.transform = `translate(${x * 4}px, ${y * 3}px)`;
+    });
+  }, { passive: true });
 
   function init() {
     showScreen('start');

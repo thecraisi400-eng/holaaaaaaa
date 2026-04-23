@@ -1,25 +1,63 @@
 const state = {
-  hp: 720,
-  hpMax: 1000,
-  mp: 290,
-  mpMax: 500,
-  exp: 4400,
-  expMax: 10000,
-  gold: 4320,
-  atk: 1240,
-  def: 880,
-  level: 23,
+  maxHp: 5000,
+  currentHp: 1000,
+  maxMp: 2000,
+  currentMp: 800,
+  isRegenerating: true,
+  gold: 1500,
+  atk: 1250,
+  def: 890,
   activeSection: 'heroe',
 };
 
+const sections = {
+  misiones: {
+    title: '📜 Misiones Shinobi',
+    desc: 'Completa encargos diarios y de historia para recibir experiencia, pergaminos y materiales de mejora.',
+  },
+  clanes: {
+    title: '⛩️ Clanes',
+    desc: 'Reúnete con tu aldea, participa en guerras de clanes y desbloquea bonificaciones de equipo.',
+  },
+  eventos: {
+    title: '⭐ Eventos',
+    desc: 'El Festival de Chakra está activo: obtiene recompensas por tiempo limitado en desafíos especiales.',
+  },
+  jutsus: {
+    title: '🔥 Jutsus',
+    desc: 'Gestiona técnicas activas, combina elementos y crea tu estilo definitivo de combate.',
+  },
+  batallas: {
+    title: '⚔️ Batallas',
+    desc: 'Entra a la arena PvP y asciende en el ranking con tu escuadrón ninja.',
+  },
+  invocar: {
+    title: '🐸 Invocaciones',
+    desc: 'Invoca aliados y bestias para aumentar el poder general de tu héroe.',
+  },
+  arbol: {
+    title: '🌳 Árbol de Habilidades',
+    desc: 'Distribuye puntos para potenciar ataque, resistencia y control de chakra.',
+  },
+  ajustes: {
+    title: '⚙️ Ajustes',
+    desc: 'Configura gráficos, sonido y notificaciones de tu aventura ninja.',
+  },
+};
+
+const hpFill = document.getElementById('hp-fill');
+const hpText = document.getElementById('hp-text');
+const mpFill = document.getElementById('mp-fill');
+const mpText = document.getElementById('mp-text');
+const heroPortrait = document.querySelector('.hero-portrait');
+const sectionContent = document.getElementById('section-content');
+const heroPanelRoot = document.getElementById('hero-panel-root');
 
 const heroPanel = new window.BotonHeroe('hero-panel-root', {
   initialGold: state.gold,
   onGoldChange: (nextGold) => {
     state.gold = nextGold;
-    document.getElementById('statGold').textContent = state.gold.toLocaleString();
-  document.getElementById('statAtk').textContent = state.atk.toLocaleString();
-  document.getElementById('statDef').textContent = state.def.toLocaleString();
+    document.getElementById('gold-val').textContent = state.gold.toLocaleString();
   },
   onStatsChange: (stats) => {
     state.atk = Math.round(stats.atk);
@@ -29,170 +67,93 @@ const heroPanel = new window.BotonHeroe('hero-panel-root', {
   },
 });
 
-const sections = {
-  heroe: {
-    icon: '🥷',
-    title: 'HÉROE',
-    desc: 'Consulta y mejora el equipo de tu shinobi. Cambia armadura, armas y accesorios para maximizar tu poder de combate.',
-  },
-  misiones: {
-    icon: '📜',
-    title: 'MISIONES',
-    desc: 'Completa encargos diarios, semanales y de historia para ganar EXP, oro y materiales de mejora.',
-  },
-  clanes: {
-    icon: '⛩️',
-    title: 'CLANES',
-    desc: 'Únete o crea tu clan. Participa en guerras de clanes y desbloquea jutsus exclusivos de linaje.',
-  },
-  eventos: {
-    icon: '🎴',
-    title: 'EVENTOS',
-    desc: '¡Evento especial activo! Festival del Chakra Lunar: consigue multiplicadores ×3 de EXP durante 2 horas.',
-  },
-  jutsus: {
-    icon: '🌀',
-    title: 'JUTSUS',
-    desc: 'Gestiona tus técnicas ninja. Equipa hasta 4 jutsus activos y mejora sus rangos con sellos de chakra.',
-  },
-  batallas: {
-    icon: '⚔️',
-    title: 'BATALLAS',
-    desc: 'Modo PvP y arena de rango. Desafía a otros jugadores y sube en la tabla clasificatoria mundial.',
-  },
-  invocaciones: {
-    icon: '✨',
-    title: 'INVOCACIONES',
-    desc: 'Invoca nuevos compañeros y objetos míticos. Utiliza pergaminos de convocación para obtener aliados S-Rank.',
-  },
-  habilidades: {
-    icon: '🌿',
-    title: 'ÁRBOL DE HABILIDAD',
-    desc: 'Asigna puntos de habilidad en ramas de Ninjutsu, Taijutsu y Genjutsu para personalizar tu estilo de combate.',
-  },
-  ajustes: {
-    icon: '⚙️',
-    title: 'AJUSTES',
-    desc: 'Configura notificaciones, audio, gráficos y tu cuenta de shinobi. También puedes vincular tu aldea.',
-  },
-};
-
 function updateBars() {
-  state.exp = Math.min(state.expMax, state.exp + Math.floor(Math.random() * 28 + 8));
+  const hpPct = Math.max(0, Math.min(100, (state.currentHp / state.maxHp) * 100));
+  const mpPct = Math.max(0, Math.min(100, (state.currentMp / state.maxMp) * 100));
 
-  const hpPct = Math.round((state.hp / state.hpMax) * 100);
-  const mpPct = Math.round((state.mp / state.mpMax) * 100);
-  const expPct = Math.round((state.exp / state.expMax) * 100);
+  hpFill.style.width = `${hpPct}%`;
+  mpFill.style.width = `${mpPct}%`;
+  hpText.innerText = `${hpPct.toFixed(0)}%`;
+  mpText.innerText = `${mpPct.toFixed(0)}%`;
 
-  document.getElementById('hpFill').style.width = `${hpPct}%`;
-  document.getElementById('mpFill').style.width = `${mpPct}%`;
-  document.getElementById('expFill').style.width = `${expPct}%`;
-
-  document.getElementById('hpCur').textContent = state.hp;
-  document.getElementById('hpPct').textContent = `${hpPct}%`;
-  document.getElementById('mpCur').textContent = state.mp;
-  document.getElementById('mpPct').textContent = `${mpPct}%`;
-  document.getElementById('charLevel').textContent = state.level;
-  document.getElementById('expNext').textContent = `${state.exp.toLocaleString()} / ${state.expMax.toLocaleString()} EXP — Próx. nivel: ${(state.expMax - state.exp).toLocaleString()}`;
-  document.getElementById('statGold').textContent = state.gold.toLocaleString();
-  document.getElementById('statAtk').textContent = state.atk.toLocaleString();
-  document.getElementById('statDef').textContent = state.def.toLocaleString();
-}
-
-setInterval(updateBars, 800);
-
-function spawnParticles(x, y, type = 'chakra') {
-  const container = document.getElementById('particleContainer');
-  const count = type === 'smoke' ? 6 : 10;
-
-  for (let i = 0; i < count; i += 1) {
-    const p = document.createElement('div');
-    p.className = `particle ${type}`;
-
-    const size = type === 'smoke' ? (Math.random() * 18 + 10) : (Math.random() * 5 + 2);
-    const angle = Math.random() * Math.PI * 2;
-    const dist = Math.random() * (type === 'smoke' ? 45 : 55) + 10;
-    const tx = Math.cos(angle) * dist;
-    const ty = Math.sin(angle) * dist;
-
-    p.style.cssText = `
-      width:${size}px; height:${size}px;
-      left:${x - (size / 2)}px; top:${y - (size / 2)}px;
-      --tx:${tx}px; --ty:${ty}px;
-      animation-delay:${Math.random() * 0.1}s;
-      animation-duration:${Math.random() * 0.4 + 0.5}s;
-    `;
-
-    container.appendChild(p);
-    p.addEventListener('animationend', () => p.remove());
+  if (hpPct < 20) {
+    heroPortrait.classList.add('danger-hp');
+    hpFill.style.backgroundColor = '#f85149';
+  } else {
+    heroPortrait.classList.remove('danger-hp');
+    hpFill.style.backgroundColor = 'var(--hp-color)';
   }
 }
 
-function spawnFloatText(x, y, text, color = '#2ecfcf') {
-  const el = document.createElement('div');
-  el.className = 'float-text';
-  el.textContent = text;
-  el.style.cssText = `left:${x - 30}px; top:${y - 20}px; color:${color};`;
-  document.body.appendChild(el);
-  el.addEventListener('animationend', () => el.remove());
+setInterval(() => {
+  if (!state.isRegenerating) return;
+  if (state.currentHp < state.maxHp) state.currentHp = Math.min(state.maxHp, state.currentHp + 50);
+  if (state.currentMp < state.maxMp) state.currentMp = Math.min(state.maxMp, state.currentMp + 20);
+  updateBars();
+}, 1000);
+
+function triggerEffect(event) {
+  const btn = event.currentTarget;
+  const circle = document.createElement('span');
+  const diameter = Math.max(btn.clientWidth, btn.clientHeight);
+  const radius = diameter / 2;
+
+  circle.style.width = circle.style.height = `${diameter}px`;
+  circle.style.left = `${event.clientX - btn.getBoundingClientRect().left - radius}px`;
+  circle.style.top = `${event.clientY - btn.getBoundingClientRect().top - radius}px`;
+  circle.classList.add('ripple');
+
+  const existing = btn.querySelector('.ripple');
+  if (existing) existing.remove();
+  btn.appendChild(circle);
+
+  if (state.currentMp >= 50) {
+    state.currentMp -= 50;
+    updateBars();
+  }
 }
 
-const overlay = document.getElementById('section-overlay');
-const overlayTitle = document.getElementById('overlayTitle');
-const overlayDesc = document.getElementById('overlayDesc');
-const overlayClose = document.getElementById('overlayClose');
+function renderSection(section) {
+  if (section === 'heroe') {
+    sectionContent.style.display = 'none';
+    heroPanelRoot.style.display = 'flex';
+    heroPanel.show();
+    return;
+  }
 
-const labels = {
-  heroe: 'HÉROE',
-  misiones: 'MISIONES',
-  clanes: 'CLANES',
-  eventos: 'EVENTOS',
-  jutsus: 'JUTSUS',
-  batallas: 'BATALLAS',
-  invocaciones: 'INVOCAR',
-  habilidades: 'ÁRBOL',
-  ajustes: 'AJUSTES',
-};
+  heroPanel.hide();
+  heroPanelRoot.style.display = 'none';
+  sectionContent.style.display = 'flex';
 
-document.querySelectorAll('.nav-btn').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    const rect = btn.getBoundingClientRect();
-    const cx = rect.left + (rect.width / 2);
-    const cy = rect.top + (rect.height / 2);
+  const info = sections[section];
+  if (!info) return;
 
-    spawnParticles(cx, cy, 'smoke');
-    spawnParticles(cx, cy, 'chakra');
+  sectionContent.innerHTML = `
+    <h2 class="mission-title">${info.title}</h2>
+    <p class="mission-desc">${info.desc}</p>
+    <br>
+    <p class="auto-mode">[ 🔄 Recompensas activas por conexión ]</p>
+  `;
+}
 
-    const sec = btn.dataset.section;
-    spawnFloatText(cx, cy, `▶ ${labels[sec] || sec}`, '#e8923a');
+document.querySelectorAll('.menu-btn').forEach((btn) => {
+  btn.addEventListener('click', (event) => {
+    triggerEffect(event);
 
-    document.querySelectorAll('.nav-btn').forEach((b) => b.classList.remove('active'));
+    document.querySelectorAll('.menu-btn').forEach((b) => b.classList.remove('active'));
     btn.classList.add('active');
-    state.activeSection = sec;
 
-    if (sec === 'heroe') {
-      overlay.classList.remove('visible');
-      heroPanel.show();
-      return;
-    }
-
-    heroPanel.hide();
-    const info = sections[sec];
-    if (info) {
-      overlayTitle.innerHTML = `${info.icon} ${info.title}`;
-      overlayDesc.textContent = info.desc;
-      overlay.classList.add('visible');
-    }
+    state.activeSection = btn.dataset.section;
+    renderSection(state.activeSection);
   });
 });
 
-overlayClose.addEventListener('click', () => {
-  overlay.classList.remove('visible');
-  spawnParticles(window.innerWidth / 2, window.innerHeight / 2, 'amber-spark');
-});
+window.onload = () => {
+  document.getElementById('gold-val').textContent = state.gold.toLocaleString();
+  document.getElementById('statAtk').textContent = state.atk.toLocaleString();
+  document.getElementById('statDef').textContent = state.def.toLocaleString();
 
-if (state.activeSection === 'heroe') {
-  heroPanel.show();
-}
-
-updateBars();
+  updateBars();
+  renderSection('heroe');
+  console.log('✅ Nueva interfaz 20/60/20 aplicada con funciones de HÉROE activas');
+};

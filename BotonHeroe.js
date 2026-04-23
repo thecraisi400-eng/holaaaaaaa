@@ -278,10 +278,6 @@
 
       this.root.innerHTML = this.state.visible ? `
         <section class="hero-panel" id="heroPanel">
-          <header class="hero-header">
-            <p class="hero-rank-line">Rango actual: <strong>${this.state.rank}</strong></p>
-          </header>
-
           <div class="hero-content-grid">
             <div class="stats-box">
               ${this.renderStatsPanel()}

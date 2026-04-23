@@ -560,7 +560,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 6px;
+  padding: 0;
 }
 
 .hero-panel {
@@ -568,6 +568,7 @@ html, body {
   max-width: 100%;
   height: 360px;
   max-height: 100%;
+  margin: 0;
   border: 1px solid rgba(120, 181, 255, 0.4);
   border-radius: 8px;
   background: rgba(8, 16, 28, 0.28);
@@ -674,13 +675,17 @@ html, body {
   border-radius: 6px;
   background: rgba(16, 27, 44, 0.45);
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .hero-sprite-box img {
   display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  width: 60%;
+  height: 60%;
+  margin: auto;
+  object-fit: contain;
 }
 
 .slot-modal-backdrop {

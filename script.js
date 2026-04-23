@@ -12,6 +12,23 @@ const state = {
   activeSection: 'heroe',
 };
 
+
+const heroPanel = new window.BotonHeroe('hero-panel-root', {
+  initialGold: state.gold,
+  onGoldChange: (nextGold) => {
+    state.gold = nextGold;
+    document.getElementById('statGold').textContent = state.gold.toLocaleString();
+  document.getElementById('statAtk').textContent = state.atk.toLocaleString();
+  document.getElementById('statDef').textContent = state.def.toLocaleString();
+  },
+  onStatsChange: (stats) => {
+    state.atk = Math.round(stats.atk);
+    state.def = Math.round(stats.def);
+    document.getElementById('statAtk').textContent = state.atk.toLocaleString();
+    document.getElementById('statDef').textContent = state.def.toLocaleString();
+  },
+});
+
 const sections = {
   heroe: {
     icon: '🥷',
@@ -62,7 +79,6 @@ const sections = {
 
 function updateBars() {
   state.exp = Math.min(state.expMax, state.exp + Math.floor(Math.random() * 28 + 8));
-  state.gold += Math.floor(Math.random() * 12 + 3);
 
   const hpPct = Math.round((state.hp / state.hpMax) * 100);
   const mpPct = Math.round((state.mp / state.mpMax) * 100);
@@ -79,6 +95,8 @@ function updateBars() {
   document.getElementById('charLevel').textContent = state.level;
   document.getElementById('expNext').textContent = `${state.exp.toLocaleString()} / ${state.expMax.toLocaleString()} EXP — Próx. nivel: ${(state.expMax - state.exp).toLocaleString()}`;
   document.getElementById('statGold').textContent = state.gold.toLocaleString();
+  document.getElementById('statAtk').textContent = state.atk.toLocaleString();
+  document.getElementById('statDef').textContent = state.def.toLocaleString();
 }
 
 setInterval(updateBars, 800);
@@ -152,6 +170,13 @@ document.querySelectorAll('.nav-btn').forEach((btn) => {
     btn.classList.add('active');
     state.activeSection = sec;
 
+    if (sec === 'heroe') {
+      overlay.classList.remove('visible');
+      heroPanel.show();
+      return;
+    }
+
+    heroPanel.hide();
     const info = sections[sec];
     if (info) {
       overlayTitle.innerHTML = `${info.icon} ${info.title}`;
@@ -165,5 +190,9 @@ overlayClose.addEventListener('click', () => {
   overlay.classList.remove('visible');
   spawnParticles(window.innerWidth / 2, window.innerHeight / 2, 'amber-spark');
 });
+
+if (state.activeSection === 'heroe') {
+  heroPanel.show();
+}
 
 updateBars();

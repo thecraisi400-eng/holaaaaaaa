@@ -279,19 +279,20 @@
       this.root.innerHTML = this.state.visible ? `
         <section class="hero-panel" id="heroPanel">
           <header class="hero-header">
-            <div>
-              <h2>🥷 Panel del Héroe</h2>
-              <p>Rango actual: <strong>${this.state.rank}</strong></p>
-            </div>
-            <div class="hero-gold">💰 ${this.state.gold.toLocaleString()}</div>
+            <p class="hero-rank-line">Rango actual: <strong>${this.state.rank}</strong></p>
           </header>
 
           <div class="hero-content-grid">
             <div class="stats-box">
               ${this.renderStatsPanel()}
             </div>
-            <div class="slots-grid">
-              ${this.renderSlots()}
+            <div class="right-column">
+              <div class="slots-grid">
+                ${this.renderSlots()}
+              </div>
+              <div class="hero-sprite-box">
+                <img src="assets/images/sasuke.webp" alt="Sprite de Sasuke" />
+              </div>
             </div>
           </div>
           ${this.renderModal()}

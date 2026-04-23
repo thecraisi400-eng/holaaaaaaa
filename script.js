@@ -15,7 +15,6 @@ const state = {
   inBattle: false,
 };
 
-const SAVE_KEY = 'ngs_rpg_save_data';
 const HERO_REGEN_RATE_PER_SECOND = 0.07;
 const HERO_REGEN_INTERVAL_MS = 1000;
 let heroRegenIntervalId = null;
@@ -37,22 +36,18 @@ function setMp(nextMp) {
   updateBars();
 }
 
-function persistGameState() {
+function persistGameState(reason = 'runtime-progress') {
   try {
-    const savedRaw = localStorage.getItem(SAVE_KEY);
-    if (!savedRaw || !state.heroSnapshot) return;
-    const saveObject = JSON.parse(savedRaw);
-    const nextSave = {
-      ...saveObject,
+    if (!state.heroSnapshot) return;
+
+    window.SaveManager.updateProgress({
       level: state.heroSnapshot.level,
       exp: state.heroSnapshot.exp,
-      rank: state.heroSnapshot.rank || saveObject.rank || 'GENIN',
+      rank: state.heroSnapshot.rank || 'GENIN',
       gold: state.gold,
       hp: state.hp,
-      mp: state.mp,
-      timestamp: Date.now()
-    };
-    localStorage.setItem(SAVE_KEY, JSON.stringify(nextSave));
+      mp: state.mp
+    }, { autosave: true, reason });
   } catch (error) {
     console.warn('No se pudo persistir el progreso.', error);
   }
@@ -219,7 +214,8 @@ window.ProgressionService = {
         rank: updatedHero.rank
       }
     }));
-    persistGameState();
+    persistGameState('level-or-reward-change');
+    window.SaveManager.saveNow({ reason: 'reward-claimed' });
     return updatedHero;
   }
 };
@@ -485,6 +481,19 @@ window.addEventListener('ngs:battle-ended', (event) => {
   if (delta.mp != null) setMp(delta.mp);
   if (!detail.nextRound) {
     window.GameState.setBattleActive(false);
-    persistGameState();
+    persistGameState('level-or-reward-change');
+    window.SaveManager.saveNow({ reason: 'reward-claimed' });
   }
+});
+
+window.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    persistGameState('pause-save');
+    window.SaveManager.saveNow({ reason: 'visibility-hidden' });
+  }
+});
+
+window.addEventListener('beforeunload', () => {
+  persistGameState('exit-save');
+  window.SaveManager.saveNow({ reason: 'beforeunload' });
 });

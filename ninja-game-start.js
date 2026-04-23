@@ -1,6 +1,4 @@
 (function () {
-  const SAVE_KEY = 'ngs_rpg_save_data';
-
   const CLANS = [
     {
       id: 'uchiha',
@@ -195,8 +193,9 @@
           playTime: '00:12:34'
         };
 
-        localStorage.setItem(SAVE_KEY, JSON.stringify(saveObject));
-        gameSavedData = saveObject;
+        window.SaveManager.updateProgress(saveObject, { autosave: false });
+        window.SaveManager.saveNow({ reason: 'new-game-created' });
+        gameSavedData = window.SaveManager.getProgress();
         currentCharacterSelected = character.name;
         playPlaceholderSound('select');
         updateLoadPreview();
@@ -208,11 +207,11 @@
   }
 
   function updateLoadPreview() {
-    const savedRaw = localStorage.getItem(SAVE_KEY);
+    const loadedBundle = window.SaveManager.loadAll();
+    const data = loadedBundle.player_progress;
 
-    if (savedRaw) {
+    if (data && data.characterId) {
       try {
-        const data = JSON.parse(savedRaw);
         gameSavedData = data;
         currentCharacterSelected = data.character || null;
         currentClanSelected = data.clan || null;
@@ -228,9 +227,8 @@
   }
 
   function loadGameFromStorage() {
-    const saved = localStorage.getItem(SAVE_KEY);
-    if (saved) {
-      const data = JSON.parse(saved);
+    const data = window.SaveManager.getProgress();
+    if (data && data.characterId) {
       gameSavedData = data;
       currentClanSelected = data.clan || null;
       currentCharacterSelected = data.character || null;
@@ -266,19 +264,15 @@
         saveData: gameSavedData
       }
     }));
+
+    setTimeout(() => {
+      window.SaveManager.cleanupCache();
+      window.SaveManager.saveNow({ reason: 'post-enter-cache-cleanup' });
+    }, 0);
   }
 
   function clearAllGameSaves() {
-    const keysToDelete = [];
-    for (let i = 0; i < localStorage.length; i += 1) {
-      const key = localStorage.key(i);
-      if (!key) continue;
-      if (key === SAVE_KEY || key.startsWith('ngs_')) {
-        keysToDelete.push(key);
-      }
-    }
-
-    keysToDelete.forEach((key) => localStorage.removeItem(key));
+    window.SaveManager.clearAll();
     gameSavedData = null;
     currentClanSelected = null;
     currentCharacterSelected = null;
@@ -342,13 +336,20 @@
     if (layers[2]) layers[2].style.transform = `translate(${x * 4}px, ${y * 3}px)`;
   });
 
+  function applySettingsAtBoot() {
+    const settings = window.SaveManager.getSettings();
+    document.documentElement.style.setProperty('--ngs-ui-scale', settings.graphicsQuality === 'low' ? '0.95' : '1');
+  }
+
   function init() {
+    window.SaveManager.loadAll({ measureStartup: true });
+    applySettingsAtBoot();
     showScreen('start');
     updateLoadPreview();
   }
 
-  window.addEventListener('storage', (e) => {
-    if (e.key === SAVE_KEY) updateLoadPreview();
+  window.addEventListener('storage', () => {
+    updateLoadPreview();
   });
 
   init();

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Sasuke Idle</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="screen">
+    <div class="hero-section">
+      <div class="hero-header">
+        <div class="hero-photo">🥷</div>
+        <div class="hero-info">
+          <div class="hero-name">⚡ Sasuke Uchiha</div>
+          <div class="hero-rank-row">
+            <div class="badge">🎖️ Lv. <strong id="nivel">42</strong></div>
+            <div class="badge rank">🏆 Kage</div>
+            <div class="badge gold">💰 <span id="oro">12,450</span></div>
+          </div>
+          <div class="hero-stats-row">
+            <div class="stat-chip"><span class="label">⚔️ ATK</span><span class="val" id="atk">847</span></div>
+            <div class="stat-chip"><span class="label">🛡️ DEF</span><span class="val" id="def">623</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bars-section">
+        <div class="bar-row">
+          <div class="bar-icon">❤️</div>
+          <div class="bar-label" style="color:#ff4757;">HP</div>
+          <div class="bar-track"><div class="bar-fill hp" id="bar-hp" style="width:72%"></div></div>
+          <div class="bar-numbers" id="num-hp">7,200 / 10,000</div>
+          <div class="bar-pct hp" id="pct-hp">72%</div>
+          <div class="regen-indicator" id="regen-hp">▲</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-icon">💧</div>
+          <div class="bar-label" style="color:#4fc3f7;">MP</div>
+          <div class="bar-track"><div class="bar-fill mp" id="bar-mp" style="width:55%"></div></div>
+          <div class="bar-numbers" id="num-mp">2,750 / 5,000</div>
+          <div class="bar-pct mp" id="pct-mp">55%</div>
+          <div class="regen-indicator" id="regen-mp">▲</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-icon">⭐</div>
+          <div class="bar-label" style="color:#ffd700;">EXP</div>
+          <div class="bar-track"><div class="bar-fill exp" id="bar-exp" style="width:38%"></div></div>
+          <div class="bar-numbers" id="num-exp">3,800 / 10,000</div>
+          <div class="bar-pct exp" id="pct-exp">38%</div>
+          <div style="width:10px"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mission-box">
+      <div class="mission-header">
+        <div class="mission-title">📜 MISIONES &amp; EVENTOS</div>
+        <div class="mission-badge">3 ACTIVAS</div>
+      </div>
+      <div class="mission-body">
+        <div class="mission-card">
+          <div class="mission-icon">🐉</div>
+          <div class="mission-info">
+            <div class="mission-name">Caza del Dragón Oscuro</div>
+            <div class="mission-desc">Derrota al Dragón Sombrío en la Montaña Maldita.</div>
+            <div class="mission-progress-track"><div class="mission-progress-fill" style="width:60%"></div></div>
+            <div class="mission-reward">💰 +2,500 &nbsp; ⭐ +1,200 EXP &nbsp; 🗡️ Equipo</div>
+          </div>
+          <div class="mission-status status-active">ACTIVA</div>
+        </div>
+
+        <div class="mission-card">
+          <div class="mission-icon">🏯</div>
+          <div class="mission-info">
+            <div class="mission-name">Asalto a la Fortaleza Ninja</div>
+            <div class="mission-desc">Infiltra la fortaleza y roba el pergamino del clan Uchiha.</div>
+            <div class="mission-progress-track"><div class="mission-progress-fill" style="width:25%;background:linear-gradient(90deg,#c8960c,#ffd700)"></div></div>
+            <div class="mission-reward">💰 +5,000 &nbsp; ⭐ +3,400 EXP</div>
+          </div>
+          <div class="mission-status status-pending">PEND.</div>
+        </div>
+
+        <div class="mission-card">
+          <div class="mission-icon">🌀</div>
+          <div class="mission-info">
+            <div class="mission-name">Tormenta de Chakra — Evento</div>
+            <div class="mission-desc">Evento 24h. Acumula chakra para desbloquear el Susanoo.</div>
+            <div class="mission-progress-track"><div class="mission-progress-fill" style="width:85%;background:linear-gradient(90deg,#6a0dad,#c678dd)"></div></div>
+            <div class="mission-reward">💰 +8,000 &nbsp; 🔮 Jutsu S-Rank</div>
+          </div>
+          <div class="mission-status status-active">ACTIVA</div>
+        </div>
+
+        <div class="mission-card" style="opacity:0.5;">
+          <div class="mission-icon">🔒</div>
+          <div class="mission-info">
+            <div class="mission-name">El Último Uchiha</div>
+            <div class="mission-desc">Desbloquea en Lv. 50. La misión final del linaje.</div>
+            <div class="mission-progress-track"><div class="mission-progress-fill" style="width:0%"></div></div>
+            <div class="mission-reward" style="color:#555;">??? &nbsp; ???</div>
+          </div>
+          <div class="mission-status status-locked">BLOQ.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-grid">
+      <button class="nav-btn active" type="button" data-nav><span class="n-icon">🦸</span><span class="n-label">HÉROE</span></button>
+      <button class="nav-btn" type="button" data-nav><span class="n-icon">📜</span><span class="n-label">MISIONES</span></button>
+      <button class="nav-btn" type="button" data-nav><span class="n-icon">⚔️</span><span class="n-label">CLANES</span></button>
+      <button class="nav-btn" type="button" data-nav><span class="n-icon">🎯</span><span class="n-label">EVENTOS</span></button>
+      <button class="nav-btn" type="button" data-nav><span class="n-icon">🌀</span><span class="n-label">JUTSUS</span></button>
+      <button class="nav-btn" type="button" data-nav><span class="n-icon">🥊</span><span class="n-label">BATALLAS</span></button>
+      <button class="nav-btn" type="button" data-nav><span class="n-icon">🐉</span><span class="n-label">INVOCAC.</span></button>
+      <button class="nav-btn" type="button" data-nav><span class="n-icon">⚙️</span><span class="n-label">AJUSTES</span></button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

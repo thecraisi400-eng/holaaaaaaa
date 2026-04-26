@@ -1,13 +1,35 @@
 const navButtons = document.querySelectorAll('[data-nav]');
+const panelContainer = document.getElementById('panel-container');
+
+function renderPlaceholder(name) {
+  if (!panelContainer) return;
+  panelContainer.innerHTML = `<div class="panel-placeholder">${name.toUpperCase()} (PRÓXIMAMENTE)</div>`;
+}
+
+function renderPanel(panelName) {
+  if (panelName === 'heroe') {
+    if (window.BotonHero?.renderHeroSystem) {
+      window.BotonHero.renderHeroSystem(panelContainer);
+    } else {
+      renderPlaceholder('Error cargando HÉROE');
+    }
+    return;
+  }
+
+  renderPlaceholder(panelName);
+}
 
 function setActive(btn) {
   navButtons.forEach((b) => b.classList.remove('active'));
   btn.classList.add('active');
+  renderPanel(btn.dataset.panel || '');
 }
 
 navButtons.forEach((btn) => {
   btn.addEventListener('click', () => setActive(btn));
 });
+
+renderPanel('heroe');
 
 const stats = {
   hp: { cur: 7200, max: 10000, regen: 15 },

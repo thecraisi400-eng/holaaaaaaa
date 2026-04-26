@@ -3,92 +3,81 @@
     if (!container) return;
 
     container.innerHTML = `
-      <section class="hero-system" aria-label="Sistema del héroe">
-        <header class="hero-system__header">
-          <div class="hero-system__profile">
-            <p class="hero-system__level">Lvl 85</p>
-            <p class="hero-system__rarity">ÉPICO</p>
-            <h2 class="hero-system__name">Sir Kaelen</h2>
-            <div class="hero-system__xp-wrap">
-              <div class="hero-system__xp-fill"></div>
-              <span class="hero-system__xp-text">69 / 99</span>
+      <section class="hero-system" aria-label="Panel del héroe">
+        <header class="hero-system__top">
+          <div class="hero-system__avatar" aria-label="Retrato del héroe">🥷</div>
+          <div class="hero-system__identity">
+            <div class="hero-system__name-row">
+              <h2 class="hero-system__name">Sasuke Uchiha</h2>
+              <span class="hero-system__tag">RANGO KAGE</span>
+            </div>
+
+            <div class="hero-system__meta">
+              <span class="hero-system__pill">Nivel <strong>42</strong></span>
+              <span class="hero-system__pill">ATK <strong>847</strong></span>
+              <span class="hero-system__pill">DEF <strong>623</strong></span>
+            </div>
+
+            <div class="hero-system__xp">
+              <div class="hero-system__xp-head">
+                <span>Progreso</span>
+                <span>7,100 / 10,000</span>
+              </div>
+              <div class="hero-system__xp-track">
+                <div class="hero-system__xp-fill"></div>
+              </div>
             </div>
           </div>
-          <div class="hero-system__portrait" aria-label="Retrato del caballero">🛡️</div>
         </header>
 
-        <div class="hero-system__mid">
-          <section class="basic-stats">
-            <h3 class="section-banner">ESTADÍSTICAS BÁSICAS</h3>
-            <ul class="basic-stats__list">
-              <li><span>❤️ PV</span><strong>15200</strong></li>
-              <li><span>🗡️ Ataque</span><strong>4300</strong></li>
-              <li><span>🛡️ Defensa</span><strong>2100</strong></li>
-              <li><span>💥 Eofensa</span><strong>1100</strong></li>
-              <li><span>🪓 Daño</span><strong>1200</strong></li>
-              <li><span>🏹 Daño catia</span><strong>930</strong></li>
-              <li><span>🧪 Resiitercia</span><strong>300</strong></li>
-              <li><span>⚙️ Maestría</span><strong>200</strong></li>
+        <section class="hero-system__grid">
+          <article class="hero-card">
+            <h3 class="hero-card__title">ESTADÍSTICAS</h3>
+            <ul class="hero-stats-list">
+              <li><span>❤️ Vida</span><strong>7,200</strong></li>
+              <li><span>💧 Chakra</span><strong>2,750</strong></li>
+              <li><span>⚡ Velocidad</span><strong>312</strong></li>
+              <li><span>🎯 Crítico</span><strong>24%</strong></li>
+              <li><span>🛡️ Resistencia</span><strong>191</strong></li>
             </ul>
-          </section>
+          </article>
 
-          <section class="equipment">
-            <h3 class="section-title">EQUIPAMIENTO</h3>
-            <div class="equipment__grid">
-              <div class="slot">⛑️</div>
-              <div class="slot">🧥</div>
-              <div class="slot">🧤</div>
-              <div class="slot">🥾</div>
-              <div class="slot">⚔️</div>
-              <div class="slot">🛡️</div>
-              <div class="slot">🦵</div>
-              <div class="slot">💍</div>
-              <div class="slot">📿</div>
+          <article class="hero-card">
+            <h3 class="hero-card__title">EQUIPO</h3>
+            <div class="hero-equip-grid">
+              <div class="hero-slot">⛑️</div>
+              <div class="hero-slot">🧥</div>
+              <div class="hero-slot">🧤</div>
+              <div class="hero-slot">🥾</div>
+              <div class="hero-slot">⚔️</div>
+              <div class="hero-slot">📿</div>
             </div>
-          </section>
-        </div>
+          </article>
+        </section>
 
-        <section class="skills">
-          <h3 class="section-title">HABILIDADES</h3>
-          <div class="skills__grid">
-            <article class="skill">
-              <div class="skill__icon">✨</div>
-              <div class="skill__meta">
-                <p>Golpe Divino</p>
-                <div class="skill__bar"><span style="width:75%"></span></div>
-                <small>3 / 4</small>
+        <section class="hero-card">
+          <h3 class="hero-card__title">JUTSUS ACTIVOS</h3>
+          <div class="hero-skills">
+            <article class="hero-skill">
+              <div class="hero-skill__icon">🔥</div>
+              <div class="hero-skill__meta">
+                <p class="hero-skill__name">Katon: Gōkakyū</p>
+                <div class="hero-skill__bar"><span style="width:78%"></span></div>
               </div>
             </article>
-            <article class="skill">
-              <div class="skill__icon">🛡️</div>
-              <div class="skill__meta">
-                <p>Escudo Sagrado</p>
-                <div class="skill__bar"><span style="width:67%"></span></div>
-                <small>2 / 3</small>
-              </div>
-            </article>
-            <article class="skill">
-              <div class="skill__icon">📣</div>
-              <div class="skill__meta">
-                <p>Grito de Guerra</p>
-                <div class="skill__bar"><span style="width:100%"></span></div>
-                <small>5 / 5</small>
-              </div>
-            </article>
-            <article class="skill">
-              <div class="skill__icon">🔥</div>
-              <div class="skill__meta">
-                <p>Furia Elemental</p>
-                <div class="skill__bar"><span style="width:60%"></span></div>
-                <small>3 / 5</small>
+            <article class="hero-skill">
+              <div class="hero-skill__icon">⚡</div>
+              <div class="hero-skill__meta">
+                <p class="hero-skill__name">Chidori</p>
+                <div class="hero-skill__bar"><span style="width:63%"></span></div>
               </div>
             </article>
           </div>
         </section>
 
         <footer class="hero-system__footer">
-          <button type="button" class="level-up-btn" aria-label="Subir de nivel">⬆</button>
-          <p class="total-damage">Daño Total: 700</p>
+          <p class="hero-system__power">Poder total <strong>18,476</strong></p>
+          <button type="button" class="hero-system__action">MEJORAR</button>
         </footer>
       </section>
     `;

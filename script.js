@@ -1,5 +1,9 @@
 const SAVE_KEY = 'sasuke_idle_state_v2';
 const ALWAYS_START_LEVEL_1 = true;
+const BASE_LEVEL_STATS = {
+  combat: { atk: 1, def: 1, speed: 1, crit: 1, resistance: 1 },
+  resources: { hpMax: 1, mpMax: 1 },
+};
 
 function createNewGame() {
   return {
@@ -102,10 +106,28 @@ function sanitizeState(raw) {
   };
 }
 
+function syncStatsWithLevel(state) {
+  const level = Math.max(1, Math.floor(safeNum(state.progression?.level, 1)));
+  const gainedLevels = level - 1;
+
+  state.combat.atk = BASE_LEVEL_STATS.combat.atk + gainedLevels;
+  state.combat.def = BASE_LEVEL_STATS.combat.def + gainedLevels;
+  state.combat.speed = BASE_LEVEL_STATS.combat.speed + gainedLevels;
+  state.combat.crit = BASE_LEVEL_STATS.combat.crit + gainedLevels;
+  state.combat.resistance = BASE_LEVEL_STATS.combat.resistance + gainedLevels;
+  state.resources.hp.max = BASE_LEVEL_STATS.resources.hpMax + gainedLevels;
+  state.resources.mp.max = BASE_LEVEL_STATS.resources.mpMax + gainedLevels;
+
+  state.resources.hp.cur = Math.min(state.resources.hp.cur, state.resources.hp.max);
+  state.resources.mp.cur = Math.min(state.resources.mp.cur, state.resources.mp.max);
+}
+
 function loadState() {
   if (ALWAYS_START_LEVEL_1) {
     localStorage.removeItem(SAVE_KEY);
-    return createNewGame();
+    const freshState = createNewGame();
+    syncStatsWithLevel(freshState);
+    return freshState;
   }
 
   try {
@@ -148,6 +170,7 @@ function refreshDerivedState() {
 }
 
 function commitState() {
+  syncStatsWithLevel(gameState);
   refreshDerivedState();
   renderAll(activePanel);
   saveState(gameState);
@@ -159,17 +182,7 @@ function addExp(amount) {
   while (gameState.progression.exp >= gameState.progression.expToNext) {
     gameState.progression.exp -= gameState.progression.expToNext;
     gameState.progression.level += 1;
-    gameState.combat.atk += 1;
-    gameState.combat.def += 1;
-    gameState.combat.speed += 1;
-    gameState.combat.crit += 1;
-    gameState.combat.resistance += 1;
-    gameState.resources.hp.max += 1;
-    gameState.resources.mp.max += 1;
   }
-
-  gameState.resources.hp.cur = Math.min(gameState.resources.hp.cur, gameState.resources.hp.max);
-  gameState.resources.mp.cur = Math.min(gameState.resources.mp.cur, gameState.resources.mp.max);
 }
 
 function resetGame() {

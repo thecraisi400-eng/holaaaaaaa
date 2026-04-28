@@ -1,4 +1,5 @@
 const SAVE_KEY = 'sasuke_idle_state_v2';
+const ALWAYS_START_LEVEL_1 = true;
 
 function createNewGame() {
   return {
@@ -34,6 +35,23 @@ function createNewGame() {
 
 function safeNum(value, fallback = 0) {
   return Number.isFinite(Number(value)) ? Number(value) : fallback;
+}
+
+function sanitizeEquipment(raw, baseEquipment) {
+  if (!Array.isArray(raw) || !raw.length) return baseEquipment;
+  return raw.map((slot, index) => ({
+    name: slot?.name || baseEquipment[index % baseEquipment.length].name,
+    icon: slot?.icon || baseEquipment[index % baseEquipment.length].icon,
+  }));
+}
+
+function sanitizeSkills(raw, baseSkills) {
+  if (!Array.isArray(raw) || !raw.length) return baseSkills;
+  return raw.map((skill, index) => ({
+    name: skill?.name || baseSkills[index % baseSkills.length].name,
+    icon: skill?.icon || baseSkills[index % baseSkills.length].icon,
+    mastery: Math.min(100, Math.max(1, Math.floor(safeNum(skill?.mastery, baseSkills[index % baseSkills.length].mastery)))),
+  }));
 }
 
 function sanitizeState(raw) {
@@ -79,12 +97,17 @@ function sanitizeState(raw) {
     economy: {
       gold: Math.max(0, Math.floor(safeNum(state.economy?.gold, base.economy.gold))),
     },
-    equipment: Array.isArray(state.equipment) && state.equipment.length ? state.equipment : base.equipment,
-    skills: Array.isArray(state.skills) && state.skills.length ? state.skills : base.skills,
+    equipment: sanitizeEquipment(state.equipment, base.equipment),
+    skills: sanitizeSkills(state.skills, base.skills),
   };
 }
 
 function loadState() {
+  if (ALWAYS_START_LEVEL_1) {
+    localStorage.removeItem(SAVE_KEY);
+    return createNewGame();
+  }
+
   try {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return createNewGame();
@@ -102,6 +125,7 @@ const gameState = loadState();
 
 const navButtons = document.querySelectorAll('[data-nav]');
 const panelContainer = document.getElementById('panel-container');
+let activePanel = 'heroe';
 
 const fmt = (n) => Math.round(n).toLocaleString('es');
 
@@ -123,11 +147,44 @@ function refreshDerivedState() {
     gameState.progression.level;
 }
 
+function commitState() {
+  refreshDerivedState();
+  renderAll(activePanel);
+  saveState(gameState);
+}
+
+function addExp(amount) {
+  gameState.progression.exp += Math.max(0, Math.floor(safeNum(amount, 0)));
+
+  while (gameState.progression.exp >= gameState.progression.expToNext) {
+    gameState.progression.exp -= gameState.progression.expToNext;
+    gameState.progression.level += 1;
+    gameState.combat.atk += 1;
+    gameState.combat.def += 1;
+    gameState.combat.speed += 1;
+    gameState.combat.crit += 1;
+    gameState.combat.resistance += 1;
+    gameState.resources.hp.max += 1;
+    gameState.resources.mp.max += 1;
+  }
+
+  gameState.resources.hp.cur = Math.min(gameState.resources.hp.cur, gameState.resources.hp.max);
+  gameState.resources.mp.cur = Math.min(gameState.resources.mp.cur, gameState.resources.mp.max);
+}
+
+function resetGame() {
+  localStorage.removeItem(SAVE_KEY);
+  Object.assign(gameState, createNewGame());
+  commitState();
+}
+
 function updateBar(key, cur, max) {
-  const pct = Math.min(100, Math.round((cur / max) * 100));
+  const safeMax = Math.max(1, safeNum(max, 1));
+  const safeCur = Math.max(0, safeNum(cur, 0));
+  const pct = Math.min(100, Math.round((safeCur / safeMax) * 100));
   document.getElementById(`bar-${key}`).style.width = `${pct}%`;
   document.getElementById(`pct-${key}`).textContent = `${pct}%`;
-  document.getElementById(`num-${key}`).textContent = `${fmt(cur)} / ${fmt(max)}`;
+  document.getElementById(`num-${key}`).textContent = `${fmt(safeCur)} / ${fmt(safeMax)}`;
 }
 
 function renderTopHud() {
@@ -168,34 +225,13 @@ function renderSettings() {
   `;
 
   document.getElementById('new-game-btn')?.addEventListener('click', () => {
-    Object.assign(gameState, createNewGame());
-    refreshDerivedState();
-    renderAll('ajustes');
-    saveState(gameState);
+    resetGame();
   });
 }
 
 function train() {
-  gameState.progression.exp += 10;
-
-  while (gameState.progression.exp >= gameState.progression.expToNext) {
-    gameState.progression.exp -= gameState.progression.expToNext;
-    gameState.progression.level += 1;
-    gameState.combat.atk += 1;
-    gameState.combat.def += 1;
-    gameState.combat.speed += 1;
-    gameState.combat.crit += 1;
-    gameState.combat.resistance += 1;
-    gameState.resources.hp.max += 1;
-    gameState.resources.mp.max += 1;
-  }
-
-  gameState.resources.hp.cur = Math.min(gameState.resources.hp.cur, gameState.resources.hp.max);
-  gameState.resources.mp.cur = Math.min(gameState.resources.mp.cur, gameState.resources.mp.max);
-
-  refreshDerivedState();
-  renderAll('heroe');
-  saveState(gameState);
+  addExp(10);
+  commitState();
 }
 
 function renderPanel(panelName) {
@@ -213,9 +249,10 @@ function renderPanel(panelName) {
   renderPlaceholder(panelName);
 }
 
-function renderAll(activePanel) {
+function renderAll(panelName = activePanel) {
+  activePanel = panelName;
   renderTopHud();
-  renderPanel(activePanel);
+  renderPanel(panelName);
 }
 
 function setActive(btn) {
@@ -242,7 +279,5 @@ navButtons.forEach((btn) => {
   btn.addEventListener('click', () => setActive(btn));
 });
 
-refreshDerivedState();
-renderAll('heroe');
-saveState(gameState);
+commitState();
 setInterval(regenTick, 1200);

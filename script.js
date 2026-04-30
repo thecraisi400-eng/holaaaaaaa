@@ -248,9 +248,16 @@ function train() {
 }
 
 function renderPanel(panelName) {
+  panelContainer.classList.remove('mission-box--full');
+
   if (panelName === 'heroe') {
     window.BotonHero?.renderHeroSystem(panelContainer, gameState);
     document.getElementById('train-btn')?.addEventListener('click', train);
+    return;
+  }
+
+  if (panelName === 'misiones') {
+    window.BatallaMision?.renderBatallaMissionPanel(panelContainer);
     return;
   }
 

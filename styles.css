@@ -47,3 +47,41 @@ body {
   .bar-numbers, .bar-pct, .regen-indicator { display: none; }
   .hero-system__grid { grid-template-columns: 1fr; }
 }
+
+.mission-box.mission-box--full {
+  padding: 0;
+  overflow: hidden;
+}
+
+.mission-selector {
+  padding: 12px;
+  border-bottom: 1px solid #36415f;
+}
+
+.mission-selector__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.mission-selector__btn {
+  border: 1px solid #4a5679;
+  background: #252d40;
+  color: #fff;
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.mission-arena {
+  width: 100%;
+  min-height: 380px;
+}
+
+.mission-battle-frame {
+  width: 100%;
+  height: 380px;
+  border: 0;
+  display: block;
+}

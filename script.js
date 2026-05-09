@@ -261,6 +261,11 @@ function renderPanel(panelName) {
     return;
   }
 
+  if (panelName === 'prestigio') {
+    window.BotonPrestigio?.renderPrestigioSystem(panelContainer, gameState, commitState);
+    return;
+  }
+
   if (panelName === 'ajustes') {
     renderSettings();
     return;

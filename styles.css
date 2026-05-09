@@ -85,3 +85,70 @@ body {
   border: 0;
   display: block;
 }
+
+:root {
+  --prestigio-blur: 8px;
+  --prestigio-cueva-1: #09070f;
+  --prestigio-cueva-2: #140f1f;
+  --prestigio-cueva-3: #1d1625;
+  --prestigio-paper-1: #ebd8b1;
+  --prestigio-paper-2: #dcc49a;
+  --prestigio-ink: #2f2113;
+}
+
+.prestigio-mounted { padding: 0; overflow: hidden; }
+.prestigio-overlay {
+  position: relative;
+  isolation: isolate;
+  min-height: 420px;
+  display: grid;
+  place-items: center;
+  padding: clamp(16px, 4vw, 28px);
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity .26s ease, transform .26s ease;
+}
+.prestigio-overlay.is-closing { opacity: 0; transform: scale(.98); }
+.prestigio-bg {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(225,170,88,.16), transparent 40%),
+    radial-gradient(circle at 25% 60%, rgba(130,95,55,.15), transparent 46%),
+    radial-gradient(circle at 80% 72%, rgba(80,60,45,.14), transparent 46%),
+    linear-gradient(155deg, var(--prestigio-cueva-1), var(--prestigio-cueva-2) 55%, var(--prestigio-cueva-3));
+}
+.prestigio-bg::after {
+  content: '';
+  position: absolute; inset: 0;
+  backdrop-filter: blur(var(--prestigio-blur));
+  background: rgba(6,4,10,.28);
+}
+.prestigio-scroll {
+  position: relative;
+  z-index: 2;
+  width: min(96%, 630px);
+  border-radius: 22px;
+  padding: clamp(18px, 4vw, 34px);
+  background:
+    linear-gradient(165deg, rgba(255,245,218,.95), rgba(241,220,176,.96)),
+    repeating-linear-gradient(-6deg, rgba(108,75,34,.05) 0 2px, rgba(108,75,34,.01) 2px 4px);
+  color: var(--prestigio-ink);
+  font-family: 'Georgia', 'Times New Roman', serif;
+  box-shadow: 0 18px 32px rgba(0,0,0,.45), inset 0 0 2px rgba(90,50,20,.35);
+}
+.prestigio-close { position:absolute; right:12px; top:10px; border:0; background:transparent; font-size: 1.2rem; cursor:pointer; color:#5f3a13; }
+.prestigio-scroll h2 { margin: 2px 0 10px; font-size: clamp(1.4rem, 4vw, 2rem); }
+.prestigio-copy { margin: 0 0 18px; line-height: 1.5; }
+.prestigio-stats { background: rgba(255,250,239,.78); border: 1px solid rgba(97,66,30,.24); border-radius: 14px; padding: 12px 14px; }
+.prestigio-stats p { margin: 8px 0; font-size: clamp(.95rem, 2.6vw, 1.15rem); }
+.prestigio-reset {
+  width: 100%; margin-top: 16px; border: 0; border-radius: 12px; padding: 12px;
+  font-weight: 800; letter-spacing: .06em; color: #fef1d6; cursor: pointer;
+  background: linear-gradient(180deg, #9d2f21, #6e1c12);
+  box-shadow: 0 8px 18px rgba(64,12,8,.34);
+}
+
+@media (max-width: 420px) {
+  .prestigio-overlay { min-height: 380px; padding: 12px; }
+  .prestigio-scroll { border-radius: 16px; }
+}

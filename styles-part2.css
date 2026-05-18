@@ -1,0 +1,69 @@
+  position: absolute;
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(0deg,  transparent, transparent 39px, rgba(46,207,207,.04) 40px),
+    repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(46,207,207,.04) 40px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ═══════════════════════════════════════════
+   BLOQUE SUPERIOR  –  ESTADO DEL SHINOBI
+   ═══════════════════════════════════════════ */
+#hud-top {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px;
+  box-shadow: 0 0 18px rgba(46,207,207,.1);
+}
+
+/* ─── FILA AVATAR + IDENTIDAD + STATS ─── */
+.avatar-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+/* Avatar */
+.avatar-frame {
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+  border: 2px solid var(--teal);
+  border-radius: var(--radius);
+  background: var(--surface);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 12px rgba(46,207,207,.35);
+}
+.avatar-frame img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+}
+.avatar-placeholder {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.4rem;
+}
+.avatar-corner {
+  position: absolute;
+  bottom: 0; right: 0;
+  width: 0; height: 0;
+  border-style: solid;
+  border-width: 0 0 14px 14px;
+  border-color: transparent transparent var(--amber) transparent;
+}
+
+/* Identidad */
+.identity {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 2px;

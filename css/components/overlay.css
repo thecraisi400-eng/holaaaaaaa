@@ -1,0 +1,56 @@
+/* ═══════════════════════════════════════════
+   OVERLAY / PANEL DE SECCIONES
+   ═══════════════════════════════════════════ */
+#section-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8,12,20,.85);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s;
+  backdrop-filter: blur(4px);
+}
+#section-overlay.visible {
+  opacity: 1;
+  pointer-events: all;
+}
+.overlay-panel {
+  background: var(--panel);
+  border: 1px solid var(--teal);
+  border-radius: var(--radius);
+  padding: 20px 18px;
+  width: min(340px, 90vw);
+  box-shadow: 0 0 30px rgba(46,207,207,.2);
+  animation: panelIn .25s ease;
+}
+.overlay-panel h2 {
+  font-family: var(--font-title);
+  font-size: .9rem;
+  color: var(--teal);
+  margin-bottom: 10px;
+  letter-spacing: 1px;
+  display: flex; align-items: center; gap: 8px;
+}
+.overlay-panel p { font-size: .78rem; color: var(--text-mid); line-height: 1.6; }
+.overlay-close {
+  display: block;
+  margin-top: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px;
+  color: var(--text-hi);
+  font-family: var(--font-hud);
+  font-weight: 700;
+  font-size: .75rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  width: 100%;
+  transition: background .15s, border-color .15s;
+}
+.overlay-close:hover { background: var(--btn-hover); border-color: var(--teal); color: var(--teal); }

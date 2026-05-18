@@ -1,0 +1,68 @@
+   PARTÍCULAS DE EFECTOS
+   ═══════════════════════════════════════════ */
+.particle-container {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  top: 0; left: 0; right: 0; bottom: 0;
+}
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  animation: particle-anim .8s ease-out forwards;
+}
+.particle.smoke {
+  border-radius: 50%;
+  background: rgba(200,200,200,.5);
+  filter: blur(3px);
+}
+.particle.chakra {
+  background: var(--teal);
+  box-shadow: 0 0 6px var(--teal);
+}
+.particle.amber-spark {
+  background: var(--amber);
+  box-shadow: 0 0 4px var(--amber);
+}
+@keyframes particle-anim {
+  0%   { opacity:1; transform: translate(0,0) scale(1); }
+  100% { opacity:0; transform: translate(var(--tx), var(--ty)) scale(0.2); }
+}
+
+/* ═══════════════════════════════════════════
+   TEXTO FLOTANTE  –  FEEDBACK DE ESTADÍSTICAS
+   ═══════════════════════════════════════════ */
+.float-text {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9998;
+  font-family: var(--font-hud);
+  font-weight: 700;
+  font-size: .85rem;
+  text-shadow: 0 1px 4px rgba(0,0,0,.8);
+  animation: floatUp .9s ease-out forwards;
+}
+@keyframes floatUp {
+  0%   { opacity:1; transform: translateY(0); }
+  100% { opacity:0; transform: translateY(-45px); }
+}
+
+/* ═══════════════════════════════════════════
+   OVERLAY / PANEL DE SECCIONES
+   ═══════════════════════════════════════════ */
+#section-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8,12,20,.85);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s;
+  backdrop-filter: blur(4px);
+}
+#section-overlay.visible {
+  opacity: 1;
+  pointer-events: all;

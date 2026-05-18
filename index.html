@@ -25,7 +25,8 @@
     document.getElementById('global-layers').innerHTML = overlaysHtml;
 
     const script = document.createElement('script');
-    script.src = 'script.js';
+    script.type = 'module';
+    script.src = 'js/main.js';
     document.body.appendChild(script);
   }
 

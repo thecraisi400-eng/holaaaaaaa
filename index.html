@@ -13,16 +13,22 @@
   }
 
   async function bootstrap() {
-    const [headHtml, topHtml, centerBottomHtml, overlaysHtml] = await Promise.all([
+    const [headHtml, topStatusHtml, topBrandHtml, topNavHtml, centerStatsHtml, centerActionsHtml, centerLogHtml, overlaysModalsHtml, overlaysTooltipsHtml, overlaysAlertsHtml] = await Promise.all([
       loadPartial('partials/head.html'),
-      loadPartial('partials/hud-top.html'),
-      loadPartial('partials/hud-center-bottom.html'),
-      loadPartial('partials/overlays.html'),
+      loadPartial('partials/hud-top/status.html'),
+      loadPartial('partials/hud-top/brand.html'),
+      loadPartial('partials/hud-top/nav.html'),
+      loadPartial('partials/hud-center-bottom/stats.html'),
+      loadPartial('partials/hud-center-bottom/actions.html'),
+      loadPartial('partials/hud-center-bottom/log.html'),
+      loadPartial('partials/overlays/modals.html'),
+      loadPartial('partials/overlays/tooltips.html'),
+      loadPartial('partials/overlays/alerts.html'),
     ]);
 
     document.getElementById('app-head').innerHTML = headHtml;
-    document.getElementById('app').innerHTML = `${topHtml}${centerBottomHtml}`;
-    document.getElementById('global-layers').innerHTML = overlaysHtml;
+    document.getElementById('app').innerHTML = `<section id="hud-top">${topStatusHtml}${topBrandHtml}${topNavHtml}</section>${centerStatsHtml}${centerActionsHtml}${centerLogHtml}`;
+    document.getElementById('global-layers').innerHTML = `<div class="particle-container" id="particleContainer"></div>${overlaysModalsHtml}${overlaysTooltipsHtml}${overlaysAlertsHtml}`;
 
     const script = document.createElement('script');
     script.type = 'module';

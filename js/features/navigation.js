@@ -6,11 +6,11 @@ const labels = {
   jutsus: 'JUTSUS',
   batallas: 'BATALLAS',
   invocaciones: 'INVOCAR',
-  habilidades: 'ÁRBOL',
+  atributos: 'ATRIBUTOS',
   ajustes: 'AJUSTES',
 };
 
-export function setupNavigation({ state, sections, elements, spawnParticles, spawnFloatText }) {
+export function setupNavigation({ state, sections, elements, spawnParticles, spawnFloatText, onSectionOpen }) {
   const { overlay, overlayTitle, overlayDesc, overlayClose, particleContainer } = elements;
 
   document.querySelectorAll('.nav-btn').forEach((btn) => {
@@ -31,8 +31,11 @@ export function setupNavigation({ state, sections, elements, spawnParticles, spa
 
       const info = sections[sec];
       if (info && overlay && overlayTitle && overlayDesc) {
-        overlayTitle.innerHTML = `${info.icon} ${info.title}`;
-        overlayDesc.textContent = info.desc;
+        const handled = onSectionOpen ? onSectionOpen(sec) : false;
+        if (!handled) {
+          overlayTitle.innerHTML = `${info.icon} ${info.title}`;
+          overlayDesc.textContent = info.desc;
+        }
         overlay.classList.add('visible');
       }
     });

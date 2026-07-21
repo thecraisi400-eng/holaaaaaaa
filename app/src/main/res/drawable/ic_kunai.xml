@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    
+    <!-- Kunai blade -->
+    <path
+        android:fillColor="#C0C0C0"
+        android:pathData="M12,2L14,8L16,8L16,14L14,14L14,20L12,22L10,20L10,14L8,14L8,8L10,8Z" />
+    
+    <!-- Kunai handle -->
+    <path
+        android:fillColor="#8B4513"
+        android:pathData="M10,20L14,20L14,22L10,22Z" />
+    
+    <!-- Ring at the end -->
+    <path
+        android:fillColor="#C0C0C0"
+        android:pathData="M12,22C11.4477,22 11,22.4477 11,23C11,23.5523 11.4477,24 12,24C12.5523,24 13,23.5523 13,23C13,22.4477 12.5523,22 12,22Z" />
+</vector>

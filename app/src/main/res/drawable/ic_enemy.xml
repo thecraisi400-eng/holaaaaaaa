@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="64dp"
+    android:viewportWidth="24"
+    android:viewportHeight="32">
+    
+    <!-- Enemy body - darker and more menacing -->
+    <path
+        android:fillColor="#8B0000"
+        android:pathData="M8,12L16,12L16,24L8,24Z" />
+    
+    <!-- Enemy head -->
+    <path
+        android:fillColor="#4A4A4A"
+        android:pathData="M12,4C9,4 7,6 7,9C7,12 9,14 12,14C15,14 17,12 17,9C17,6 15,4 12,4Z" />
+    
+    <!-- Enemy eyes - glowing red -->
+    <path
+        android:fillColor="#FF0000"
+        android:pathData="M10,8C9.5,8 9,8.5 9,9C9,9.5 9.5,10 10,10C10.5,10 11,9.5 11,9C11,8.5 10.5,8 10,8Z" />
+    <path
+        android:fillColor="#FF0000"
+        android:pathData="M14,8C13.5,8 13,8.5 13,9C13,9.5 13.5,10 14,10C14.5,10 15,9.5 15,9C15,8.5 14.5,8 14,8Z" />
+    
+    <!-- Enemy legs -->
+    <path
+        android:fillColor="#2C1810"
+        android:pathData="M8,24L10,24L10,30L8,30Z" />
+    <path
+        android:fillColor="#2C1810"
+        android:pathData="M14,24L16,24L16,30L14,30Z" />
+    
+    <!-- Enemy arms with claws -->
+    <path
+        android:fillColor="#8B0000"
+        android:pathData="M6,14L8,14L9,20L7,20Z" />
+    <path
+        android:fillColor="#8B0000"
+        android:pathData="M16,14L18,14L17,20L15,20Z" />
+</vector>

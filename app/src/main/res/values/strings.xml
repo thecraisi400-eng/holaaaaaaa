@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RPG Adventure</string>
+    
+    <!-- UI Labels -->
+    <string name="gold_label">Oro</string>
+    <string name="diamond_label">Gemas</string>
+    <string name="power_label">Poder</string>
+    <string name="world_label">Mundo</string>
+    <string name="stage_label">Desafío</string>
+    
+    <!-- Equipment Slots -->
+    <string name="hp">HP ❤️</string>
+    <string name="attack">ATAQUE ⚔️</string>
+    <string name="defense">DEFENSA 🛡️</string>
+    <string name="agility">AGILIDAD 💨</string>
+    <string name="critic">CRÍTICO 💥</string>
+    <string name="speed">VELOCIDAD 👟</string>
+    <string name="evasion">EVASIÓN 🌀</string>
+    <string name="regen">REGENERACIÓN 🔄</string>
+    
+    <!-- Kunai Panel -->
+    <string name="kunai_level">Nivel</string>
+    <string name="auto_mode">Auto</string>
+    
+    <!-- Main Buttons -->
+    <string name="btn_event">EVENTO</string>
+    <string name="btn_dungeon">MAZMORRAS</string>
+    <string name="btn_battle">BATALLA</string>
+    <string name="btn_hero">HÉROE</string>
+    <string name="btn_clans">CLANES</string>
+    <string name="btn_shop">TIENDA</string>
+</resources>

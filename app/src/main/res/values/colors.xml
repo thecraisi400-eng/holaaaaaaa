@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    
+    <!-- Palette de colores de fondo -->
+    <color name="bg_dark">#141833</color>
+    <color name="bg_medium">#1a1f38</color>
+    <color name="bg_darker">#0b0d17</color>
+    
+    <!-- Colores adicionales -->
+    <color name="path_brown">#8B6914</color>
+    <color name="grass_green">#2D5016</color>
+    <color name="tree_dark">#1a3a0f</color>
+    <color name="tree_light">#3d6b1c</color>
+    <color name="gold">#FFD700</color>
+    <color name="diamond">#00CED1</color>
+    <color name="power_orange">#FF6B35</color>
+    <color name="ui_border">#2a2f4a</color>
+    <color name="button_gradient_start">#2a2f4a</color>
+    <color name="button_gradient_end">#1a1f38</color>
+</resources>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg_dark_1">#141833</color>
+    <color name="bg_dark_2">#1a1f38</color>
+    <color name="bg_dark_3">#0b0d17</color>
+    <color name="path_dirt">#8B6914</color>
+    <color name="path_dirt_light">#A08030</color>
+    <color name="grass_green">#2D5016</color>
+    <color name="grass_light">#3D6B1E</color>
+    <color name="tree_trunk">#4A3728</color>
+    <color name="tree_leaves">#1E4D2B</color>
+    <color name="ui_panel">#1a1f38</color>
+    <color name="ui_border">#3a4a68</color>
+    <color name="text_gold">#FFD700</color>
+    <color name="text_white">#FFFFFF</color>
+</resources>

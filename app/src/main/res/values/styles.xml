@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<style name="GameButton" parent="Widget.AppCompat.Button">
+    <item name="android:background">@drawable/button_game_bg</item>
+    <item name="android:textColor">@color/text_white</item>
+    <item name="android:textAllCaps">false</item>
+    <item name="android:padding">4dp</item>
+</style>
